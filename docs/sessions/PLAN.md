@@ -22,7 +22,20 @@ Written by the main session at 11:45 PT, Oct 25. **Submission is at 14:30**; liv
 - **Half the quinoa and most of the chia sit on the 5 mm tray at every angle.** All the angles are below the ~22° at which grains slide on plastic, so a gentle seesaw barely moves them. They sit on solid ribs instead of finding a hole. ±15° sorts best of the three.
 - Fix options to test: a small fast vibration on top of the slow seesaw (the tool's buzz), longer runs, ribs running across the tilt instead of along it (the seesaw session saw grains ride X-ribs like rails), and taller catch-pan end walls (grains bounced out at 25°).
 
-## Next steps per session
+## 13:00 update: the demo configuration
+Every final render and number for the pitch uses **the new seesaw parts plus the buzz**:
+- design `inserts:5mm_across,2mm_across,pitch=55,holder=seesaw` (PR #21);
+- stroke `seesaw:deg=10,period_s=2,vib_mm=0.3,vib_hz=40` (PRs #18 and #22).
+
+Why:
+- The ribs-across inserts cut the quinoa stuck on 5 mm from 7/12 to 1/12 (PR #24).
+- The buzz clears quinoa, couscous and chia off 5 mm (PR #22).
+- The 55 mm pitch cuts the drop impact by about 35%.
+- Known cost: the buzz pushes plain `rice` / `white_rice` through 2 mm. Say so.
+- Compare against the old parts with no buzz (`inserts:5mm,2mm,pitch=85`, `seesaw:deg=10,period_s=2`) as the before.
+
+**Memory:** the laptop hit 214 MB free at 12:53, and several batches were killed. Run **one seed at a time, ≤ 3 workers each**, and cache everything so a rerun resumes. The optimizer keeps its workers but should drop to 8 if memory goes under 2 GB.
+
 
 ### clump (`clump-sim`): critical path
 1. **~12:15, PR:** `sim/clumps.py` plus the hook, and one clump that builds and visibly **breaks apart** on the seesaw tower, with a `view.html`. It's running now. Get it to `main`.
@@ -33,7 +46,8 @@ Written by the main session at 11:45 PT, Oct 25. **Submission is at 14:30**; liv
 4. Workers ≤ 4.
 
 ### seesaw (`seesaw-tower`)
-1. **~12:15:** add a **seesaw + vibration** stroke: a slow alternating seesaw plus a small fast oscillation on top, both parametrised.
+0. **Now:** the final renders in the demo configuration above, with all 10 grain kinds. Do one before / after pair, PR it, and record the counts in SEESAW.md.
+1. **Done (PRs #18, #22):** add a **seesaw + vibration** stroke: a slow alternating seesaw plus a small fast oscillation on top, both parametrised.
    - Show whether it moves the stuck quinoa and chia off the 5 mm ribs.
    - Try ribs-across (when bambu has the spec) in the sim.
 2. **~12:30, the final demo renders:**

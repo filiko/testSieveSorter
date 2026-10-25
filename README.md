@@ -27,6 +27,38 @@ BugSorter changes the electronics and control, not the sieving itself: insects s
 
 Full reasoning, tests and targets: [docs/gates-verdict.md](docs/gates-verdict.md)
 
+### Demo tray and next step
+
+The demo rig, from the team's photos: a white 3D-printed square-grid sieve tray, bolted onto a **handheld DeWalt 20V MAX cordless tool**, sorting tube pasta from rice and grains. The next big improvement is **shaking it up and down**, not only side to side. The sim models just the tray, the grains and the shaking motion, not the tool. It gets vertical and angled strokes, then a direct comparison against horizontal shaking on this tray ([docs/sessions/demo-rig.md](docs/sessions/demo-rig.md)). The photos are local reference only (`media/`, gitignored).
+
+## Repository layout
+
+| Folder | What's in it |
+|---|---|
+| [`cad/`](cad/) | CadQuery scripts for every printable part. Previews (`out/*.png`) and checks (`out/*_checks.json`) are committed; STL, STEP and sliced files are rebuilt, not committed. Details below. |
+| [`sim/`](sim/) | MuJoCo sorter simulation, parameter sweeps, calibration against bench counts, and a three.js replay viewer. See [sim/README.md](sim/README.md) and the bench protocol in [sim/BENCH.md](sim/BENCH.md). |
+| [`docs/`](docs/) | Design verdicts, the source-linked comparison with BioKEA's system, reviewer briefs and answers. |
+| [`docs/sessions/`](docs/sessions/) | Briefs for the parallel work streams: CAD and Bambu, physics, and the design optimizer. |
+| [`pi/`](pi/) | Raspberry Pi helper script (`buzz.py`). |
+| [`.claude/skills/sieve-gate-design/`](.claude/skills/sieve-gate-design/) | A Claude Code skill: from a sample spec to tested gate sizes, printable strips, a sim check and a logged iteration. |
+
+## Running the code
+
+Python 3.12. Dependencies are in [requirements.txt](requirements.txt).
+
+- **MuJoCo and CadQuery run in WSL2 (Ubuntu).** On the Windows dev laptop, Smart App Control blocks the unsigned native DLLs in `mujoco`, `cadquery` and `vtk`. The shared venv lives at `~/venvs/sieve`:
+  ```
+  uv venv ~/venvs/sieve --python 3.12
+  uv pip install --python ~/venvs/sieve/bin/python -r requirements.txt
+  ```
+- **Windows `.venv`** (repo root): numpy and trimesh only. That's enough for `sim/viewer.py`, which builds the replay pages. `cad/slice.py` calls Bambu Studio, which is installed on Windows.
+- Run each script from its own folder: `cad/` for parts, `sim/` for the sim. For example:
+  ```
+  cd sim
+  python sorter.py --design pool:w5p0,t1p4 --mix rice=30,quinoa=30,chickpea=8,pasta=8 --stroke sine:amp_mm=3,freq_hz=10 --duration 10 --out out/runs/demo
+  python viewer.py out/runs/demo --open
+  ```
+
 ## Docs
 
 | File | What it is |
@@ -36,6 +68,10 @@ Full reasoning, tests and targets: [docs/gates-verdict.md](docs/gates-verdict.md
 | [docs/codex-astra-brief.md](docs/codex-astra-brief.md) | The question sent to Codex Astra |
 | [docs/codex-astra-answer.md](docs/codex-astra-answer.md) | Codex Astra's answer, verbatim |
 | [docs/bugsorter-line-breakdown.html](docs/bugsorter-line-breakdown.html) | Earlier report: all five modules and the BugSorter-to-BugDisperser handoff. Its pantry stand-ins (chia, couscous, noodles) predate the switch to rice, pasta and quinoa. |
+| [sim/README.md](sim/README.md) | How the sim works: engine, shaking, geometry, contacts, and what each file does |
+| [sim/BENCH.md](sim/BENCH.md) | What to measure on the bench, and which CSV template each number goes in |
+| [cad/WORKING_DIMENSIONS.md](cad/WORKING_DIMENSIONS.md) | Current holder and insert dimensions |
+| [docs/sessions/](docs/sessions/) | Work-stream briefs: [CAD and Bambu](docs/sessions/bambu.md), [physics](docs/sessions/physics.md), [design optimizer](docs/sessions/design-optimizer.md), [Forum's footage](docs/sessions/forum-footage.md) |
 
 ## Key sources
 

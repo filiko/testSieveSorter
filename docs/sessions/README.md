@@ -1,14 +1,15 @@
 # Parallel sessions
 
-Three Claude Code sessions work on this repo at the same time. Each has its own git worktree and branch, so none of them edits another's files. Merge into `main` through PRs on https://github.com/filiko/testSieveSorter.
+Four Claude Code sessions work on this repo at the same time. Each has its own git worktree and branch, so none of them edits another's files. Merge into `main` through PRs on https://github.com/filiko/testSieveSorter.
 
 | Session | Folder | Branch | Brief |
 |---|---|---|---|
 | Main / GitHub / coordination | `Documents\Github\testSieveSorter` | `main` | — |
 | Bambu + visualization / 3D modeling | `Documents\Github\testSieveSorter-bambu` | `bambu-viz` | [bambu.md](bambu.md) |
-| Physics engine test on the new laptop | `Documents\Github\testSieveSorter-physics` | `physics-bench` | [physics.md](physics.md) |
+| Physics engine test on the new laptop | `Documents\Github\testSieveSorter-physics` | `physics-bench` | [physics-handoff.md](physics-handoff.md) (current), [physics.md](physics.md), [demo-rig.md](demo-rig.md) A-B |
+| Design optimizer (sim-driven, self-improving) | `Documents\Github\testSieveSorter-opt` | `design-opt` | [design-optimizer.md](design-optimizer.md), [demo-rig.md](demo-rig.md) C |
 
-**Shared venv.** There is one venv, `testSieveSorter\.venv` (Python 3.12, from `requirements.txt`). Each worktree has a `.venv` junction that points at it, so `..\.venv\Scripts\python.exe` works from `cad\` and `sim\` in any folder. A `pip install` in one session changes the venv for all three, so say so in the PR.
+**Shared venv.** There is one venv, `testSieveSorter\.venv` (Python 3.12, from `requirements.txt`). Each worktree has a `.venv` junction that points at it, so `..\.venv\Scripts\python.exe` works from `cad\` and `sim\` in any folder. A `pip install` in one session changes the venv for all of them, so say so in the PR.
 
 ## Blocker shared by both [P] sessions: Smart App Control
 
@@ -28,10 +29,17 @@ Options; the user decides which one:
 
 Whichever option is chosen, record it here so the other session doesn't redo the work.
 
-**Chosen (2026-10-25, bambu session): option 1, WSL2.** Smart App Control is still on. The setup:
-- WSL distro `Ubuntu` (26.04, ships Python 3.14). uv installed in `~/.local/bin`. Venv `~/venvs/sieve` is Python 3.12 from `requirements.txt` (cadquery, mujoco, vtk all import).
-- Run from Git Bash or PowerShell, repo stays on the Windows side:
-  `wsl -d Ubuntu -- bash -lc 'cd /mnt/c/Users/ajfil/Documents/Github/<worktree>/cad && ~/venvs/sieve/bin/python gated_container.py'`
-  (From Git Bash, set `MSYS_NO_PATHCONV=1` first, or the `/mnt/c` path gets rewritten.)
+### Chosen: option 1, WSL2 (2026-10-25, set up by the bambu and physics sessions)
+
+Smart App Control is still **on**; nothing in the Windows policy was changed.
+
+- Distro: `Ubuntu` (26.04 LTS, WSL2), already installed. It sees all 24 cores but only about 15 GB RAM (the WSL default is half the host's). Raise it in `%UserProfile%\.wslconfig` (`[wsl2]` `memory=24GB`) if a sweep needs more.
+- Venv: **`~/venvs/sieve`** inside WSL, built with uv on **Python 3.12.15** (uv-managed cpython, not Ubuntu's system 3.14). It has mujoco 3.17.0, cadquery 2.8.0 (OCP 7.9.3), vtk 9.6.2, numpy 2.5.4 and trimesh 5.2.0; `import mujoco` and `import cadquery` both work.
+- uv is in `~/.local/bin`. Install packages with `uv pip install --python ~/venvs/sieve/bin/python ...` (there's no pip in the venv), and say so in the PR because the venv is shared.
+- The repo stays on the Windows side. Run from the worktree's folder, for example:
+  `wsl -d Ubuntu -- bash -lc "cd /mnt/c/Users/ajfil/Documents/Github/testSieveSorter-physics/sim && ~/venvs/sieve/bin/python sorter.py ..."`
+  From Git Bash, set `MSYS_NO_PATHCONV=1` first, or it rewrites `/mnt/c/...` paths.
+- CAD: build in WSL (cadquery), slice in **Windows** (`slice.py` on the Windows venv: it no longer imports cadquery, and Bambu Studio is a signed Windows app).
 - VTK previews render through WSLg. Ignore the `bad X server connection` warning; the PNGs come out fine.
-- `slice.py` runs on the **Windows** venv: it no longer imports cadquery, and Bambu Studio is a signed Windows app. So build in WSL, then slice in Windows.
+- Speed: the reference `inserts:mesh5,mesh2` run takes 45 s wall in WSL, against 517 s on the old machine. See `sim/PERF.md`.
+- Incident: at 05:22 the physics session ran `python3 -m venv ~/venvs/sieve` on top of the uv venv while it was being built (most likely by the bambu session). That rewrote `pyvenv.cfg`. It has been repaired (uv-format `pyvenv.cfg`, stray `lib/python3.14` and `bin/pip*` removed), and the packages were not affected. Don't recreate this venv; add packages to it instead.

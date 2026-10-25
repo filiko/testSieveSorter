@@ -38,3 +38,24 @@ Adopted 2026-10-24 as the team's working numbers. All values are in mm.
 | `sieve_insert_2mm` | 2.0 | 1.0 | 1.4 | 726 |
 
 The plinko layers (`plinko_layers.py`) use the same 131.4 × 95.4 outside size.
+
+## Gated container (`gated_container.py`), the final design
+
+Same footprint as the sieve inserts, shaken longways (X).
+
+| What | Value |
+|---|---|
+| Outside | 131.4 × 95.4; walls 2 thick, 16 tall |
+| Pull tabs | 20 × 6, top at 25 (3 above the box rim) |
+| Floor | solid, 2 thick at the gate end; slopes 2° up away from the gate (rises 4.06 over the length) |
+| Gate strip position | centre at x = 53, held by two rails per side with a 2.3 groove |
+| Drop slot | x 54 to 61 (7 long), y ±40, over the box's open bottom; 45° ramp from 61 to the end wall |
+| Tower | flip the container 180° on every other level |
+
+| Gate strip | Openings | Count |
+|---|---|---|
+| Size of every strip | 91.0 × 18 × 2, printed flat | — |
+| `gate_w5p0`, `gate_w3p0`, `gate_w2p0` | width gaps 5.0 / 3.0 / 2.0, 8 tall | 11 / 15 / 19 |
+| `gate_t1p2`, `gate_t1p4`, `gate_t1p6` | tunnels 8 wide, 1.2 / 1.4 / 1.6 tall | 7 each |
+
+Teeth between openings are 2 wide.

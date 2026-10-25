@@ -61,6 +61,28 @@ The holder box and sieve inserts are the current working design. The numbers are
 - If Bambu Studio asks whether to load several files as a single object, click **No**, then press **A** (Arrange) to lay them out.
 - Clicking **Yes** stacks the parts on top of each other in one spot.
 
+### Gated container: the final design (`gated_container.py`)
+
+![gated container in the holder box](cad/out/gated_preview.png)
+
+A drop-in replacement for the mesh inserts in the BugSorter tower: same 131.4 × 95.4 mm footprint and the same pull tabs, shaken longways.
+
+**How it sorts:**
+1. The floor is solid and slopes 2° toward a gate strip at the +X end. Shaking walks grains, and the spray water, down to the gate.
+2. Anything that fits through the gate drops through the slot just past it, over the box's open bottom, onto the next level. It can't come back.
+3. Anything too big stays in the container. Lift it out by the tabs and put it in the pool.
+
+**Gate strips** slide into rails and swap out, so you can change the cut without reprinting the container. They print flat (about 7 min each), which puts the gap width and tunnel height in the printer's accurate XY plane.
+
+| Strip | Openings | Cuts by |
+|---|---|---|
+| `gate_w5p0`, `gate_w3p0`, `gate_w2p0` | Width gaps 5.0 / 3.0 / 2.0 mm, 8 mm tall | The narrower side of a flat-lying grain |
+| `gate_t1p2`, `gate_t1p4`, `gate_t1p6` | Tunnels 8 mm wide, 1.2 / 1.4 / 1.6 mm tall | Thickness. Long-grain rice (~1.7 mm) stays; quinoa (~1.0 mm) passes. |
+
+**In the tower, flip the container 180° on every other level.** That way, what drops from the level above lands on the solid end of the next container instead of falling straight through its slot.
+
+Dimensions are in [cad/WORKING_DIMENSIONS.md](cad/WORKING_DIMENSIONS.md).
+
 ### Sieve inserts for the holder box (`sieve_insert.py`)
 
 ![2 mm insert](cad/out/sieve_insert_2mm.png)

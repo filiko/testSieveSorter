@@ -17,6 +17,8 @@ Status: first build, 2026-10-24. Nothing here is calibrated yet. Until the bench
 |---|---|
 | `sorter.py` | Core: builds the scene, shakes it, records it, and counts where everything ends up |
 | `rocking.py` | The seesaw: each box of a tower on its own hinge across its middle, neighbours in opposite phase, driven in the lab frame; also checks that neighbouring boxes never touch ([SEESAW.md](SEESAW.md)) |
+| `clumps.py` | The real input: a clump of specimens (or grain surrogates) with leaves, twigs and dirt, packed into a ball and held by breakable bonds that weaken when wet; break-up, damage and leaf-blinding metrics ([CLUMPS.md](CLUMPS.md)) |
+| `clump_study.py` | A clump across bond sets x spray on/off x seeds, in parallel, with a summary table |
 | `designs.py` | Pool sorter, plus the registry for every design spec |
 | `designs_holder.py` | BioKEA's holder tower with sieve inserts (glued mesh or printed), and the plinko layers |
 | `grains.py` | Rice, quinoa, chickpeas, pasta (frozen for the optimizer), plus white rice as photographed, brown rice, black rice, wild rice, chia and couscous |

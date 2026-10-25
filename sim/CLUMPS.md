@@ -170,7 +170,23 @@ The real input is insects. The clump: 40 `insect_elongate` (flies, wasps, ants),
   - Replays: `out/runs/brk_malaise_none/view.html`, `out/runs/brk_malaise_default/view.html`.
 - **Don't read the insect damage proxy yet.** Lying still, the insect clump already shows a contact p90 of 26 mN. That's the 0.1 mm of leg overlap left by packing, pushing against stiff contacts. It's not damage, and it hides the real peaks. The fix is a longer or softer relax for insect clumps, or running them with softer contacts. Until then, use the break-up numbers only.
 
+### 6. The breaker that's being printed (B-164f355a), spray on vs off
+The optimizer's verified Malaise #1, sliced for the P1S (print_plan.md): `breaker:open=11.3,bar=1.6,pin_d=3.1,pin_h=8,pitch=8.5,tip=round`, on its stroke, a ±7° seesaw at 1.1 s with a 0.35 mm, 40 Hz buzz. Medium bonds (this PR's sets), 4 s, one seed. Grains at dt 0.125 ms; insects at 0.0625 ms. No unstable resets; 4–4.5 min wall each.
+
+| clump | spray | free at 1 s | 2 s | 3 s | 4 s | t50 | t90 | largest cluster | peak p90 in the clump (mN) |
+|---|---|---|---|---|---|---|---|---|---|
+| grain surrogate (106) | off | 69% | 92% | 92% | **92%** | 0.24 s | 1.36 s | 7 | 94 |
+| grain surrogate | on | 100% | 100% | 100% | **100%** | 0.21 s | 0.59 s | 1 | 115 |
+| `insect_malaise` (40) | off | 18% | 23% | 25% | **25%** | never | never | 30 | 27 |
+| `insect_malaise` | on | 13% | 20% | 33% | **90%** | 3.25 s | 3.84 s | 2 | 61 |
+
+- **On the printed breaker, spray takes the real-mix insect clump from 25% to 90% freed.** Dry, the break-up stops at 2 s. Wet, it holds for 3 s and then collapses (33% → 90% between 3 and 4 s): the wetting builds up until enough bonds are weak for the network to cascade. One seed: read it as "spray is what finishes an insect clump", not as a percentage.
+- **For grains it beats the CAD default** (92% / 100% against 81% / 92% in section 4), on a gentler tilt (±7° against ±10°) and with a lower in-clump peak dry (94 against 142 mN).
+- **Where things went (spray on).** Grains: rice 39 of 50 and quinoa 44 of 50 in the catch, pasta 6 of 6 on 5 mm, and the leaf held on the breaker. Insects: 15 in the catch, 12 on 2 mm, 6 on 5 mm, and 2 still on the breaker.
+- Replays: `out/runs/pr_grain_default/view.html`, `out/runs/pr_malaise_default/view.html` (and `_none` for dry).
+
 ## What it means for the breaker and the optimizer
+- **Headline: on the breaker being printed, with the buzz and the spray on, the sim frees 100% of the grain surrogate clump and 90% of a real-mix insect clump in 4 s. Without spray, the insect clump stops at 25%.** That's one seed, with assumed bond strengths. It's a ranking, not a prediction.
 - **The ±10° seesaw shifts the clump once, then holds it still.** In the sim, a clump that can hold itself up comes through three ±10° cycles mostly intact, so the break-up has to come from something else: the **breaker's pins** (they load the ball wherever it sits), a **fast component** in the motion (the seesaw + vibration stroke), a **steeper or faster tilt**, or **spray**. Without those, `study malaise` will mostly measure how much of the clump falls off in the first tilt.
 - **The breaker and the buzz do the work, and spray finishes it.** On the CAD default breaker with the 0.3 mm, 40 Hz buzz, a medium clump is 81% freed dry and 92% with spray (1% on the plain seesaw). Spray is the only thing in these runs that keeps freeing specimens after the first second or two, so keep it on.
 - **But the buzz hammers.** In the clump, the peak-force p90 rises from about 34 mN to 100–140 mN on breaker + buzz. The stroke to look for frees the clump with the least buzz, and the gentleness term is what should find it.

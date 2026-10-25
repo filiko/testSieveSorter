@@ -254,3 +254,54 @@ The best on BioKEA's firmware stroke is P-ba5dd6b3, plinko 5.6 / 1.6 at 9.5 mm a
 2. **Recommend per drive.** BioKEA's stage can only do the firmware stroke, while the demo rig is a vibrating tool, so `winners.json` gets a best-per-drive entry as well as the overall top 3.
 3. **gated_mid** gets the next cross-entropy round (its elite is 86% tool drive).
 
+## insects round 0 (2026-10-25 07:59, auto)
+
+**Tried:** gated: 11 (baseline, lhs); plinko: 9 (baseline, lhs); inserts: 4 (baseline, lhs); current: 1 (current); gated_mid: 8 (lhs). 396 runs, 47 min wall.
+
+**Leader so far:** P-8d6849ce (plinko, round 0) rods L1 gap 3.1 (rod 2.4 wide, 2.4 tall) / L2 gap 1.3 (rod 2.6, 3.4), stroke tool sine 32 Hz, 4.0 g (0.97 mm), 75 deg up: robust 0.351 (mean 0.470 +/- 0.119); > 6 mm 74% pure / 57% recovered, 2-6 mm 89% pure / 78% recovered, < 2 mm 78% pure / 92% recovered; PEN 9/9 (clr 0.05, pen 0.706).
+
+**Screen results this round (8 s, progress score), best per family:**
+
+- gated: best G-127ae062 screen robust 0.468; median 0.333; failures in 0 of 11 candidates
+- plinko: best P-2a281144 screen robust 0.612; median 0.394; failures in 0 of 9 candidates
+- inserts: best I-88c112b1 screen robust 0.509; median 0.430; failures in 0 of 4 candidates
+- current: best C-243bf513 screen robust 0.133; median 0.133; failures in 0 of 1 candidates
+- gated_mid: best G-c46df8f7 screen robust 0.649; median 0.333; failures in 0 of 8 candidates
+
+**Why the losers failed** (particles per run, over this round's screened candidates in the bottom half of each family; the most common modes):
+
+- gated: 2-6 mm: held upstream -> L1 on the floor (26.4 in 6 cands); < 2 mm: held upstream -> L1 on the floor (13.4 in 6 cands); 2-6 mm: held upstream -> L1 at the gate (within 10 mm) (29.1 in 2 cands); < 2 mm: held upstream -> L2 on the floor (12.2 in 2 cands); < 2 mm: held upstream -> L1 at the gate (within 10 mm) (6.6 in 2 cands); 2-6 mm: between -> L1 in the strip (1.9 in 2 cands)
+- plinko: 2-6 mm: held upstream -> layer_1_rods (8.7 in 5 cands); < 2 mm: held upstream -> layer_2_rods (5.8 in 5 cands); 2-6 mm: between -> in the floor of layer_2_rods (3.4 in 5 cands); 2-6 mm: leaked downstream -> layer_3_catch (5.7 in 3 cands); < 2 mm: held upstream -> layer_1_rods (3.9 in 3 cands); 2-6 mm: between -> in the floor of layer_1_rods (2.2 in 5 cands)
+- inserts: 2-6 mm: held upstream -> on_h2p35b1p35 (30.7 in 1 cands); 2-6 mm: held upstream -> on_h1p95b1p35 (28.3 in 1 cands); < 2 mm: held upstream -> on_h2p35b1p35 (12.2 in 1 cands); < 2 mm: held upstream -> on_h1p15b0p95 (5.3 in 1 cands); 2-6 mm: between -> in the floor of on_h1p95b1p35 (4.4 in 1 cands); < 2 mm: held upstream -> on_h1p25b1p15 (3.7 in 1 cands)
+- current: 2-6 mm: leaked downstream -> catch (8.0 in 1 cands); 2-6 mm: between -> in the floor of on_mesh5 (7.4 in 1 cands); 2-6 mm: between -> in the floor of on_mesh2 (6.7 in 1 cands); 2-6 mm: held upstream -> on_mesh5 (2.1 in 1 cands); > 6 mm: between -> in the floor of on_mesh5 (1.6 in 1 cands); < 2 mm: between -> in the floor of on_mesh5 (1.3 in 1 cands)
+- gated_mid: 2-6 mm: held upstream -> L1 on the floor (35.8 in 4 cands); < 2 mm: held upstream -> L1 on the floor (18.8 in 4 cands); 2-6 mm: held upstream -> L1 at the gate (within 10 mm) (7.2 in 1 cands); < 2 mm: held upstream -> L2 in the drop slot (1.9 in 1 cands); < 2 mm: held upstream -> L1 at the gate (within 10 mm) (1.6 in 1 cands); < 2 mm: held upstream -> L2 on the floor (0.8 in 1 cands)
+
+**Leaders' remaining losses** (full runs, top 3):
+
+- P-8d6849ce: 2-6 mm: leaked downstream -> layer_3_catch 5.0; > 6 mm: leaked downstream -> layer_2_rods 2.6; 2-6 mm: held upstream -> layer_1_rods 2.2; < 2 mm: held upstream -> layer_2_rods 1.2; 2-6 mm: between -> in the floor of layer_2_rods 1.0
+- P-2ee377b0: 2-6 mm: held upstream -> layer_1_rods 4.1; < 2 mm: held upstream -> layer_2_rods 4.1; 2-6 mm: between -> in the floor of layer_2_rods 3.9; 2-6 mm: leaked downstream -> layer_3_catch 3.0; < 2 mm: between -> in the floor of layer_2_rods 1.7
+- P-2a281144: 2-6 mm: held upstream -> layer_1_rods 12.3; < 2 mm: held upstream -> layer_2_rods 8.2; 2-6 mm: between -> in the floor of layer_1_rods 1.8; > 6 mm: between -> in the floor of layer_1_rods 0.7; < 2 mm: between -> in the floor of layer_2_rods 0.3
+
+**Parameters at a bound among each family's elite** (the range may be too narrow):
+
+- gated: k1 w 0.15/t 0.85, drive firmware 0.38/tool 0.62, k2 w 0.85/t 0.15
+- plinko: drive firmware 0.38/tool 0.62
+- inserts: drive firmware 0.38/tool 0.62
+- gated_mid: k1 w 0.62/t 0.38, drive firmware 0.15/tool 0.85, k2 w 0.38/t 0.62
+
+**Next hypothesis (auto):** 7.6 particles per run leak through a gate they should not pass: tighten that gate or cap the gap height (window gate); 2.1 particles per run jam between bins: see where in the losses list; the leader's near-size results are flagged (overlap vs clearance): check it at a smaller dt or stiffer contacts before trusting it
+
+
+## insects round 0: reading (notes, 2026-10-25 08:05) -- EXPLORATORY
+
+The insects are the generated specimens of `sim/insects.py`, with textbook sizes and none measured. The classes are BugPicker's body lengths: > 6 mm (L1), 2-6 mm (L2), < 2 mm (catch).
+
+**Result: no design sorts these classes well, and the reason is structural.**
+- The best is P-8d6849ce, plinko 3.1 / 1.3 on a sine at 32 Hz and 4 g, 75 deg up: robust 0.351. Recovery is 57% for > 6 mm, 78% for 2-6 mm and 92% for < 2 mm. gatecalc predicted about the same (10 / 45 / 98% with its gates, `/tmp`-free note in Setup). Gates cut width and thickness, and body length overlaps between the classes in both.
+- No candidate reaches the 0.5 working-sorter floor, so `winners_insects.json` lists none.
+- **Today's glued mesh jams 17 specimens per run** (legs caught in the mesh; it scores 0.168). That matches the warning in `docs/gates-verdict.md` about woven mesh as a fence.
+
+**Every insect result is flagged.** Legs (capsules down to 0.06 mm radius) sink 0.4-1.25 mm into the rods and gates, while the clearances are about 0.05 mm, because some specimen is always near-size. One more reason these numbers rank but don't predict.
+
+**Hypothesis (a question for the team, not for the optimizer):** BugPicker's real constraint is whether a specimen fits a 96-well, which is width-driven (`.claude/skills/sieve-gate-design/references/well-fit.md`). Gates can cut width; nothing in the stack cuts length. Classes defined by width, or "fits a well / doesn't", would be sortable. That's the team's call. Until then the insect study gets the leftover compute: one cross-entropy round after demo round 4.
+

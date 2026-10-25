@@ -29,4 +29,35 @@ Full reasoning, tests and targets: [docs/gates-verdict.md](docs/gates-verdict.md
 - EntoSieve paper: https://pmc.ncbi.nlm.nih.gov/articles/PMC12225705/ (build files: https://osf.io/6t25n/)
 - Elbrecht et al. 2021, wet sieving: https://pmc.ncbi.nlm.nih.gov/articles/PMC8500090
 
-CAD for the trays lives separately in `Documents\BioKEA-hack\cad` (CadQuery scripts that export STEP and STL).
+## Sieve system CAD (`cad/`)
+
+Every part is exactly the size of a 24-well plate (127.76 × 85.47 × 20.27 mm), so it drops into any plate holder, plate shaker or plate gripper. A 3 mm lip under each part nests into the part below. The lip sits inside the 20.27 mm height.
+
+**Stack, top to bottom:**
+
+| Part | What it does |
+|---|---|
+| `lid` | Keeps grains from bouncing out |
+| `tray_coarse_5p0` | 5.0 mm round holes. Pasta stays on top; rice and quinoa pass. |
+| `tray_fine_2p3` | 2.3 mm round holes, for short-grain rice vs. quinoa |
+| `tray_fine_slot_1p3` | 1.3 × 12 mm slots, which sort by thickness. Use this one for long-grain rice vs. quinoa. |
+| `collector` | Sealed bin for whatever passes the fine tray (about 177 mL) |
+
+**Also:**
+
+| Part | What it does |
+|---|---|
+| `tray_open` + `clamp_ring` | Frame for a 121.2 × 78.9 mm piece cut from the kit's metal sheets. Clip the corners, drop it on the ledge, press the ring on top. |
+| `gate_coupon_2p3`, `gate_coupon_5p0` | The gates idea, to run beside a perforated tray. Grains start on a raised deck, pass between tapered posts, and drop 5 mm into a pocket. Shake along the long side. |
+
+**Design notes:**
+- Every hole and slot widens 8° downward, so near-size grains fall through instead of wedging.
+- Inner corners are rounded.
+- Each part's label is debossed on its +X end wall.
+
+**Build:** from `cad\`, run `..\..\..\BioKEA-hack\.venv\Scripts\python.exe sieve_system.py`, or name specific parts after the command.
+- STL and STEP files land in `cad\out\` but aren't committed: rebuilding them takes about 2 min.
+- Previews (`.png`) and checks (`_checks.json`) are committed.
+- Print `hole_gauge.py` first and pour each grain over it, so the aperture numbers match what your printer actually makes.
+
+**Changing sizes:** every dimension is a named parameter at the top of `sieve_system.py`. `cadkit.py`, `hole_gauge.py` and `slice.py` are copies from `Documents\BioKEA-hack\cad`.

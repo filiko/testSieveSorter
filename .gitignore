@@ -4,3 +4,4 @@ cad/out/*.stl
 cad/out/*.step
 sim/out/
 .venv/
+media/

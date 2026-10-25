@@ -4,7 +4,9 @@ Forum Shah emailed photos and video of the real BugSorter: "Fwd: Bug sorter vide
 
 `C:\Users\ajfil\Documents\Github\testSieveSorter\media\forum-2026-10-24\`
 
-That's the main checkout, not your worktree. Read them from there. **The folder is empty until the user saves the attachments into it.** No session can download them: the Google connector returns only the email text, and the ajfiliko IMAP app password is revoked. Until the files land, do the parts that don't need them.
+That's the main checkout, not your worktree. Read them from there. `media/` is **gitignored**: the footage is local reference only, so never commit anything from it.
+
+**What's there:** 4 photos (`IMG_1315/1316/1318/1320.JPG`, 640×480) and 1 video, `IMG_1319.MOV`: 1920×1080 h264 at 30 fps, **1.1 s long, 33 frames** (recorded 2026-10-25 01:29 UTC). That's short. It may not show a full stroke, and at 30 fps it can't resolve `ramp_s` (about 33 ms per frame). Say what the clip can and can't show; don't stretch it.
 
 Camera or vision simulation is **not** a track requirement. BioKEA judges three clean size classes. The footage is for two things, and the user chose both. Deadline: submission Sun Oct 25 at 2:30 PM PT.
 
@@ -12,7 +14,7 @@ Camera or vision simulation is **not** a track requirement. BioKEA judges three 
 
 `sim/BENCH.md` step 1 calls the stroke "the most important measurement". The sim guesses `ramp_s = 0.01` s.
 
-1. Run `ffprobe` on each clip and record fps, resolution and duration. List the files in `media/README.md`: what each one shows, and what camera took it.
+1. Look at the photos and the clip, and note what each one shows in `sim/bench/README_forum.md`. That file is committed; the media itself isn't.
 2. Write `sim/stroke_from_video.py`:
    - `ffmpeg` pipes grayscale frames of a cropped region.
    - Track a high-contrast feature on the tray (an edge or a pull tab) along the stroke axis, using an intensity-weighted centroid or 1-D cross-correlation.
@@ -33,7 +35,7 @@ This doesn't need MuJoCo. The recorded run `sim/out/runs/current_mesh/` (`traj.n
    - Add a **Copy camera** button, so the angle can be matched by eye against Forum's photo and pasted back.
    - Add a **Record** button: `canvas.captureStream()` + `MediaRecorder`. It plays the replay once and downloads a `.webm`.
 2. Rebuild the page: run `..\.venv\Scripts\python.exe viewer.py out/runs/current_mesh --open` from `sim\`.
-3. Use `ffmpeg` to scale both clips to the same height, `hstack` them, and label them **"Real BugSorter"** and **"MuJoCo sim, uncalibrated"**. Write `media/demo_side_by_side.mp4`. Keep it under about 20 MB so it can be committed.
+3. Use `ffmpeg` to scale both clips to the same height, `hstack` them, and label them **"Real BugSorter"** and **"MuJoCo sim, uncalibrated"**. Write `media/demo_side_by_side.mp4` in the main checkout. It's local only (gitignored); it's for the demo, not the repo. The real clip is only 1.1 s, so loop it or show a still from the photos next to the sim.
 4. Check: the page opens at the pasted angle, the webm plays, the final mp4 plays with both halves in sync, and the labels are readable.
 5. Once the physics session has `stroke_forum.csv` and a new run on `main`, re-record the sim half from that run.
 

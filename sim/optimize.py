@@ -81,6 +81,8 @@ SCREEN_S, FULL_S = 8.0, 30.0
 DT, TIMECONST = 2.5e-4, 5e-4
 STIFF_DT, STIFF_TIMECONST = 1.25e-4, 2.5e-4   # `verify`: half the overlap, about 2x the wall time
 SEEDS = (0, 1, 2)
+SCREEN_SEEDS = SEEDS             # run --screen-seeds 1: screen on seed 0 only (slow seesaw runs)
+FULL_SEEDS = SEEDS               # run --full-seeds 2: the full runs on the first two seeds
 PROMOTE = 0.2
 UNDERSIZE_MM = 0.15              # ASSUMED: nominal minus printed opening (XY); replace with hole_gauge data
 Z_STEP, XY_STEP = 0.2, 0.1       # layer height for vertical features; opening step
@@ -631,7 +633,7 @@ def jobs_for(c, study, fid, base, sets):
     stiff = {"dt": STIFF_DT, "contact": {"timeconst": STIFF_TIMECONST}} if fid == "stiff" else {}
     out = []
     for label, contact in sets:
-        for seed in SEEDS:
+        for seed in {"screen": SCREEN_SEEDS, "full": FULL_SEEDS}.get(fid, SEEDS):
             cfg = sweep.make_cfg(base, design=spec, stroke=stroke, contact=contact, duration_s=dur,
                                  seed=seed)
             if stiff:
@@ -680,6 +682,8 @@ def run_job(job):
         def checked_step(m, d):
             step(m, d)
             if "d" not in seen:
+                if mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_GEOM, "tray0") < 0:
+                    return                         # another model: clumps.py's packing pre-sim
                 seen["m"], seen["d"], seen["n"] = m, d, 0
                 seen["gate"] = np.array([m.geom(f"tray{i}").id for i, r in enumerate(roles) if r in ("gate", "screen")])
             seen["n"] += 1
@@ -714,6 +718,11 @@ def run_job(job):
         ts = res["timeseries"]
         rec["timeseries"] = {"t": ts["t"], "counts": ts["counts"]}
         rec["gate_penetration_mm"] = round(seen["gate_pen"], 5)
+        if res.get("clumps"):                      # clumps.py metrics, less the per-bond and per-step arrays
+            c = res["clumps"]
+            rec["clumps"] = {**{k: v for k, v in c.items() if k not in ("bonds", "timeseries", "damage")},
+                             "damage": {k: v for k, v in c["damage"].items() if k != "per_specimen_mN"},
+                             "free_t": c["timeseries"]["t"][::5], "free": c["timeseries"]["free"][::5]}
         rec["sweep_metrics"] = {k: v for k, v in sweep.run_metrics(res).items() if not k.startswith("count:")}
     except Unstable as e:
         rec.update({"unstable": str(e)})
@@ -1663,11 +1672,15 @@ def main():
     ap.add_argument("--fps", type=float, default=20.0)
     ap.add_argument("--screen-s", type=float, help="override the screen length (smoke tests)")
     ap.add_argument("--full-s", type=float, help="override the full length (smoke tests)")
+    ap.add_argument("--screen-seeds", type=int, help="screen on the first n seeds only")
+    ap.add_argument("--full-seeds", type=int, help="full runs on the first n seeds only")
     args = ap.parse_args()
     args.workers = min(args.workers, MAX_WORKERS)
-    global SCREEN_S, FULL_S, FORCE_DRIVE
+    global SCREEN_S, FULL_S, FORCE_DRIVE, SCREEN_SEEDS, FULL_SEEDS
     SCREEN_S, FULL_S = args.screen_s or SCREEN_S, args.full_s or FULL_S
     FORCE_DRIVE = args.drive
+    SCREEN_SEEDS = SEEDS[:args.screen_seeds] if args.screen_seeds else SEEDS
+    FULL_SEEDS = SEEDS[:args.full_seeds] if args.full_seeds else SEEDS
     {"run": run_study, "report": report, "replay": replay, "plan": plan, "stress": stress,
      "verify": verify}[args.cmd](args)
 

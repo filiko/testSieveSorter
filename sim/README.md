@@ -1,6 +1,6 @@
 # Sorter sim
 
-A MuJoCo simulation of grains and preserved insects moving through the team's sorters. Grains (rice, quinoa, chickpeas, pasta) are the calibration set: count them on the bench, then tune the sim until it matches. Insects are the real target. A three.js page replays every recorded run in the browser.
+A MuJoCo simulation of grains and preserved insects moving through the team's sorters. Grains (rice, quinoa, chickpeas, pasta) are the calibration set: count them on the bench, then tune the sim until it matches. The team's pantry photo added white rice as photographed, brown, black and wild rice, chia and couscous; [GRAINS.md](GRAINS.md) has every grain's numbers, sources and what to measure. Insects are the real target. A three.js page replays every recorded run in the browser.
 
 Status: first build, 2026-10-24. Nothing here is calibrated yet. Until the bench numbers in [BENCH.md](BENCH.md) are in, results rank designs against each other but don't predict real percentages.
 
@@ -21,8 +21,10 @@ Status: first build, 2026-10-24. Nothing here is calibrated yet. Until the bench
 | `clump_study.py` | A clump across bond sets x spray on/off x seeds, in parallel, with a summary table |
 | `designs.py` | Pool sorter, plus the registry for every design spec |
 | `designs_holder.py` | BioKEA's holder tower with sieve inserts (glued mesh or printed), and the plinko layers |
-| `grains.py` | Rice, quinoa, chickpeas, pasta |
+| `grains.py` | Rice, quinoa, chickpeas, pasta (frozen for the optimizer), plus white rice as photographed, brown rice, black rice, wild rice, chia and couscous |
+| [GRAINS.md](GRAINS.md) | Every grain kind: size, spread, density, shape, colour, sources and assumptions; the photo identification; what to caliper |
 | `insects.py` | Generated preserved specimens: compact, elongate, long-legged |
+| [INSECT_AUDIT.md](INSECT_AUDIT.md) | What `insects.py` gets right and wrong against real Malaise samples, and six ranked proposals |
 | `spray.py` | Fixed jets: push, wetting, wet friction and capillary cling |
 | `viewer.py` | Builds a standalone three.js replay page for a run |
 | `record_view.py` | Renders a run's replay page to a frame-exact MP4 through headless Chrome |

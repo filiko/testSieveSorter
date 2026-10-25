@@ -94,6 +94,7 @@ input[type=number] { font: inherit; width: 54px; color: var(--ink); background: 
       <label class="chk"><input type="checkbox" id="show-jets" checked> Jets</label>
       <label class="chk"><input type="checkbox" id="show-walls" checked> Walls</label>
       <label class="chk" id="rig-row" hidden><input type="checkbox" id="show-rig" checked> Bench tower (display only)</label>
+      <label class="chk" id="rig-clear-row" hidden><input type="checkbox" id="rig-clear" checked> See-through frame</label>
     </section>
     <section>
       <h2>Camera</h2>
@@ -558,10 +559,26 @@ $('show-zones').onchange = (e) => { zoneGroup.visible = e.target.checked; };
 $('show-jets').onchange = (e) => { jetGroup.visible = e.target.checked; };
 $('show-walls').onchange = (e) => wallMeshes.forEach((m) => (m.visible = e.target.checked));
 $('show-rig').onchange = (e) => { rigGroup.visible = e.target.checked; };
+// see-through frame: the uprights, rods, knobs and plate turn faint so they don't hide the trays
+$('rig-clear').onchange = (e) => {
+  rigGroup.traverse((o) => {
+    if (!o.material) return;
+    const m = o.material;
+    m.userData.orig ??= { transparent: m.transparent, opacity: m.opacity, depthWrite: m.depthWrite };
+    const clear = e.target.checked;
+    m.transparent = clear || m.userData.orig.transparent;
+    m.opacity = clear ? Math.min(m.userData.orig.opacity, 0.12) : m.userData.orig.opacity;
+    m.depthWrite = clear ? false : m.userData.orig.depthWrite;
+    m.needsUpdate = true;
+  });
+  dirty = true;
+};
 $('rig-row').hidden = !SCENE.rig;
+$('rig-clear-row').hidden = !SCENE.rig;
 if (params.has('lock')) $('lock').checked = true;
-// rig=0 hides the bench tower; jets=0/1 sets the jet cones (default: hidden when a tower is drawn and spray is off)
-for (const [key, box, def] of [['rig', 'show-rig', true],
+// rig=0 hides the bench tower; rigclear=0/1 sets the see-through frame (default on); jets=0/1 sets the jet cones
+// (default: hidden when a tower is drawn and spray is off)
+for (const [key, box, def] of [['rig', 'show-rig', true], ['rigclear', 'rig-clear', true],
                                ['jets', 'show-jets', !(SCENE.rig && !(SCENE.config ?? {}).spray)]]) {
   $(box).checked = params.has(key) ? params.get(key) !== '0' : def;
   $(box).onchange({ target: $(box) });

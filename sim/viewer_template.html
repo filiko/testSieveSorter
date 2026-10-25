@@ -402,9 +402,10 @@ for (const g of groups.values()) {
 
 // ---------- trajectory ----------
 const loading = $('loading');
-let T, TRAY, POS, QUAT, ZC, WET;
+let T, TRAY, TRAYQ, POS, QUAT, ZC, WET;
 try {
-  [T, TRAY, POS, QUAT, ZC, WET] = await Promise.all(['t', 'tray_d', 'pos', 'quat', 'zone_counts', 'wet'].map(decode));
+  [T, TRAY, TRAYQ, POS, QUAT, ZC, WET] = await Promise.all(
+    ['t', 'tray_d', 'tray_q', 'pos', 'quat', 'zone_counts', 'wet'].map(decode));
 } catch (err) {
   loading.textContent = 'Could not decode the recording: ' + err + '. This page needs a current Chrome, Edge or Firefox.';
   throw err;
@@ -490,12 +491,21 @@ function locate(tm) {
 }
 
 const lastTray = new THREE.Vector3();
+// rocking runs: the tray frame turns about this point (tray frame, mm); a point x is drawn at d + p + R (x - p)
+const PIVOT = v3(SCENE.tray?.pivot);
+const qa = new THREE.Quaternion(), qb = new THREE.Quaternion();
 function apply() {
   const [i0, i1, a] = locate(time);
   bodyPoses(i0, i1, a);
   updateInstances(a < 0.5 ? i0 : i1);
   tray.position.set(TRAY[3 * i0] + (TRAY[3 * i1] - TRAY[3 * i0]) * a, TRAY[3 * i0 + 1] + (TRAY[3 * i1 + 1] - TRAY[3 * i0 + 1]) * a,
     TRAY[3 * i0 + 2] + (TRAY[3 * i1 + 2] - TRAY[3 * i0 + 2]) * a);
+  if (TRAYQ) {
+    qa.set(TRAYQ[4 * i0 + 1], TRAYQ[4 * i0 + 2], TRAYQ[4 * i0 + 3], TRAYQ[4 * i0]);
+    qb.set(TRAYQ[4 * i1 + 1], TRAYQ[4 * i1 + 2], TRAYQ[4 * i1 + 3], TRAYQ[4 * i1]);
+    tray.quaternion.slerpQuaternions(qa, qb, a).normalize();
+    tray.position.add(PIVOT).sub(PIVOT.clone().applyQuaternion(tray.quaternion));
+  }
   if ($('lock').checked) {             // carry the camera along with the tray
     const d = tray.position.clone().sub(lastTray);
     camera.position.add(d);

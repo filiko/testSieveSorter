@@ -207,7 +207,15 @@ python contact_rule.py --clearance 0.14 --stroke constant_speed:amp_mm=14,speed_
 | Sine 4 g straight up on a 0.3 mm gate | none is enough; stiffest, flagged "untrustworthy" |
 | Demo tray, any of these strokes (1.1 mm clearance) | production |
 
-From Python: `dt, tc, why = contact_rule.pick(clearance_mm, stroke)`. The rule picks the setting; it doesn't replace checking each run's own overlap and `unstable_resets`. `verify.py` uses it for the optimizer's winners.
+From Python: `dt, tc, why = contact_rule.pick(clearance_mm, stroke)`. The rule picks the setting; it doesn't replace checking each run's own overlap and `unstable_resets`. `verify.py` lists the rule's pick next to the contacts it measures on each design.
+
+**Checked against those measurements** (each design probed on its own stroke, [opt/VERIFY.md](opt/VERIFY.md)):
+- **The firmware plinkos:** the rule matches (0.125 / 0.25 ms).
+- **The gated tower on a 37 Hz, 2.5 g sine at 45°:** the rule is safe but costly. It reads the 4 g level and picks the stiffest; production was enough.
+- **The stacked rig `inserts:5mm,2mm` with the firmware stroke:** the rule picks **too soft** a setting.
+  - The stack's 2 mm screen takes 0.179 / 0.076 / 0.045 mm at the three settings, about twice the single-tray designs in the table.
+  - The rule's 0.125 / 0.25 ms gives 0.076 mm against a 0.065 mm limit (0.13 mm clearance).
+  - Run the stack at 0.0625 / 0.125 ms until the grid is rerun with it.
 
 ## Reproduce (from `sim\` in the WSL venv; see `docs/sessions/README.md`)
 
@@ -229,6 +237,10 @@ python instab.py ... --designs plinko --out out/instab/rule2_plinko.jsonl       
 python contact_rule.py --rebuild out/instab/rule2.jsonl out/instab/rule2_plinko.jsonl
 python sorter.py --design inserts:5mm --mix pasta=15,rice=40 --stroke sine:amp_mm=1.24,freq_hz=20,angle_deg=90 \
   --duration 10 --dt 0.00025 --timeconst 0.0005 --out out/runs/demo_vertical     (a run for the viewer)
+python sorter.py --design inserts:5mm,2mm --mix pasta=15,rice=40,quinoa=40 --stroke sine:amp_mm=1.242,freq_hz=20,angle_deg=90 \
+  --duration 10 --dt 0.000125 --timeconst 0.00025 --out out/runs/stack_vertical  (the stacked rig for the viewer; the
+                                                    rice is mostly through the 2 mm tray by 5 s, so a short clip
+                                                    shows the best sort)
 ```
 
 ## For the optimizer
@@ -237,5 +249,6 @@ python sorter.py --design inserts:5mm --mix pasta=15,rice=40 --stroke sine:amp_m
 - Compare at equal peak acceleration (`amp * (2 pi f)^2`), or the angle gets confounded with how hard the tray is shaken.
 - Pick each candidate's contacts with `contact_rule.pick(clearance, stroke)` (see Contact rule). For the current plinko leaders that's dt 0.125 ms / tc 0.25 ms, even with the firmware stroke along the tray. Check `results["unstable_resets"]` and drop or flag any run that has resets.
 - The gate-overlap flag reads every 10th step, which misses part of each impact (1.2–1.5x low in the median). Reading every step costs little; `verify.py`'s `run_job` shows how without editing `optimize.py`.
+- That reading passed the firmware plinko P-ba5dd6b3 at production contacts. Read every step, it sits over the flag line (0.093 against 0.080 mm), and at stiffer contacts it holds more quinoa on layer 2 (mean 0.960 → 0.888 → 0.857; [opt/VERIFY.md](opt/VERIFY.md)).
 - The demo baseline is the stacked rig, `inserts:5mm,2mm`, with all three classes. The single tray (`inserts:5mm`, pasta + rice) is saturated at recovery 1.00.
 - For the rice / quinoa split on a 2 mm square-hole tray, the stroke direction matters: rice stays when the shake runs along the tray and leaks through end-first under a 2 g throw (Result: the stacked rig).

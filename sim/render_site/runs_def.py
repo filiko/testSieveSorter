@@ -11,6 +11,19 @@ LY = G / "testSieveSorter-layers/sim/out/runs"
 ML = "More levels (multi-layer)"
 
 RUNS = [
+    # gated ramp towers with gaps between levels, each level rocking on its own (main session, designs_gated pitch=)
+    ("gatedgap", "Gated ramps, levels spaced apart (main)", "Ramp tower, 70 mm gaps, levels rock alternately",
+     REPO_SIM / "out/runs/gated_mid_gap",
+     "The optimizer's mid-slot ramp tower with 70 mm between levels, so each container lifts out on its own. Each level seesaws ±10° about its own "
+     "middle, neighbours opposite, with the 0.4 mm 48 Hz shake thrown 30° up. Pasta and chickpea 15/15 on L1, every rice kind 57/58 on L2, "
+     "fines 26/45 in the catch (12 still on L2). 6 fines bounced out through the gaps: a short skirt or lip per level would keep them. Trays never closer than 13.4 mm."),
+    ("gatedgapflip", "Gated ramps, levels spaced apart (main)", "Same, alternate levels flipped",
+     REPO_SIM / "out/runs/gated_mid_gap_flip",
+     "The same spaced tower with every other level flipped (the standard gated layout). Rice still 56/58 on L2, but the fines stall on L2: none reach the catch."),
+    ("gated3gap", "Gated ramps, levels spaced apart (main)", "3-level ramp tower, 70 mm gaps",
+     REPO_SIM / "out/runs/gated3_gap",
+     "The multi-layer session's 3-level ramp tower (tunnels 3.35 / 1.45 / 0.95 mm) with 70 mm gaps, alternating per-level seesaw + fast shake. "
+     "Big 15/15 on L1, rice 44/58 on L2 and 11 on L3, quinoa 11/15 on L3, chia 9/15 in the catch, 4 fines lost through the gaps."),
     # more levels: one tray per size class (multi-layer session, sim/LAYERS.md)
     ("layers4best", ML, "4 trays + catch: 5 size classes (best, 2.25 mm tray 2)", LY / "layers_4tray_l2wide",
      "The best multi-level tower. Four ribs-across trays on centre pivots, 55 mm apart, over the catch pan. Square holes "

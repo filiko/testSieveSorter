@@ -19,6 +19,9 @@ frame (see common.Design). Units mm.
              container beyond it, sloping back into the slot. The strip and its rails must clear the pull tabs
              (|x| >= 13.15).
              flip=0   don't flip alternate levels (with gx: what passes L1 lands just upstream of L2's gate)
+             pitch=<mm>  box bottom to box bottom (default the box height: rim on rim). A larger pitch leaves a gap
+             between levels, so each container lifts out on its own, and lets rocking.py's seesaw rock every level
+             on its own pivot with neighbours in opposite phase (docs/SYSTEM.md section 3). Default unchanged.
 
     e.g. gated:2,w5p0,t1p4              today's CAD with two existing strips
          gated:2.6,w4.4x6,t1.5,tw=6,tooth=1.6,slot=9
@@ -66,7 +69,8 @@ LID_ABOVE = 60.0           # invisible lid this far above the top holder's rim
 SPAWN_RUN = 50.0           # the sample is poured on this length of the top container's high end
 SPAWN_INSET = 3.0
 TOKEN = re.compile(r"^(?:gate_)?([wt])(\d+(?:[.p]\d+)?)(?:x(\d+(?:[.p]\d+)?))?$")
-KEYS = {"gh": "GATE_H", "tw": "TUNNEL_W", "tooth": "TOOTH", "slot": "slot", "rib": "rib", "gx": "gx", "flip": "flip"}
+KEYS = {"gh": "GATE_H", "tw": "TUNNEL_W", "tooth": "TOOTH", "slot": "slot", "rib": "rib", "gx": "gx", "flip": "flip",
+        "pitch": "pitch"}
 WEDGE_DEG = 30.0           # mid-slot containers: slope of the fill beyond the slot, back toward it
 RIB_CLEAR = 3.0            # ribs stop this far upstream of the strip
 RIB_EMBED = 0.3            # ribs reach this far into the floor, so they fuse with it
@@ -244,12 +248,16 @@ def build(args):
     flip = over.get("flip", 1.0) != 0
     fh = dh.cad()[0]
     H, n = fh.H, len(strips)
+    P = over.get("pitch", H)                         # box bottom to box bottom; H = rim on rim
+    if P < H:
+        raise ValueError(f"gated pitch={P:g} is less than the box height {H:g}")
     hx, hy = fh.L / 2 - fh.WALL, fh.W / 2 - fh.WALL
     geoms = dh.holder(0.0, solid_base=True, close_notches=True)
-    tab_top = min(gc.TAB_TOP, H - fh.LEDGE_T)        # the ledge of the box above
-    levels, zones = [], []
+    tab_top = min(gc.TAB_TOP, P - fh.LEDGE_T)        # the ledge of the box above
+    levels, zones, layers = [], [], []
     for k, strip in enumerate(strips):               # k = 0 is the top level
-        z_h = (n - k) * H
+        z_h = (n - k) * P
+        layers.append({"zone": f"L{k + 1}", "holder_z_mm": [z_h, z_h + H]})
         geoms += dh.holder(z_h, close_notches=True)
         lv = Level(z_h + fh.LEDGE_T, flip=flip and k % 2 == 1)
         info = container(lv, strip, ps[k], tab_top)
@@ -263,7 +271,7 @@ def build(args):
         zones.append({"name": f"L{k + 1}", "box": [a, b, -gc.IN_W / 2, gc.IN_W / 2, z_c, z_h + H]})
     z_bottom = H + fh.LEDGE_T
     zones.append({"name": "catch", "box": [-hx, hx, -hy, hy, fh.LEDGE_T, z_bottom]})
-    rim = (n + 1) * H
+    rim = n * P + H
     zones[0]["box"][5] = rim + LID_ABOVE
     geoms += dh.lid(hx, hy, rim, rim + LID_ABOVE, fh.WALL)
 
@@ -275,7 +283,7 @@ def build(args):
                 return f"L{k + 1}"
         return "catch"
 
-    z_top = H * n + fh.LEDGE_T
+    z_top = P * n + fh.LEDGE_T
     x0 = -gc.IN_L / 2 + SPAWN_INSET
     x1 = min(x0 + SPAWN_RUN, p["GATE_X"] - gc.STRIP_T / 2 - 10.0)
     spawn = [x0, x1, -gc.IN_W / 2 + SPAWN_INSET + gc.TAB_T, gc.IN_W / 2 - SPAWN_INSET - gc.TAB_T,
@@ -297,11 +305,15 @@ def build(args):
         extra.append("gx=" + "/".join(f"{v:g}" for v in over["gx"]))
     if not flip:
         extra.append("flip=0")
+    if P != H:
+        extra.append(f"pitch={P:g}")
     name += "".join("," + e for e in extra)
+    # a spaced tower describes its boxes the way designs_holder does, so rocking.py can seesaw each level
+    spaced = {"layers": layers, "catch_z_mm": 0.0, "pitch_mm": P} if P > H else {}
     return Design(
         name=name, geoms=geoms, zones=zones, spawn=spawn, ideal_zone=ideal_zone, stroke_axis=[1.0, 0.0, 0.0],
         jets_default=jets,
-        info={"levels": levels, "floor_slope_deg": slope, "floor_rise_mm": round(p["rise"], 3),
+        info={**spaced, "levels": levels, "floor_slope_deg": slope, "floor_rise_mm": round(p["rise"], 3),
               "gate_x_mm": round(p["GATE_X"], 3), "drop_slot_mm": [round(p["slot"], 3), 2 * gc.OPEN_Y],
               "GATE_H": p["GATE_H"], "TUNNEL_W": p["TUNNEL_W"], "TOOTH": p["TOOTH"],
               "ratchet_rib_h_pitch_steep": p["rib"],

@@ -22,6 +22,8 @@ Status: first build, 2026-10-24. Nothing here is calibrated yet. Until the bench
 | `insects.py` | Generated preserved specimens: compact, elongate, long-legged |
 | `spray.py` | Fixed jets: push, wetting, wet friction and capillary cling |
 | `viewer.py` | Builds a standalone three.js replay page for a run |
+| `record_view.py` | Renders a run's replay page to a frame-exact MP4 through headless Chrome |
+| `side_by_side.py` | Real footage next to a sim clip, scaled, labelled and synced, for the demo |
 | `sweep.py` | Batches of runs in parallel, with a report |
 | `calibrate.py` | Fits contact parameters to bench counts, then checks them on a held-out run |
 | [BENCH.md](BENCH.md) | What to measure on the bench, and which template each number goes in |
@@ -36,3 +38,14 @@ python viewer.py out/runs/pool_demo --open
 ```
 
 Outputs go in `sim\out\`, which is not committed.
+
+### Camera, recording and the real-vs-sim clip
+
+The replay page reads its camera from the URL: `view.html?cam=x,y,z&target=x,y,z&fov=35&aspect=16:9` (mm, lab frame; FOV is vertical). Set the angle by eye against a photo (the **Frame** menu sets the aspect ratio, **FOV** dollies so the tray keeps its size), then **Copy camera** copies the URL. **Record** plays the run once in real time and downloads a `.webm` with the zone labels and the sim clock drawn in; its frame rate depends on the machine. For a clip to commit, render it frame-exact instead and put it next to the real footage:
+
+```
+python record_view.py out/runs/current_mesh --view "<copied URL or ?query>" -o out/runs/current_mesh/sim_clip.mp4
+python side_by_side.py --real ..\media\<clip>.mp4 --sim out/runs/current_mesh/sim_clip.mp4 --real-start 2.0
+```
+
+`side_by_side.py` writes `..\media\demo_side_by_side.mp4` at 720 p, capped under 19 MB. It also takes a Record-button `.webm` and fixes Chrome's colour-range tagging (light greys would otherwise clip to white).

@@ -1,7 +1,7 @@
 """Clump break-up study: one clump on one design and stroke, across bond sets x spray on/off x seeds (CLUMPS.md).
 
-Run from sim\\ (workers <= 6: memory is short while other sessions run):
-    <venv python> clump_study.py --name demo_spray --workers 6
+Run from sim\\ (workers <= 4 while the optimizer runs: memory is short):
+    <venv python> clump_study.py --name spray10 --workers 4
 Each run is a sorter.run with a clump (clumps.py). Writes out/clump_study/<name>.json (one row per run) and
 prints a markdown table, averaged over seeds.
 """
@@ -65,10 +65,10 @@ def table(rows, keys=("bond", "spray")):
 def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--name", default="study")
-    ap.add_argument("--design", default="inserts:5mm,2mm,pitch=110")
+    ap.add_argument("--design", default="inserts:5mm,2mm,pitch=85")
     ap.add_argument("--clump", default="rice=50,quinoa=50,pasta=6,leaf=1,twig=2,dirt=10")
     ap.add_argument("--mix", default="")
-    ap.add_argument("--stroke", default="seesaw:deg=25,period_s=2")
+    ap.add_argument("--stroke", default="seesaw:deg=10,period_s=2")
     ap.add_argument("--bonds", default=",".join(clumps.BOND_SETS))
     ap.add_argument("--spray", default="none,default", help="comma list of none / default / bench")
     ap.add_argument("--seeds", default="0")
@@ -76,7 +76,7 @@ def main():
     ap.add_argument("--dt", type=float, default=1.25e-4)
     ap.add_argument("--timeconst", type=float, default=2.5e-4)
     ap.add_argument("--friction", type=float, default=0.4)
-    ap.add_argument("--workers", type=int, default=6)
+    ap.add_argument("--workers", type=int, default=4)
     ap.add_argument("--record", action="store_true", help="also record each run to out/clump_study/<name>/<tag>")
     args = ap.parse_args()
     profile, _, rest = args.stroke.partition(":")
@@ -95,7 +95,7 @@ def main():
                        "record_fps": 30.0 if args.record else 0.0,
                        "out_dir": str(Path("out/clump_study") / args.name / tag) if args.record else None}
                 jobs.append({"cfg": cfg, "tags": {"bond": bond, "spray": spray, "seed": seed}})
-    workers = max(1, min(args.workers, 6, len(jobs)))
+    workers = max(1, min(args.workers, 4, len(jobs)))
     print(f"{len(jobs)} runs on {workers} workers: {args.design}, {args.stroke}, clump {args.clump}", flush=True)
     with mp.get_context("spawn").Pool(workers, maxtasksperchild=1) as pool:
         rows = pool.map(one, jobs, chunksize=1)

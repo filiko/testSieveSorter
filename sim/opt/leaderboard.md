@@ -1,6 +1,6 @@
 # Leaderboard: Demo set: surrogate grains (pasta + chickpea / rice / quinoa)
 
-Generated 2026-10-25 10:09 by `sim/optimize.py` (study `demo`). 265 candidates, 3627 sim runs so far.
+Generated 2026-10-25 10:55 by `sim/optimize.py` (study `demo`). 329 candidates, 4365 sim runs so far.
 
 **The sim ranks designs; it does not predict real percentages.** It is uncalibrated until `calibrate.py` has bench counts, has no water, rigid particles, and about 80 particles per run. Sizes are simulated at the as-printed opening, nominal - 0.15 mm (ASSUMED until the hole gauge is measured).
 
@@ -26,9 +26,9 @@ Ranked by the robust score (mean - 1 sd) over 3 friction sets x 3 seeds at the f
 | 10 | G-e5083752 | gated | **0.950** | 0.972 +/- 0.022 | 0.964 | 99% / 100% | 100% / 100% | 100% / 99% | 0.0 | 0.0 | 10.4 (9/9) | ok | L1 t5.3 / L2 t1.6; slope 3.1 deg, tunnel width 8.3, tooth 1.7, slot 7.2 | `gated:3.1,t5p15,t1p45,tw=8.15,tooth=1.85,slot=7.2` | tool sine 38 Hz, 4.8 g (0.83 mm), along the tray |
 | 7 | G-a1ecf9bb | gated_mid | **0.985** | 0.988 +/- 0.003 | 0.987 | 100% / 100% | 100% / 100% | 100% / 100% | 0.0 | 0.0 | 7.1 (9/9) | ok | L1 t3.5 / L2 t1.6; slope 2.7 deg, tunnel width 5, tooth 0.8, L1 gate at x 22.2 with slot 8.1, L2 at x 53, unflipped | `gated:2.7,t3p35,t1p45,tw=4.85,tooth=0.95,slot=8.1/7,gx=22.2/53,flip=0` | tool sine 48 Hz, 3.7 g (0.40 mm), 30 deg up |
 | 1 | P-b192da7c | plinko | **1.000** | 1.000 +/- 0.000 | 1.000 | 100% / 100% | 100% / 100% | 100% / 100% | 0.0 | 0.0 | 0.2 (9/9) | ok | rods L1 gap 4.7 (rod 2.6 wide, 2.2 tall) / L2 gap 1.6 (rod 2.3, 3.2) | `plinko` | tool sine 37 Hz, 2.1 g (0.38 mm), 25 deg up |
-| 28 | I-f660966d | inserts | **0.714** | 0.824 +/- 0.110 | 0.729 | 89% / 100% | 98% / 88% | 89% / 92% | 0.0 | 0.0 | 7.7 (6/9) | PEN 9/9 (clr 0.01, pen 0.178) | square holes 5 (bar 1.2) / 2 (bar 1) | `inserts:h4p85b1p35,h1p85b1p15` | firmware 10 mm at 50 mm/s, along the tray |
-| 40 | C-243bf513 | current | **0.523** | 0.608 +/- 0.085 | 0.575 | 100% / 100% | 100% / 67% | 78% / 94% | 3.2 | 0.0 | 5.0 (1/9) | PEN 6/9 (clr 0.12, pen 0.153) | TODAY on the bench: glued mesh inserts mesh5 / mesh2, firmware cap stroke | `inserts:mesh5,mesh2` | firmware 10 mm at 50 mm/s, along the tray |
-| 42 | D-e018f15d | demo_rig | **0.499** | 0.499 +/- 0.000 | 0.499 | 100% / 100% | 50% / 100% | 50% / 100% | 0.0 | 0.0 | 0.6 (9/9) | ok | one level of the demo rig: the 5 mm tray alone over a catch pan, up and down (sine 20 Hz, 2 g, 90 deg). The full rig is the stacked baseline above | `inserts:5mm` | tool sine 20 Hz, 2.0 g (1.24 mm), 90 deg up |
+| 29 | I-f660966d | inserts | **0.714** | 0.824 +/- 0.110 | 0.729 | 89% / 100% | 98% / 88% | 89% / 92% | 0.0 | 0.0 | 7.7 (6/9) | PEN 9/9 (clr 0.01, pen 0.178) | square holes 5 (bar 1.2) / 2 (bar 1) | `inserts:h4p85b1p35,h1p85b1p15` | firmware 10 mm at 50 mm/s, along the tray |
+| 42 | C-243bf513 | current | **0.523** | 0.608 +/- 0.085 | 0.575 | 100% / 100% | 100% / 67% | 78% / 94% | 3.2 | 0.0 | 5.0 (1/9) | PEN 6/9 (clr 0.12, pen 0.153) | TODAY on the bench: glued mesh inserts mesh5 / mesh2, firmware cap stroke | `inserts:mesh5,mesh2` | firmware 10 mm at 50 mm/s, along the tray |
+| 45 | D-e018f15d | demo_rig | **0.499** | 0.499 +/- 0.000 | 0.499 | 100% / 100% | 50% / 100% | 50% / 100% | 0.0 | 0.0 | 0.6 (9/9) | ok | one level of the demo rig: the 5 mm tray alone over a catch pan, up and down (sine 20 Hz, 2 g, 90 deg). The full rig is the stacked baseline above | `inserts:5mm` | tool sine 20 Hz, 2.0 g (1.24 mm), 90 deg up |
 
 ## References (fixed, not tuned)
 
@@ -41,6 +41,13 @@ Ranked by the robust score (mean - 1 sd) over 3 friction sets x 3 seeds at the f
 | C-243bf513 | TODAY on the bench: glued mesh inserts mesh5 / mesh2, firmware cap stroke | 0.523 | 0.608 +/- 0.085 | 0.575 | 100% / 100% | 100% / 67% | 78% / 94% | 3.2 | 0.0 | 5.0 (1/9) | PEN 6/9 (clr 0.12, pen 0.153) | `inserts:mesh5,mesh2` |
 | D-e018f15d | one level of the demo rig: the 5 mm tray alone over a catch pan, up and down (sine 20 Hz, 2 g, 90 deg). The full rig is the stacked baseline above | 0.499 | 0.499 +/- 0.000 | 0.499 | 100% / 100% | 50% / 100% | 50% / 100% | 0.0 | 0.0 | 0.6 (9/9) | ok | `inserts:5mm` |
 | I-8145d10d | DEMO RIG the team built: stacked printed 5 mm / 2 mm trays (inserts:5mm,2mm), shaken up and down (sine 20 Hz, 2 g, 90 deg; assumed tool motion, sim/VERTICAL.md) | 0.460 | 0.562 +/- 0.103 | 0.550 | 100% / 100% | 100% / 61% | 72% / 100% | 0.0 | 0.0 | 2.7 (1/9) | BEYOND 2 (particles past an opening they can't fit); PEN 9/9 (clr 0.01, pen 0.181) | `inserts:h4p85b1p35,h1p85b1p15` |
+| G-02f5688b | README final design: gated, 2 deg, existing strips w5.0 / t1.4, firmware cap stroke | -0.061 | -0.048 +/- 0.013 | -0.057 | 25% / 100% | 85% / 33% | 11% / 0% | 0.3 | 0.0 | - (0/9) | PEN 1/9 (clr 0.16, pen 0.099) | `gated:2,w4p85x7p85,t1p25,tw=7.85,tooth=2.15,slot=7` |
+| G-1ef5b30a | gatecalc plan (skill): gated, t3.8 / t1.6 nominal (its t1.55 on the 0.1 mm grid), firmware cap | -0.050 | -0.050 +/- 0.000 | -0.050 | 26% / 100% | 79% / 39% | 0% / 0% | 0.0 | 0.0 | - (0/9) | ok | `gated:2,t3p65,t1p45,tw=7.85,tooth=2.15,slot=7` |
+| P-b5751e2d | plinko_layers.py as in the repo: rods 5.0 / 1.4, firmware cap stroke | 0.408 | 0.542 +/- 0.134 | 0.506 | 86% / 100% | 75% / 97% | 100% / 59% | 0.0 | 0.0 | - (0/9) | PEN 1/9 (clr 0.16, pen 0.093) | `plinko` |
+| I-d26e2901 | printed inserts as in the repo: 5 mm / 2 mm square holes, firmware cap stroke | 0.359 | 0.424 +/- 0.065 | 0.389 | 52% / 100% | 80% / 75% | 84% / 48% | 0.0 | 0.0 | - (0/9) | PEN 9/9 (clr 0.01, pen 0.172) | `inserts:h4p85b1p35,h1p85b1p15` |
+| I-d26e2901 | DEMO RIG the team built: stacked printed 5 mm / 2 mm trays (inserts:5mm,2mm), shaken up and down (sine 20 Hz, 2 g, 90 deg; assumed tool motion, sim/VERTICAL.md) | 0.359 | 0.424 +/- 0.065 | 0.389 | 52% / 100% | 80% / 75% | 84% / 48% | 0.0 | 0.0 | - (0/9) | PEN 9/9 (clr 0.01, pen 0.172) | `inserts:h4p85b1p35,h1p85b1p15` |
+| C-1f16dae6 | TODAY on the bench: glued mesh inserts mesh5 / mesh2, seesaw (default 10 deg, 1.6 s, long axis) | 0.480 | 0.556 +/- 0.077 | 0.544 | 100% / 100% | 100% / 65% | 79% / 89% | 6.3 | 0.0 | - (0/9) | PEN 3/9 (clr 0.12, pen 0.122) | `inserts:mesh5,mesh2` |
+| D-ef26c8c7 | one level of the demo rig: the 5 mm tray alone over a catch pan, seesaw (default 10 deg, 1.6 s, long axis) | 0.387 | 0.410 +/- 0.023 | 0.396 | 53% / 100% | 54% / 83% | 46% / 70% | 0.0 | 0.0 | - (0/9) | ok | `inserts:5mm` |
 
 ## Stress test: the leaders under the two biggest unknowns
 
@@ -93,6 +100,7 @@ BioKEA's stage can only run the firmware stroke (constant speed); the demo rig i
 
 | drive | id | family | robust | flags | design (CAD, nominal mm) | stroke |
 |---|---|---|---|---|---|---|
+| seesaw (the rig's current rocking motor) | P-59cc0bf9 | plinko | 0.835 | ok | rods L1 gap 3.1 (rod 2.1 wide, 1.8 tall) / L2 gap 1.6 (rod 2.8, 3) | seesaw +/-19 deg about the tray's long axis, 0.4 s per cycle |
 | firmware (BioKEA's stage) | P-6e03ce14 | plinko | 0.958 | ok | rods L1 gap 4.1 (rod 1.7 wide, 2.2 tall) / L2 gap 1.6 (rod 2.1, 3.2) | firmware 9 mm at 50 mm/s, 25 deg up |
 | vibrating tool (demo rig) | P-b192da7c | plinko | 1.000 | ok | rods L1 gap 4.7 (rod 2.6 wide, 2.2 tall) / L2 gap 1.6 (rod 2.3, 3.2) | tool sine 37 Hz, 2.1 g (0.38 mm), 25 deg up |
 

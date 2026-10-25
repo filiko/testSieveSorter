@@ -11,8 +11,8 @@ import json
 import re
 import subprocess
 from pathlib import Path
-from cadkit import OUT
 
+OUT = Path(__file__).resolve().parent / "out"  # same as cadkit.OUT; no cadquery import, so it runs under SAC
 STUDIO = Path(r"C:\Program Files\Bambu Studio")
 PROFILES = STUDIO / "resources" / "profiles" / "BBL"
 PRINTERS = {  # each machine preset names its own default process and filament

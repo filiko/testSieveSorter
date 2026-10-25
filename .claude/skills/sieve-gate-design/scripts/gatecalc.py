@@ -4,7 +4,7 @@ Turns a sample spec (TOML) into one gate per tower level before any simulation, 
 gate sequence, checks whether items fit a 96-well plate, and summarises sim runs (sim/sorter.py
 results.json) against the same rules. Stdlib + numpy only.
 
-Run with the hack venv (Windows):  C:\\Users\\ajfil\\Documents\\BioKEA-hack\\.venv\\Scripts\\python.exe
+Run with the repo venv (Windows):  .venv\Scripts\python.exe
     gatecalc.py plan  SPEC.toml [--log LOG.md] [--json plan.json]
     gatecalc.py check SPEC.toml --gates w2.4,t1.4 [--effective] [--log LOG.md]
     gatecalc.py item  6.5x2.0x1.7 [more items] [--gates w2.0,t1.4] [--plate std96_flat,deep96_square_2ml]
@@ -48,7 +48,7 @@ import numpy as np
 
 REPO = Path(__file__).resolve().parents[4]
 SIM_DIR = REPO / "sim"
-PY = r"C:\Users\ajfil\Documents\BioKEA-hack\.venv\Scripts\python.exe"
+PY = str(REPO / ".venv" / "Scripts" / "python.exe")
 
 # Inner well geometry, mm: shape, top inner size, bottom inner size, depth, max volume uL.
 # Sources and caveats: references/well-fit.md. Override any of these in the spec's [well] table.

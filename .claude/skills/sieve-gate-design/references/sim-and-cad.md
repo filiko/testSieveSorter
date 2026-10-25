@@ -1,6 +1,6 @@
 # CAD, sim, print and bench: exact commands
 
-Paths are from the repo root `C:\Users\ajfil\Documents\GitHub\testSieveSorter`. `<py>` is `C:\Users\ajfil\Documents\BioKEA-hack\.venv\Scripts\python.exe` (Python 3.12 with cadquery, trimesh, vtk, mujoco, numpy). Run each script from its own folder, as the repo's docstrings assume, and show `pwd`.
+Paths are from the repo root `C:\Users\ajfil\Documents\Github\testSieveSorter`. `<py>` is `C:\Users\ajfil\Documents\Github\testSieveSorter\.venv\Scripts\python.exe` (the repo venv) (Python 3.12 with cadquery, trimesh, vtk, mujoco, numpy). Run each script from its own folder, as the repo's docstrings assume, and show `pwd`.
 
 The sim is built and edited by another session; its flags and defaults change. Before running it, read `sim\README.md` and `<py> sorter.py --help`, and adjust the commands below if they differ. Treat `sim\` as read-only unless the user says otherwise.
 

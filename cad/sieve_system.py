@@ -25,7 +25,7 @@ falls free instead of wedging. Inner corners are rounded so grains can't park th
 Run from this folder:
     <venv python> sieve_system.py                  all parts
     <venv python> sieve_system.py tray_fine_2p3    one or more parts by name
-<venv python> is ..\\..\\..\\BioKEA-hack\\.venv\\Scripts\\python.exe on this PC.
+<venv python> is ..\.venv\Scripts\python.exe (the repo venv).
 
 Print hole_gauge.py first and pour each grain over it, so the aperture numbers
 below are what your printer actually makes.

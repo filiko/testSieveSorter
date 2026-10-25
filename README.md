@@ -176,7 +176,7 @@ Circles with gates on separate tiers: a small coarse tier sits on a bigger fine 
 - Keep pasta to about 10 short pieces (under 25 mm). The 40 mm top tier fills fast, and pasta lying against the rim covers tunnels.
 - Flat pasta such as farfalle is thinner than 4 mm and will pass the coarse tier.
 
-**Rebuild:** run `..\..\..\BioKEA-hack\.venv\Scripts\python.exe tiered_sorter.py` from `cad\`. Change sizes in `TIERS` and `SLOPE_DEG`.
+**Rebuild:** run `..\.venv\Scripts\python.exe tiered_sorter.py` from `cad\`. Change sizes in `TIERS` and `SLOPE_DEG`.
 
 ### Pool sorter
 
@@ -223,7 +223,7 @@ The drop biases grains forward; it isn't a one-way valve. Each gate is a separat
 - Inner corners are rounded.
 - Each part's label is debossed on its +X end wall.
 
-**Build:** from `cad\`, run `..\..\..\BioKEA-hack\.venv\Scripts\python.exe sieve_system.py`, or name specific parts after the command.
+**Build:** from `cad\`, run `..\.venv\Scripts\python.exe sieve_system.py`, or name specific parts after the command.
 - STL and STEP files land in `cad\out\` but aren't committed: rebuilding them takes about 2 min.
 - Previews (`.png`) and checks (`_checks.json`) are committed.
 - Print `hole_gauge.py` first and pour each grain over it, so the aperture numbers match what your printer actually makes.

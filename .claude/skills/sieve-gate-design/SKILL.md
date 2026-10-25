@@ -13,7 +13,7 @@ description: Size-sort a sample with 3D-printed sieve gates for BioKEA's BugSort
 **This skill turns sample information into one gate per level.** It uses a fast geometric calculator first, then checks transport and jams in the sim, then prints, bench-tests and logs, so the next agent can continue.
 
 **Ground rules**
-- Work from the repo root `C:\Users\ajfil\Documents\GitHub\testSieveSorter`. `<py>` = `C:\Users\ajfil\Documents\BioKEA-hack\.venv\Scripts\python.exe`. Run each script from its own folder and show `pwd`.
+- Work from the repo root `C:\Users\ajfil\Documents\Github\testSieveSorter`. `<py>` = `C:\Users\ajfil\Documents\Github\testSieveSorter\.venv\Scripts\python.exe` (the repo venv). Run each script from its own folder and show `pwd`.
 - **`sim\` belongs to the sim session.** Read it, run it, never edit it. Gate sizes reach the sim through `cad\sieve_system.py` STRIPS. Read `sim\README.md` and `sorter.py --help` before running: flags change.
 - **Tag every number in the log** as measured, executed, cited or assumed. Most item sizes and the print undersize are assumptions until the bench measures them.
 - No test suites. Sim batches over about 15 min of wall time need the user's OK.

@@ -20,17 +20,22 @@ Written 2026-10-25 06:15 PT by the main session. The first physics session ran i
 
 ## Next steps (the new session)
 1. `git merge origin/main`.
-2. **Check the optimizer's winners independently.** That's the main job now. When `sim/opt/leaderboard.md` / `winners.json` land on `main` (see [design-optimizer.md](design-optimizer.md)):
-   - Rerun the top 3 and the `inserts:5mm` baseline with more seeds (6 × 3 friction sets) and the heavy load.
+2. **Rerun the vertical comparison on the stacked trays (user correction, 06:20).** The rig is separate trays stacked one above the other, not one tray (see the top of [demo-rig.md](demo-rig.md)), so the VERTICAL.md runs on `inserts:5mm` cover only one level.
+   - Repeat `sweep.py vertical` on **`inserts:5mm,2mm`** with pasta + rice + quinoa: 0 / 45 / 90° at equal peak acceleration, 3 friction sets.
+   - Add a `--design` override to the preset if needed.
+   - Report it per level: does each class end on its own tray? Does up-and-down shaking make grains bounce back up, or jam between the trays (`between`)?
+   - Add a section to `VERTICAL.md` and open a PR. This is what the demo and the bambu viewer show, so do it first.
+3. **Check the optimizer's winners independently.** When `sim/opt/leaderboard.md` / `winners.json` land on `main` (see [design-optimizer.md](design-optimizer.md)):
+   - Rerun the top 3 and the stacked `inserts:5mm,2mm` baseline with more seeds (6 × 3 friction sets) and the heavy load.
    - Use the stiffer contacts from VERTICAL.md for any candidate with a gate clearance under ~0.3 mm and a vertical stroke component.
    - Does the ranking hold? Write it up in `sim/opt/VERIFY.md` and open a PR.
    - The optimizer's own runs are the screening; this is the second opinion the honesty rules ask for.
-3. **Until winners exist:** if the optimizer session hasn't used VERTICAL.md's "For the optimizer" notes, add a small helper in a **new** file (e.g. `sim/contact_rule.py`) that picks (dt, timeconst) from a design's tightest clearance and the stroke's vertical component, and say so in [README.md](README.md). Don't edit `optimize.py`; that session owns it.
-4. **Then be the extra hand** for whichever session is blocked: optimizer, or bambu (the up-and-down demo replay; the command is in VERTICAL.md's "Reproduce").
+4. **Until winners exist:** if the optimizer session hasn't used VERTICAL.md's "For the optimizer" notes, add a small helper in a **new** file (e.g. `sim/contact_rule.py`) that picks (dt, timeconst) from a design's tightest clearance and the stroke's vertical component, and say so in [README.md](README.md). Don't edit `optimize.py`; that session owns it.
+5. **Then be the extra hand** for whichever session is blocked: optimizer, or bambu (the up-and-down demo replay; the command is in VERTICAL.md's "Reproduce").
 
 ## Rules
 - **Cores:** 24 in total, and the optimizer runs 16 workers. Use **`--workers 8` or fewer** while `optimize.py` is running (`ps aux | grep optimize.py` in WSL).
 - Don't recreate `~/venvs/sieve`. Add packages with `uv pip install --python ~/venvs/sieve/bin/python ...` and say so in the PR.
 - Don't touch Smart App Control (it's one-way). Ask the user first.
-- The sim models the tray, the grains and the shaking, not the DeWalt tool.
+- The sim models the stacked trays, the grains and the shaking, not the DeWalt tool.
 - Push to `physics-bench` and open PRs; the main session merges them.

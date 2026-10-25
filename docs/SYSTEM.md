@@ -38,7 +38,11 @@ Samples are in ethanol, and the rig sprays from fixed jets above. `sim/spray.py`
 - **Recording, so the replay shows each level rocking:**
   - `level_q`: frames × levels × 4 (w x y z), each level's orientation in the lab;
   - `scene["levels"][k]`: that level's `pivot` (mm) and the ids of the geoms that belong to it.
-  - Bambu's viewer (PR #10) already reads a single `tray_q`; it extends to one group per level.
+  - **The viewer side is done (PR #13, merged 11:15).** Seesaw session: **don't edit `viewer.py` / `viewer_template.html`.** Record exactly this:
+    - `level_q`: frames × levels × 4, w x y z;
+    - `scene["levels"][k] = {"pivot": [x, y, z] mm, "geoms": [indices into scene["tray"]["geoms"]]}`;
+    - in a lab-frame run, `tray_d` = 0.
+  - The display rig (`sim/rig.py`) now hangs each tray on an axle across its middle.
 - **Clumps** (physics): `sim/clumps.py`. Specimens are joined by breakable bonds (`eq_active` off above a force that drops with wetness), with a minimal hook in `sorter.py`'s step loop. Debris: leaf / twig / dirt. See clump-breakup.md part A.
 - **The sim ranks designs; it does not predict real percentages until it's calibrated against bench counts.**
 

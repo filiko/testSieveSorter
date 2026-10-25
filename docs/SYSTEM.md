@@ -51,14 +51,14 @@ Samples are in ethanol, and the rig sprays from fixed jets above. `sim/spray.py`
     - `scene["levels"][k] = {"pivot": [x, y, z] mm, "geoms": [indices into scene["tray"]["geoms"]]}`;
     - in a lab-frame run, `tray_d` = 0.
   - The display rig (`sim/rig.py`) now hangs each tray on an axle across its middle.
-- **Clumps** (physics): `sim/clumps.py`. Specimens are joined by breakable bonds (`eq_active` off above a force that drops with wetness), with a minimal hook in `sorter.py`'s step loop. Debris: leaf / twig / dirt. See clump-breakup.md part A.
+- **Clumps** (clump session): `sim/clumps.py`. Specimens are joined by breakable bonds (`eq_active` off above a force that drops with wetness), with a minimal hook in `sorter.py`'s step loop. Debris: leaf / twig / dirt. See clump-breakup.md part A.
 - **The sim ranks designs; it does not predict real percentages until it's calibrated against bench counts.**
 
 ## Who owns what
 | Area | Session |
 |---|---|
 | Per-level seesaw in the sim (`sim/rocking.py` + minimal hooks in `sorter.py`), per-level recording, the rocking tower run | **seesaw** (`seesaw-tower`, new at 10:55) |
-| Clumps and debris (`sim/clumps.py` + a minimal hook in `sorter.py`), break-up metrics | physics (`physics-bench`) |
+| Clumps and debris (`sim/clumps.py` + a minimal hook in `sorter.py`), break-up metrics | **clump** (`clump-sim`, new at 11:15; physics stays on grains and verification) |
 | `sim/optimize.py`, `sim/designs_*.py` for searched families, `sim/opt/` | optimizer (`design-opt`) |
 | `cad/`, slicing, `sim/viewer*`, `sim/rig.py`, replays and clips | bambu (`bambu-viz`) |
 | `README.md`, `docs/`, this file, merging PRs | main |

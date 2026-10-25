@@ -26,8 +26,8 @@ It uses what the rig already has: the shaker (the up-and-down / angled stroke fr
 - **Printable:** features ≥ 0.4 mm, openings on 0.1 mm steps, pin heights on 0.2 mm layers, printed without supports (pins point up).
 - **The stack under it:** the current winner tower, or `inserts:5mm,2mm` for the demo rig.
 
-## A. Physics session (`physics-bench`): rocking motion, then clumps and debris. **This unblocks everything**
-0. **Rocking moved to the new seesaw session** (10:55; see [SYSTEM.md](../SYSTEM.md) §3 and §5). Physics: **do the clumps now.** Put them in `sim/clumps.py` with a minimal hook in `sorter.py`.
+## A. Clump session (`clump-sim`, from 11:15): clumps and debris. **This unblocks everything**
+0. **Rocking moved to the new seesaw session** (10:55; see [SYSTEM.md](../SYSTEM.md) §3 and §5). The clump session does the clumps now (moved from physics at 11:15). Put them in `sim/clumps.py` with a minimal hook in `sorter.py`.
 1. **A `clump` particle:**
    - N specimens (`insects.py` kinds, or grain surrogates for the bench demo) packed into a ball.
    - Each touching pair is joined by a **breakable bond**: an equality `weld` / `connect`. Each step, set `d.eq_active[i] = 0` once the bond's constraint force (from `efc_force`) exceeds `bond_N`.

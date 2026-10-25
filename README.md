@@ -51,7 +51,7 @@ The one-page system description is [docs/SYSTEM.md](docs/SYSTEM.md), the work pl
 
 ## Results (MuJoCo sim, uncalibrated)
 
-Watch the replays in the **Sieve Render Lab**: the viewer with a Run menu covering every run below (published privately, shared from its Share menu). The sim **ranks** designs; it doesn't predict real percentages until it's calibrated against bench counts.
+Watch the replays in the **Sieve Render Lab**: 30 runs from all five sessions in the one viewer, chosen from a Run menu in its options panel (published privately; share it from its Share menu). Rebuild it with `sim/render_site/build_site.py`, which reads the run list in `sim/render_site/runs_def.py`. The sim **ranks** designs; it doesn't predict real percentages until it's calibrated against bench counts.
 
 **1. A clump that holds together, and a breaker that frees it.** The clump is 35 Malaise-size insects (2–6 mm and over 6 mm) with a leaf, a twig and dirt, held by 155 medium bonds:
 
@@ -101,7 +101,13 @@ The buzz trades plain-rice retention for clearing the fine grains. Tune its ampl
 
 The buzz is what makes the seesaw sort. With separate 5 / 2 mm trays the buzz also pushes rice through 2 mm, while rod layers keep the classes clean.
 
-**5. What the optimizer learned along the way** (`sim/opt/LOG.md`):
+**5. The ramp gated tower on the seesaw, with the precise fast shake** (main session, 13:58). The optimizer's mid-slot gated tower with the 30° ramp (G-a1ecf9bb) rocks as one piece ±10° about its middle, with a 0.4 mm, 48 Hz shake thrown 30° up on top:
+- Its own 4-grain mix: pasta 8/8 and chickpea 8/8 on L1, rice 27/30 on L2, quinoa 29/30 in the catch.
+- **All 10 grains:** pasta and chickpea 100% on L1. **Plain rice 12/12 on L2:** the gates keep the rice that the 2 mm sieve lets through. White rice 10/12 and brown 11/12 on L2. Chia 14/15, quinoa 12/15 and couscous 11/15 in the catch. Black and wild rice partly stay on L1.
+- The standard flipped gated tower stalls the fines on L2 (0/15 quinoa and chia reach the catch). Flipped levels don't suit a symmetric seesaw; the mid-slot ramp layout does.
+- Run with `sim/render_site/run_onebox.py` (the optimizer's one-box seesaw patch) and `--stroke seesaw:deg=10,period_s=2,vib_mm=0.4,vib_hz=48,vib_angle_deg=30`.
+
+**6. What the optimizer learned along the way** (`sim/opt/LOG.md`):
 - On a symmetric seesaw, gated containers can't sort at all, and plinko rods are the only style that does.
 - On a vibrating-tool shake, plinko rod layers sort the demo grains at about 100%, against 0.52 for today's glued mesh.
 

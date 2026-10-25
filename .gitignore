@@ -6,3 +6,4 @@ sim/out/
 .venv/
 media/
 MUJOCO_LOG.TXT
+sim/render_site/out/

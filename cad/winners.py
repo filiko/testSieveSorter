@@ -5,7 +5,8 @@ Run on Windows from this folder:  ..\\.venv\\Scripts\\python.exe winners.py [..\
    out/win<rank>_<part>.stl/.step/.png plus checks, and a preview of each winner's tower;
 2. slice.py here with Bambu Studio (P1S by default): time and grams per part, and one arranged plate per
    winner (out/slice/win<rank>_plate.gcode.3mf), the file to send to the printer;
-3. sim/opt/print_plan.md (print_plan_<study>.md for other studies): one table per winner.
+3. sim/opt/print_plan.md (print_plan_<study>.md for other studies): one table per winner, then the breaker
+   layer(s) from breaker_layer.py (out/breaker_build.json), sliced, to print after the winner plate.
 """
 import argparse
 import json
@@ -41,7 +42,7 @@ def repo_rel(path: str) -> str:
         return Path(p).as_posix()
 
 
-def plan_md(built: dict, sliced: dict, plates: dict, printer: str) -> str:
+def plan_md(built: dict, sliced: dict, plates: dict, printer: str, breakers=()) -> str:
     lines = [f"# Print plan: {built['study']} winners", "",
              f"Built {built['built']} from `{repo_rel(built['source'])}`, "
              f"sliced for the {printer} (Bambu Studio's default process, PLA). Made by `cad/winners.py`.", "",
@@ -84,6 +85,27 @@ def plan_md(built: dict, sliced: dict, plates: dict, printer: str) -> str:
             lines += [f"- {f}" for f in w["flags"]] + [""]
         else:
             lines += ["No printability flags.", ""]
+    for b, s in breakers:
+        i = b["info"]
+        lines += ["## Breaker layer (prints after the winner plate)", "",
+                  f"The clump breaker for the top of the stack (`docs/sessions/clump-breakup.md`): `{i['spec']}`, "
+                  "built by `cad/breaker_layer.py`. These sizes are a sensible default, not an optimizer result; the "
+                  "optimizer's `malaise` study searches the same parameters, and a winner from it builds the same way.", "",
+                  "| Part | Time | Filament | Checks |", "|---|---|---|---|",
+                  f"| `{b['name']}` | " + (f"{s['minutes']:.0f} min | {s['grams']:.1f} g" if isinstance(s, dict)
+                                          else f"slice failed ({s}) |") + f" | {'ok' if b['checks_ok'] else 'FAILED'} |", "",
+                  f"- {i['openings'][0]} x {i['openings'][1]} openings ({i['open_pct_of_box_bottom']:g}% of the box's open "
+                  f"bottom), {i['pins']} pins {i['pin_pitch_mm']:g} mm apart, tops {i['pin_top_in_box_mm']:g} mm up the box.",
+                  f"- Preview: `cad/out/{b['name']}_preview.png`. Sliced file: `cad/out/slice/{b['name']}.gcode.3mf` "
+                  "(local, not committed).",
+                  "- " + ("Printability flags: " + "; ".join(i["printability_flags"]) if i["printability_flags"]
+                          else "No printability flags."), "",
+                  "**Bench demo clump (a suggestion to the team).** Stir rice, quinoa and a few pasta tubes with a "
+                  "little sugar water (a water-soluble binder) and some torn leaf bits, press it into a ball about 30 mm "
+                  "across and let it set for a few minutes. Put it on the breaker layer, run the shake with the spray "
+                  "on, and film it side-on: it should come apart on the pins, the leaf bits should stay on the breaker, "
+                  "and the grains should sort on the trays below. The binder dissolves in the spray, standing in for "
+                  "the ethanol film. How strong it is next to a real Malaise clump is an assumption.", ""]
     lines += ["Checks: valid single solid, watertight mesh, fits the bed. A tower needs one holder box per level "
               "plus the catch pan; the holder (`frame_holder`) isn't repeated here.", ""]
     return "\n".join(lines)
@@ -117,9 +139,19 @@ def main():
         except RuntimeError as e:
             plates[w["rank"]] = str(e)
             print(f"{prefix}plate: {e}")
+    breakers = []                  # breaker_layer.py's builds (out/breaker_build.json) print after the winner plate
+    if study == "demo" and (OUT / "breaker_build.json").exists():
+        for b in json.loads((OUT / "breaker_build.json").read_text(encoding="utf-8")):
+            try:
+                s = slice_part(b["name"], args.printer)
+                print(f"{b['name']}: {s['minutes']:.0f} min, {s['grams']:.1f} g")
+            except RuntimeError as e:
+                s = str(e)
+                print(f"{b['name']}: {e}")
+            breakers.append((b, s))
     plan = args.plan or OPT / ("print_plan.md" if study == "demo" else f"print_plan_{study}.md")
     plan.parent.mkdir(parents=True, exist_ok=True)
-    plan.write_text(plan_md(built, sliced, plates, args.printer), encoding="utf-8")
+    plan.write_text(plan_md(built, sliced, plates, args.printer, breakers), encoding="utf-8")
     print(f"winners: wrote {plan} ({datetime.now():%H:%M})")
 
 

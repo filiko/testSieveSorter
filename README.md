@@ -50,6 +50,48 @@ Every part is exactly the size of a 24-well plate (127.76 × 85.47 × 20.27 mm),
 | `tray_open` + `clamp_ring` | Frame for a 121.2 × 78.9 mm piece cut from the kit's metal sheets. Clip the corners, drop it on the ledge, press the ring on top. |
 | `rings_5p0_1p3`, `rings_5p0_2p3` | Concentric gate sorter, one part. Load the 40 mm centre and shake, ideally on an orbital plate shaker. Ring 1 has 11 gates 5 mm wide; ring 2 has 67 gates 1.3 mm wide (or 38 at 2.3 mm). Each zone's floor is 3 mm lower than the zone inside it, so grains can't climb back. Zones, centre outward: pasta, rice, quinoa. Prints flat and upright with no supports. |
 | `gate_coupon_2p3`, `gate_coupon_5p0` | The gates idea, to run beside a perforated tray. Grains start on a raised deck, pass between tapered posts, and drop 5 mm into a pocket. Shake along the long side. |
+| `pool` + gate strips | One open plane, shaken along the long side, with swappable gates (see **Pool sorter** below). P1S estimate: 58 min, 44 g. |
+| `pool_coupon` | One gate slot of the pool (46 mm long), to check the strip fit and gate behaviour before printing the pool. 29 min. |
+
+### Pool sorter
+
+![pool assembled](cad/out/pool_assembled.png)
+
+**Layout.** Load at the +X end. The floor steps down 3 mm at each gate toward the open -X end:
+
+| Zone | Floor | Length |
+|---|---|---|
+| Load | z 8 | 45 mm |
+| Middle | z 5 | 40 mm |
+| End | z 2 | 34 mm |
+
+The drop biases grains forward; it isn't a one-way valve. Each gate is a separate 2 mm strip that slides into grooves in the side walls and lifts out. A dam strip closes the open end.
+
+**Strips.**
+- Print them lying flat, so the gap width and tunnel height come out in the printer's accurate XY plane. They take 6 to 7 min each; put the whole set on one plate.
+- Any gate fits either gate slot.
+- Width gates cut by width and thickness gates by thickness:
+
+| Strip | Opening | Cuts by |
+|---|---|---|
+| `pool_gate_w5p0`, `_w3p0`, `_w2p3` | Gaps 8 mm tall | Width. Pasta vs. rice; a short tube can pass end-first. |
+| `pool_gate_t3p0`, `_t1p6`, `_t1p5`, `_t1p4`, `_t1p3`, `_t1p2` | Tunnels 8 mm wide | Thickness of a flat-lying grain. Rice (~1.7 mm) vs. quinoa (~1.1 mm). |
+| `pool_dam` | None | End dam, and the cover that closes a gate before you pour. Print 3. |
+
+**Run:**
+1. Push about 30 grains of each type through the strips by hand, without forcing them. Measure the printed openings, since the first layer can narrow them. Pick the strips from that, for example `w5p0` in gate slot 1 and `t1p4` in gate slot 2. Clear any grain from a groove before seating a strip: a grain under a strip raises every tunnel.
+2. Seat both gates and the end dam. If strips lift while shaking, hold them down with tape or a rubber band over the tops.
+3. Load at the +X end and shake along X.
+
+**Unload one fraction at a time.** Keep the tray level between steps and check the downstream floor for strays.
+1. Drop a dam into each gate's cover groove (just upstream of the gate). This closes the gates so tipping can't push grains through.
+2. Pull the end dam and tip toward -X: the end fraction (quinoa) pours out.
+3. Pull gate 2 and its cover: the middle fraction (rice) pours out.
+4. Pull gate 1 and its cover: the load fraction (pasta, chickpeas) pours out.
+
+**Grooves.** 2.3 mm wide for a 2.0 mm strip, 1.5 mm deep into the 3 mm walls. Strips reach 1.3 mm into each groove. If the fit is too tight or too loose, change `SLOT_FIT` and `END_FIT`. Print `pool_coupon` first to check.
+
+**Review.** Codex Astra (`gpt-6-astra`) reviewed this design twice. Its verdict both times was "confirm with changes", and those changes are built in: a cover groove next to each gate, separate thickness and length fits, strips seated wholly upstream of the drop, solid strip ends, 1.3 and 1.5 mm tunnels, and the coupon. Still untested: forward transport under a symmetric stroke, the PUCK versus the bench stroke, and wet runs (quinoa thickness changes with moisture).
 
 **Design notes:**
 - Every hole and slot widens 8° downward, so near-size grains fall through instead of wedging.

@@ -13,6 +13,11 @@ Also:
     tray_open + clamp_ring   frame for a cut piece of the kit's metal sheet
     gate_coupon_2p3/_5p0     the "gates" idea: raised deck, a row of posts, a drop
                              into a pocket. Shake it along its long (X) axis.
+    rings_*                  concentric gate sorter, for an orbital shaker
+    pool + pool_gate_* + pool_dam
+                             one plane with swappable gate strips in wall grooves,
+                             shaken along X; pool_coupon is one slot of it, to test
+                             the fit first; pool_assembled renders a preview only
 
 Holes and slots widen downward by RELIEF_DEG, so a grain that gets into an opening
 falls free instead of wedging. Inner corners are rounded so grains can't park there.
@@ -29,7 +34,7 @@ import json
 import math
 import sys
 import cadquery as cq
-from cadkit import export_all
+from cadkit import OUT, export_all, render
 
 # --- 24-well plate envelope (mm), same numbers as BioKEA-hack\cad\well_plate_24.py ---
 L, W, H = 127.76, 85.47, 20.27
@@ -86,6 +91,35 @@ RINGS = {
     # name: [(ring inner radius, gate gap, gate height), ...] centre outward
     "rings_5p0_1p3": [(20.0, 5.0, 10.0), (31.0, 1.3, 6.0)],  # pasta | long-grain rice | quinoa
     "rings_5p0_2p3": [(20.0, 5.0, 10.0), (31.0, 2.3, 6.0)],  # pasta | short-grain rice | quinoa
+}
+
+# --- pool sorter: one plane, swappable gate strips --------------------------------
+# One open plane, shaken along X. Grains start at the +X end and move toward -X; the floor
+# drops POOL_STEP after each gate, which biases them forward (it isn't a one-way valve).
+# Gates are separate strips that slide into grooves in the side walls and lift out, so sizes
+# can be swapped and each fraction poured out in turn. Print strips flat: opening width and
+# height are then both in the printer's XY plane, with no bridges. Upstream of each gate is a
+# cover groove: drop a dam strip in it to close the gate before tipping the tray to pour.
+#   w gates: gaps between teeth, OPEN_H tall; cut by width (pasta vs rice). Orientation
+#            matters: a short pasta tube can pass end-first.
+#   t gates: low tunnels; cut by the thickness of flat-lying grains (rice ~1.7 vs quinoa ~1.1).
+POOL_ZONES = (45.0, 40.0)  # load and middle zone, wall or drop edge to the next drop edge; the end zone gets the rest
+POOL_STEP = 3.0
+COUPON_LEN, COUPON_ZONES = 40.0, (20.0,)  # pool_coupon: one gate slot, to check fit and behaviour first
+STRIP_T = 2.0              # strip thickness along the stroke
+SLOT_FIT = 0.3             # groove width minus strip thickness
+END_FIT = 0.4              # groove-to-groove distance minus strip length
+GROOVE_D = 1.5             # groove depth into each side wall
+LAND = 1.2                 # wall left between a gate groove and its cover groove
+TAB = 4.0                  # strips stand at least this far above the wall top, to pull them out
+TOOTH = 2.0                # tooth or pier width; also the narrowest solid end inside the pool
+OPEN_H = 8.0               # height of a w gate's gaps
+TUNNEL_W = 8.0             # width of a t gate's tunnels
+DAM_INSET = 3.0            # end dam groove distance from the open -X end
+STRIPS = {
+    "pool_gate_w5p0": ("w", 5.0), "pool_gate_w3p0": ("w", 3.0), "pool_gate_w2p3": ("w", 2.3),
+    **{f"pool_gate_t{h:.1f}".replace(".", "p"): ("t", h) for h in (3.0, 1.6, 1.5, 1.4, 1.3, 1.2)},
+    "pool_dam": ("dam", None),  # end dam, and the cover that closes a gate before pouring
 }
 
 IN_L, IN_W = L - 2 * WALL, W - 2 * WALL
@@ -263,13 +297,105 @@ def concentric(name):
                   "outer_zone": "everything outside the last ring, to the plate walls"}
 
 
+def pool_slots(zones, inner_len):
+    """Drop edge x of each gate, and the floor top of each zone, upstream (+X) first."""
+    n = len(zones)
+    edges = [inner_len / 2 - sum(zones[:k + 1]) for k in range(n)]
+    return edges, [FLOOR_T + (n - k) * POOL_STEP for k in range(n + 1)]
+
+
+def pool_body(zones, inner_len, open_end):
+    edges, floors = pool_slots(zones, inner_len)
+    body = rounded_box(inner_len + 2 * WALL, W, H, CORNER_R)
+    body = body.cut(rounded_box(inner_len, IN_W, H, INNER_R, z0=FLOOR_T))
+    for e, top in zip(edges, floors):  # terraces: everything upstream of a drop edge is raised
+        body = body.union(cq.Workplane("XY").box(inner_len / 2 + 0.5 - e, IN_W + 1, top - FLOOR_T + 0.1, centered=False)
+                          .translate((e, -IN_W / 2 - 0.5, FLOOR_T - 0.1)))
+
+    def groove(x0, z0):  # through both side walls, from the floor a strip stands on, open at the top
+        return (cq.Workplane("XY").box(STRIP_T + SLOT_FIT, IN_W + 2 * GROOVE_D, H - z0 + 1, centered=False)
+                .translate((x0, -IN_W / 2 - GROOVE_D, z0)))
+
+    for e, top in zip(edges, floors):  # gate groove right at the drop edge, cover groove upstream of it
+        body = body.cut(groove(e, top)).cut(groove(e + STRIP_T + SLOT_FIT + LAND, top))
+    x_end = -inner_len / 2
+    if open_end:  # no -X end wall: the dam closes it, and the tray pours out over the floor
+        body = body.cut(cq.Workplane("XY").box(WALL + 1, IN_W, H, centered=False)
+                        .translate((x_end - WALL - 1 + 0.01, -IN_W / 2, FLOOR_T)))
+        body = body.cut(groove(x_end + DAM_INSET, FLOOR_T))
+        x_end += DAM_INSET
+    bounds = [inner_len / 2, *edges, x_end]
+    return body, {
+        "shake_axis": "X; load the +X end, grains move toward -X",
+        "zones": [{"floor_z_mm": round(f, 2), "length_mm": round(a - b, 2)} for f, a, b in zip(floors, bounds, bounds[1:])],
+        "drop_edges_x_mm": [round(e, 2) for e in edges],
+        "groove_width_mm": STRIP_T + SLOT_FIT, "groove_to_groove_mm": round(IN_W + 2 * GROOVE_D, 2)}
+
+
+def pool():
+    body, info = pool_body(POOL_ZONES, IN_L, open_end=True)
+    return label(body, "POOL"), {**info, "dam_groove": f"{DAM_INSET:g} mm inside the open -X end"}
+
+
+def pool_coupon():
+    return pool_body(COUPON_ZONES, COUPON_LEN, open_end=False)
+
+
+def strip_size(kind):
+    """Length fits the grooves; height leaves TAB above the wall top in the lowest slot the strip goes in."""
+    low = FLOOR_T if kind == "dam" else FLOOR_T + POOL_STEP
+    return IN_W + 2 * GROOVE_D - END_FIT, H + TAB - low
+
+
+def pool_strip(name):
+    """Drawn lying flat, as printed: length along X, height along Y, thickness along Z."""
+    kind, size = STRIPS[name]
+    length, height = strip_size(kind)
+    body = cq.Workplane("XY").box(length, height, STRIP_T, centered=False)
+    info = {"length_mm": round(length, 2), "height_mm": round(height, 2),
+            "groove_play_mm": SLOT_FIT, "end_play_mm": END_FIT}
+    top = 0.0
+    if kind != "dam":
+        gap, top = (size, OPEN_H) if kind == "w" else (TUNNEL_W, size)
+        n = int((IN_W - TOOTH) / (gap + TOOTH))
+        span = n * gap + (n - 1) * TOOTH
+        x0 = (length - span) / 2  # leftover width goes into the two solid ends
+        for i in range(n):
+            body = body.cut(cq.Workplane("XY").box(gap, top + 1, STRIP_T + 2, centered=False)
+                            .translate((x0 + i * (gap + TOOTH), -1, -1)))
+        info.update({"openings": n, "opening_w_mm": gap, "opening_h_mm": top,
+                     "solid_end_inside_pool_mm": round((IN_W - span) / 2, 2)})
+    text = "DAM" if kind == "dam" else f"{kind.upper()}{size:g}"
+    body = body.cut(cq.Workplane("XY").workplane(offset=STRIP_T + 0.01).center(length / 2, (top + height) / 2)
+                    .text(text, LABEL_H, -(LABEL_D + 0.01), combine=False))
+    return body, info
+
+
+def pool_preview(gates=("pool_gate_w5p0", "pool_gate_t1p4")):
+    """out/pool_assembled.png: the pool with two gates and the end dam in place. Preview only, not a print."""
+    edges, floors = pool_slots(POOL_ZONES, IN_L)
+    shapes = [pool()[0].val()]
+    for name, x, z in [*zip(gates, edges, floors), ("pool_dam", -IN_L / 2 + DAM_INSET, FLOOR_T)]:
+        length = strip_size(STRIPS[name][0])[0]
+        shapes.append(pool_strip(name)[0].val().rotate((0, 0, 0), (1, 1, 1), 120)  # X, Y, Z -> Y, Z, X
+                      .translate((x + SLOT_FIT / 2, -length / 2, z)))
+    stl = OUT / "pool_assembled.stl"
+    cq.exporters.export(cq.Workplane("XY").add(cq.Compound.makeCompound(shapes)), str(stl), tolerance=0.04, angularTolerance=0.1)
+    render(stl, OUT / "pool_assembled.png")
+    return shapes
+
+
 PARTS = {**{n: (lambda n=n: sieve_tray(n)) for n in SCREENS},
          "tray_open": tray_open, "clamp_ring": clamp_ring, "collector": collector, "lid": lid,
          **{n: (lambda n=n: gate_coupon(n)) for n in GATES},
-         **{n: (lambda n=n: concentric(n)) for n in RINGS}}
+         **{n: (lambda n=n: concentric(n)) for n in RINGS},
+         "pool": pool, "pool_coupon": pool_coupon, **{n: (lambda n=n: pool_strip(n)) for n in STRIPS}}
 
 
 if __name__ == "__main__":
-    for n in sys.argv[1:] or list(PARTS):
+    for n in sys.argv[1:] or [*PARTS, "pool_assembled"]:
+        if n == "pool_assembled":
+            pool_preview()
+            continue
         part, info = PARTS[n]()
         print(n, json.dumps(export_all(part, n, info)))

@@ -3,6 +3,9 @@
     inserts:<a>,<b>,...   a tower of holder boxes (cad/frame_holder.py), one insert per box,
                           coarse to fine in the order given, on a catch pan. Inserts:
                             5mm, 2mm        printed square-hole screens (cad/sieve_insert.py INSERTS)
+                            h<hole>b<bar>[_across]  a custom printed screen, sizes as modelled with p for the
+                                          point: h2p15b1p15_across = 2.15 mm holes, 1.15 mm bars, ribs across
+                                          (see insert_spec); any number of boxes, coarse to fine (sim/LAYERS.md)
                             mesh5, mesh2    today's inserts: woven mesh glued over the same frame (MESHES)
                           e.g. inserts:mesh5,mesh2 (current) vs inserts:5mm,2mm (future); mixing works.
                           pitch=<mm> spaces the boxes (bottom to bottom) instead of rim on rim, as on the
@@ -36,6 +39,7 @@ Run from sim\\ to print a summary:  <venv python> designs_holder.py [spec ...]
 import functools
 import json
 import math
+import re
 import sys
 from pathlib import Path
 
@@ -56,6 +60,7 @@ MESHES = {
     "mesh2": {"aperture": 2.0, "wire_d": 0.3, "side": "top"},
 }
 MESH_STATUS = "placeholder until measured (aperture nominal; wire size and side judged from the bench photos)"
+CUSTOM_INSERT = re.compile(r"^h(\d+(?:p\d+)?)b(\d+(?:p\d+)?)(_across)?$")   # h<hole>b<bar>[_across], see insert_spec
 
 LID_ABOVE = 80.0          # invisible lid this far above the top layer's surface
 SPAWN_Z = (5.0, 45.0)     # spawn box heights above the top layer's surface
@@ -279,9 +284,16 @@ def open_len(w0, w1, wires, d):
 
 
 def insert_spec(arg):
-    """(zone suffix, kind, CAD/mesh name) for a spec argument such as 5mm, sieve_insert_5mm or mesh5."""
+    """(zone suffix, kind, CAD/mesh name) for a spec argument such as 5mm, sieve_insert_5mm or mesh5.
+    A custom printed screen h<hole>b<bar> (optimize.py's naming, e.g. h2p15b1p15: 2.15 mm holes, 1.15 mm bars,
+    sizes as modelled, so nominal - 0.15 for the hole) is added to sieve_insert.INSERTS, or with _across to
+    sieve_insert.ACROSS (ribs-across frame), on first use; screen 1.6 mm thick for holes of 3 mm and up, else 1.4."""
     si = cad()[1]
     short = arg.removeprefix("sieve_insert_")
+    m = CUSTOM_INSERT.match(short)
+    if m and f"sieve_insert_{short}" not in si.INSERTS and f"sieve_insert_{short}" not in getattr(si, "ACROSS", {}):
+        hole, bar = (float(v.replace("p", ".")) for v in m.group(1, 2))
+        (si.ACROSS if m.group(3) else si.INSERTS)[f"sieve_insert_{short}"] = (hole, bar, 1.6 if hole >= 3 else 1.4)
     if f"sieve_insert_{short}" in si.INSERTS:
         return short, "printed", f"sieve_insert_{short}"
     if f"sieve_insert_{short}" in getattr(si, "ACROSS", {}):

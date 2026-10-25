@@ -8,9 +8,10 @@ Run from sim\\ (on this laptop: the WSL venv ~/venvs/sieve, see docs/sessions/RE
     python optimize.py report --study demo                               rebuild leaderboard / winners / log tables
     python optimize.py replay --study demo [--top 3]                     record the winners and build their view.html
     python optimize.py plan --study demo                                 print the round plan and a cost estimate
-    python optimize.py stress --study demo [--top 5] [--ramps 0.005,0.02]
+    python optimize.py stress --study demo [--top 3] [--ramps 0.005,0.02] [--undersize 0.05,0.25]
                                                                          rerun the leaders with other stroke reversal
-                                                                         times (the 0.01 s ramp is a guess) at full length
+                                                                         times (the 0.01 s ramp is a guess) and other
+                                                                         printer undersizes (0.15 mm is assumed)
 
 Studies (classes are what the sorter should do, not what each design's openings happen to do):
     demo      pasta + chickpea / rice / quinoa: the surrogate grains we can bench today
@@ -82,6 +83,7 @@ Z_STEP, XY_STEP = 0.2, 0.1       # layer height for vertical features; opening s
 MIN_FEATURE = 0.4
 W_JAM, W_LOST, W_T90 = 0.5, 1.0, 0.05
 FAIL_SCORE = -1.0
+MIN_WINNER = 0.5                 # a winner must be a working sorter: worst class at about 50% or better
 PEN_FLAG = 0.5                   # flag a run when tray overlap >= PEN_FLAG x the tightest gate clearance
 SPECIAL = ("between", "lost")
 FIRMWARE = dict(sweep.FIRMWARE)  # constant_speed, amp 10, 50 mm/s, ramp 0.01 s
@@ -136,6 +138,11 @@ def tok(v):
     return f"{v:g}".replace(".", "p")
 
 
+def cadtok(v):
+    """CAD part names follow the repo: one decimal, e.g. gate_w3p0, layer_2_rods_1p4."""
+    return f"{v:.1f}".replace(".", "p")
+
+
 # gated -------------------------------------------------------------------------------------------
 def gated_spec(p):
     s1, s2 = eff(p["s1"]), eff(p["s2"])
@@ -156,8 +163,8 @@ def gated_ok(p):
 
 def gated_cad(p):
     k2 = p.get("k2", "t")
-    s1n = f"gate_{p['k1']}{tok(p['s1'])}"
-    s2n = f"gate_{k2}{tok(p['s2'])}"
+    s1n = f"gate_{p['k1']}{cadtok(p['s1'])}"
+    s2n = f"gate_{k2}{cadtok(p['s2'])}"
     out = {"file": "cad/gated_container.py",
            "constants": {"FLOOR_SLOPE_DEG": p["slope"], "GATE_H": p["gh"] if "w" in (p["k1"], k2) else 8.0,
                          "TUNNEL_W": p["tw"], "TOOTH": p["tooth"],
@@ -218,7 +225,7 @@ def plinko_ok(p):
 def plinko_cad(p):
     rows = plinko_layers(p, effective=False)
     return {"file": "cad/plinko_layers.py",
-            "LAYERS": [[f"layer_1_rods_{tok(p['g1'])}", *rows[0][1:]], [f"layer_2_rods_{tok(p['g2'])}", *rows[1][1:]],
+            "LAYERS": [[f"layer_1_rods_{cadtok(p['g1'])}", *rows[0][1:]], [f"layer_2_rods_{cadtok(p['g2'])}", *rows[1][1:]],
                        rows[2]],
             "note": "rows are (name, floor, gap, rod top width, rod height, wall height, tab x); walls and tabs unchanged"}
 
@@ -336,6 +343,9 @@ CURRENT = {"family": "current", "label": "TODAY on the bench: glued mesh inserts
 DEFAULT_FAMILIES = ("gated", "plinko", "inserts")
 ROUND0 = {"gated": 28, "gated_rib": 24, "plinko": 12, "inserts": 6}   # Latin hypercube size per family
 ROUNDN = {"gated": 16, "gated_rib": 16, "plinko": 8, "inserts": 3}   # cross-entropy proposals per family per round
+# Insect runs cost about 3x a grain run per step (legs: many contacts), so the insect study searches fewer candidates.
+BUDGET = {"insects": ({"gated": 16, "gated_rib": 12, "plinko": 10, "inserts": 4},
+                      {"gated": 10, "gated_rib": 8, "plinko": 6, "inserts": 2})}
 
 
 # ---------------------------------------------------------------- candidates
@@ -449,18 +459,33 @@ def base_cfg(study):
                           contact={"timeconst": TIMECONST})
 
 
+def at_undersize(c, us):
+    """(spec, inject) of a candidate rebuilt with another printer undersize (print tolerance stress)."""
+    global UNDERSIZE_MM
+    if c["family"] not in FAMILIES:
+        return c["spec"], c["inject"]
+    keep, UNDERSIZE_MM = UNDERSIZE_MM, us
+    try:
+        f = FAMILIES[c["family"]]
+        return f["spec"](c["params"]), f["inject"](c["params"])
+    finally:
+        UNDERSIZE_MM = keep
+
+
 def jobs_for(c, study, fid, base, sets):
-    """fid: screen, full, or ramp<seconds> (full length, stroke reversal time changed)."""
+    """fid: screen, full, ramp<s> (full length, stroke reversal time changed) or us<mm> (full length, openings
+    built with another printer undersize)."""
     dur = SCREEN_S if fid == "screen" else FULL_S
     stroke = dict(c["stroke"], ramp_s=float(fid[4:])) if fid.startswith("ramp") else c["stroke"]
+    spec, inject = at_undersize(c, float(fid[2:])) if fid.startswith("us") else (c["spec"], c["inject"])
     out = []
     for label, contact in sets:
         for seed in SEEDS:
-            cfg = sweep.make_cfg(base, design=c["spec"], stroke=stroke, contact=contact, duration_s=dur,
+            cfg = sweep.make_cfg(base, design=spec, stroke=stroke, contact=contact, duration_s=dur,
                                  seed=seed)
-            job = {"cfg": cfg, "inject": c["inject"],
+            job = {"cfg": cfg, "inject": inject,
                    "tags": {"cand": c["id"], "fid": fid, "set": label, "seed": seed}}
-            job["key"] = hashlib.sha1(json.dumps([cfg, c["inject"]], sort_keys=True, default=sweep.jsonable)
+            job["key"] = hashlib.sha1(json.dumps([cfg, inject], sort_keys=True, default=sweep.jsonable)
                                       .encode()).hexdigest()[:20]
             out.append(job)
     return out
@@ -876,19 +901,27 @@ def leaderboard_md(study, cands, summ, meta):
                                                                      for k in range(len(cl)))
                              + f" | {fmt(s['between'], '{:.1f}')} | {fmt(s['lost'], '{:.1f}')} | {t90_cell(s)} | "
                              f"{flags(s)} | `{c['spec']}` |")
-    stressed = [c for c in ranked if any(k.startswith("ramp") for k in summ[c["id"]])]
+    pool = ranking(cands, summ, exclude_refs=False)
+    stressed = [c for c in pool if any(k.startswith(("ramp", "us")) for k in summ[c["id"]])]
     if stressed:
-        ramps = sorted({k for c in stressed for k in summ[c["id"]] if k.startswith("ramp")}, key=lambda k: float(k[4:]))
-        lines += ["", "## Stroke sensitivity: the leaders at other reversal times", "",
-                  "The firmware reverses at constant speed with no ramp; how sharp the real reversal is depends on the "
-                  f"stage and is unmeasured (sweep.py FIRMWARE assumes {RAMP_S:g} s). Transport depends on it, so the "
-                  "leaders are rerun at other ramps (full length, same 3 friction sets x 3 seeds). A design whose rank "
-                  "holds across ramps is safer to print.", "",
-                  f"| id | family | robust at ramp {RAMP_S:g} s | " + " | ".join(f"robust at ramp {k[4:]} s" for k in ramps)
-                  + " | design |", "|" + "---|" * (4 + len(ramps))]
+        keys = sorted({k for c in stressed for k in summ[c["id"]] if k.startswith(("ramp", "us"))},
+                      key=lambda k: (k.startswith("us"), float(k[4:] if k.startswith("ramp") else k[2:])))
+        label = lambda k: f"ramp {k[4:]} s" if k.startswith("ramp") else f"undersize {k[2:]} mm"
+        lines += ["", "## Stress test: the leaders under the two biggest unknowns", "",
+                  "**Stroke reversal.** The firmware reverses at constant speed with no ramp; how sharp the real "
+                  f"reversal is depends on the stage and is unmeasured (sweep.py FIRMWARE assumes {RAMP_S:g} s). "
+                  "Transport depends on it. **Print size.** Openings are simulated at nominal - "
+                  f"{UNDERSIZE_MM:g} mm (assumed); a printer that makes them 0.1 mm tighter or looser shifts every cut. "
+                  "Each column reruns the design with one of these changed (full length, same 3 friction sets x 3 "
+                  "seeds; robust score). A design whose score holds across columns is safer to print.", "",
+                  f"| id | family | as ranked (ramp {RAMP_S:g} s, undersize {UNDERSIZE_MM:g} mm) | "
+                  + " | ".join(label(k) for k in keys) + " | worst | design |", "|" + "---|" * (5 + len(keys))]
         for c in stressed:
-            cells = " | ".join(fmt((summ[c["id"]].get(k) or {}).get("robust"), "{:.3f}") for k in ramps)
-            lines.append(f"| {c['id']} | {c['family']} | {summ[c['id']]['full']['robust']:.3f} | {cells} | {show(c)} |")
+            vals = [(summ[c["id"]].get(k) or {}).get("robust") for k in keys]
+            worst = min([summ[c["id"]]["full"]["robust"], *[v for v in vals if v is not None]])
+            cells = " | ".join(fmt(v, "{:.3f}") for v in vals)
+            lines.append(f"| {c['id']} | {c['family']} | {summ[c['id']]['full']['robust']:.3f} | {cells} | "
+                         f"**{worst:.3f}** | {show(c)} |")
     lines += ["", "## Count matrices of the top 3 (summed over the 9 full runs)", ""]
     for i, c in enumerate(ranked[:3], 1):
         lines += matrix_md(f"{i}. {c['id']} ({c['family']}) {show(c)}; sim `{c['spec']}`", summ[c["id"]]["full"], cl)
@@ -940,12 +973,17 @@ def ranking(cands, summ, exclude_refs=True):
 
 def winners_json(study, cands, summ):
     """Top 3 among full-run candidates with no failed and no flagged run (the rule is fixed, not tuned)."""
-    eligible = [c for c in ranking(cands, summ) if c["family"] in FAMILIES
-                and not summ[c["id"]]["full"]["fails"] and not summ[c["id"]]["full"]["flagged"]]
+    working = [c for c in ranking(cands, summ) if c["family"] in FAMILIES and not summ[c["id"]]["full"]["fails"]
+               and summ[c["id"]]["full"]["robust"] >= MIN_WINNER]
+    clean = [c for c in working if not summ[c["id"]]["full"]["flagged"]]
+    flagged = [c for c in working if summ[c["id"]]["full"]["flagged"]]
+    eligible = clean[:3] + flagged[:max(0, 3 - len(clean))]     # fill with flagged ones only if needed, marked
     out = {"study": study, "title": STUDIES[study]["title"], "exploratory": STUDIES[study]["exploratory"],
            "generated": f"{datetime.now():%Y-%m-%d %H:%M}",
-           "rule": "top 3 by robust full-run score (mean - 1 sd over 3 friction sets x 3 seeds, 30 s), excluding "
-                   "candidates with any failed or penetration-flagged run",
+           "rule": f"top 3 by robust full-run score (mean - 1 sd over 3 friction sets x 3 seeds, 30 s) among working "
+                   f"sorters (robust >= {MIN_WINNER}, no failed run) with no penetration-flagged run; if fewer than 3 "
+                   "qualify, the rest are the best working flagged ones, marked flagged (see opt/LOG.md for how this "
+                   "rule came about)",
            "caveat": "sim ranking only; uncalibrated; openings simulated at nominal - "
                      f"{UNDERSIZE_MM} mm (ASSUMED undersize)",
            "undersize_mm_assumed": UNDERSIZE_MM, "winners": []}
@@ -961,6 +999,8 @@ def winners_json(study, cands, summ):
             "count_matrix": {"rows": [cl["name"] for cl in STUDIES[study]["classes"]], "cols": s["cols"],
                              "counts_over_9_runs": s["matrix"]},
             "jammed_per_run": s["between"], "lost_per_run": s["lost"], "t90_s": s["t90"],
+            "flagged": bool(s["flagged"]), "flagged_runs": s["flagged"], "gate_clearance_mm": s["clearance"],
+            "max_gate_overlap_mm": s["pen"],
             "replay": f"sim/out/opt/{study}/replay/{c['id']}/view.html"})
     return out
 
@@ -1123,13 +1163,14 @@ def run_study(args):
     for rnd in range(done_rounds + 1, done_rounds + 1 + args.rounds):
         t0 = time.time()
         new = [c for c in refs(study, rnd) if c["id"] not in have] if rnd == 0 else []
+        r0, rn = BUDGET.get(study, (ROUND0, ROUNDN))
         for f in fams:
             fresh = not any(c["family"] == f for c in cands)     # a family's first round is a Latin hypercube
             if fresh:
-                n = ROUND0[f] if not args.small else max(4, ROUND0[f] // 4)
+                n = r0[f] if not args.small else max(4, r0[f] // 4)
             else:
                 ce_update(f, cands, summ, rng, study)
-                n = ROUNDN[f] if not args.small else max(3, ROUNDN[f] // 4)
+                n = rn[f] if not args.small else max(3, rn[f] // 4)
             new += propose(f, n, rnd, rng, have, study, fresh)
         cands += new
         have |= {c["id"] for c in new}
@@ -1158,7 +1199,7 @@ def report(args):
     base = base_cfg(args.study)
     sets, _ = sweep.param_sets()
     for c in cands:
-        for fid in ["screen", "full", *[k for k in (summ.get(c["id"]) or {}) if k.startswith("ramp")]]:
+        for fid in ["screen", "full", *[k for k in (summ.get(c["id"]) or {}) if k.startswith(("ramp", "us"))]]:
             s = summarize(c, args.study, fid, base, sets)
             if s:
                 summ.setdefault(c["id"], {})[fid] = s
@@ -1198,10 +1239,14 @@ def stress(args):
     top = ranking(cands, summ)[:args.top]
     refs_ = [c for c in cands if c["origin"] in ("baseline", "current") and (summ.get(c["id"]) or {}).get("full")]
     pick = list({c["id"]: c for c in top + refs_}.values())
-    for ramp in (float(r) for r in args.ramps.split(",")):
-        fid = f"ramp{ramp:g}"
-        print(f"stress: {len(pick)} designs at ramp {ramp:g} s", flush=True)
-        evaluate(pick, args.study, fid, base, sets, args.workers, summ)
+    fids = [f"ramp{float(r):g}" for r in args.ramps.split(",") if r] + \
+           [f"us{float(u):g}" for u in args.undersize.split(",") if u]
+    jobs = [j for c in pick for fid in fids for j in jobs_for(c, args.study, fid, base, sets)]
+    print(f"stress: {len(pick)} designs x {fids}", flush=True)
+    run_all(jobs, args.study, args.workers)
+    for c in pick:
+        for fid in fids:
+            summ.setdefault(c["id"], {})[fid] = summarize(c, args.study, fid, base, sets)
     meta = {"n_cands": len(cands), "n_runs": len(list((OUT / args.study / "runs").glob("*.json")))}
     write_outputs(args.study, cands, summ, meta)
     print("stress done; leaderboard rewritten")
@@ -1209,12 +1254,13 @@ def stress(args):
 
 def plan(args):
     sets, source = sweep.param_sets()
-    n0 = sum(ROUND0[f] for f in DEFAULT_FAMILIES) + len(BASELINES.get(args.study, [])) + 1
+    r0, rn = BUDGET.get(args.study, (ROUND0, ROUNDN))
+    n0 = sum(r0[f] for f in DEFAULT_FAMILIES) + len(BASELINES.get(args.study, [])) + 1
     per = len(sets) * len(SEEDS)
     print(f"param sets: {source}; {per} runs per candidate per fidelity")
     print(f"round 0: {n0} candidates -> {n0 * per} screen runs ({SCREEN_S:g} s) + ~{math.ceil(PROMOTE * n0) + 4} "
           f"promoted -> {(math.ceil(PROMOTE * n0) + 4) * per} full runs ({FULL_S:g} s)")
-    n1 = sum(ROUNDN[f] for f in DEFAULT_FAMILIES)
+    n1 = sum(rn[f] for f in DEFAULT_FAMILIES)
     print(f"each later round: {n1} candidates -> {n1 * per} screen + ~{(math.ceil(PROMOTE * n1) + 3) * per} full runs")
 
 
@@ -1231,6 +1277,7 @@ def main():
     ap.add_argument("--top", type=int, default=3)
     ap.add_argument("--ids", help="replay: extra candidate ids")
     ap.add_argument("--ramps", default="0.005,0.02", help="stress: reversal times to try, s")
+    ap.add_argument("--undersize", default="0.05,0.25", help="stress: printer undersizes to try, mm")
     ap.add_argument("--fps", type=float, default=20.0)
     ap.add_argument("--screen-s", type=float, help="override the screen length (smoke tests)")
     ap.add_argument("--full-s", type=float, help="override the full length (smoke tests)")

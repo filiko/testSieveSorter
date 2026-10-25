@@ -1,4 +1,10 @@
-# testSieveSorter
+<p align="center">
+  <img src="docs/assets/mascot.png" alt="Bugs poured from a Malaise sample jar into a three-tier sieve tower" width="280">
+</p>
+
+<h1 align="center">testSieveSorter</h1>
+
+<p align="center"><b>Break up a Malaise clump, then sort the insects by size, using printed sieves designed in simulation.</b></p>
 
 Hackathon work on BioKEA's **BugSorter**, the size-sorting module at the front of their insect barcoding line.
 

@@ -19,6 +19,7 @@ from slice import OUT, slice_part, slice_plate
 HERE = Path(__file__).resolve().parent
 OPT = HERE.parent / "sim" / "opt"
 WSL_PY = "~/venvs/sieve/bin/python"
+KEEP = "<!-- hand-written from here on: winners.py keeps it -->"
 
 
 def wsl_path(p: Path) -> str:
@@ -151,7 +152,9 @@ def main():
             breakers.append((b, s))
     plan = args.plan or OPT / ("print_plan.md" if study == "demo" else f"print_plan_{study}.md")
     plan.parent.mkdir(parents=True, exist_ok=True)
-    plan.write_text(plan_md(built, sliced, plates, args.printer, breakers), encoding="utf-8")
+    old = plan.read_text(encoding="utf-8") if plan.exists() else ""
+    kept = old[old.index(KEEP):] if KEEP in old else ""        # the hand-written queue and seesaw parts
+    plan.write_text(plan_md(built, sliced, plates, args.printer, breakers) + kept, encoding="utf-8")
     print(f"winners: wrote {plan} ({datetime.now():%H:%M})")
 
 

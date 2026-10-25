@@ -5,7 +5,11 @@ The sim runs in the tray frame: design geoms are static and the shake is a unifo
 gravity minus the tray's acceleration, which is exact for a tray that only translates. The lab
 frame is the tray frame shifted by the tray displacement; spray jets stay fixed in the lab.
 
-Stroke profiles (along the design's flow axis unless "axis" is given):
+Stroke direction: along the design's flow axis by default; "angle_deg" tilts it up toward +z (0 = flow axis,
+90 = straight up, in between = an angled throw like a lab sieve shaker); "axis" (a 3-vector, Python API) overrides.
+Peak acceleration of a sine stroke is amp_mm * (2 pi freq_hz)^2; above g (9810 mm/s^2) a vertical stroke throws.
+
+Stroke profiles:
     sine            amp_mm, freq_hz
     constant_speed  amp_mm, freq_hz or speed_mm_s, ramp_s: constant speed with smoothed reversals.
                     BioKEA's firmware (github.com/BioKEA/BugSorter src/main.cpp) runs a 2 cm stroke
@@ -17,6 +21,7 @@ Stroke profiles (along the design's flow axis unless "axis" is given):
 Run from sim\\:
     <venv python> sorter.py --design pool:w5p0,t1p4 --mix rice=30,quinoa=30,chickpea=8,pasta=8 \\
         --stroke sine:amp_mm=3,freq_hz=10 --duration 10 --out out/runs/demo
+    <venv python> sorter.py --design inserts:5mm --mix pasta=15,rice=40         --stroke sine:amp_mm=1.24,freq_hz=20,angle_deg=90 --duration 10     (demo tray, shaken up and down)
     <venv python> viewer.py out/runs/demo --open
 """
 import argparse
@@ -69,6 +74,21 @@ def make_particle(kind, rng):
 
 def smooth(x, n):
     return np.convolve(x, np.ones(n) / n, mode="same") if n > 1 else x
+
+
+def stroke_axis(stroke, design):
+    """Unit stroke direction in the tray frame. stroke["axis"] (a 3-vector) wins; else stroke["angle_deg"] tilts the
+    design's flow axis up toward +z (0 = along the flow axis, 90 = straight up); else the flow axis."""
+    if stroke.get("axis") is not None and stroke.get("angle_deg") is not None:
+        raise ValueError("give the stroke an axis or an angle_deg, not both")
+    if stroke.get("axis") is not None:
+        axis = np.array(stroke["axis"], dtype=float)
+    else:
+        flow = np.array(design.stroke_axis, dtype=float)
+        flow[2] = 0.0
+        th = np.radians(stroke.get("angle_deg", 0.0))
+        axis = np.cos(th) * flow / np.linalg.norm(flow) + np.sin(th) * np.array([0.0, 0.0, 1.0])
+    return axis / np.linalg.norm(axis)
 
 
 def stroke_profile(stroke, n, dt):
@@ -244,8 +264,7 @@ def run(cfg: RunConfig) -> dict:
     if cfg.spray:
         sp = spray.Spray(m, d, jets, list(pbodies), cfg.spray.get("params"))
 
-    axis = np.array(cfg.stroke.get("axis") or design.stroke_axis, dtype=float)
-    axis /= np.linalg.norm(axis)
+    axis = stroke_axis(cfg.stroke, design)
     n_settle, n_shake = round(cfg.settle_s / cfg.dt), round(cfg.duration_s / cfg.dt)
     x, v, a = stroke_profile(cfg.stroke, n_shake, cfg.dt)
     x, v, a = (np.concatenate([np.zeros(n_settle), s]) for s in (x, v, a))

@@ -5,6 +5,8 @@
                             5mm, 2mm        printed square-hole screens (cad/sieve_insert.py INSERTS)
                             mesh5, mesh2    today's inserts: woven mesh glued over the same frame (MESHES)
                           e.g. inserts:mesh5,mesh2 (current) vs inserts:5mm,2mm (future); mixing works.
+                          pitch=<mm> spaces the boxes (bottom to bottom) instead of rim on rim, as on the
+                          bench tower frame: inserts:5mm,2mm,pitch=65
     plinko                the plinko layers (cad/plinko_layers.py LAYERS) stacked in one holder box
 
 Tray frame: origin at the holder's centre in XY, z = 0 under the lowest part, x along the holder's
@@ -55,6 +57,7 @@ SPAWN_Z = (5.0, 45.0)     # spawn box heights above the top layer's surface
 SPAWN_INSET = 12.0        # spawn box inset from the walls in XY
 JET_Z = 60.0              # placeholder jets: height above the top layer's surface
 JET = {"dir": (0.0, 0.0, -1.0), "flow_ml_s": 5.0, "nozzle_d_mm": 1.0, "half_angle_deg": 15.0, "range_mm": 150.0}
+TUB_FLOOR, TUB_HALF = 110.0, 200.0   # spaced towers: invisible floor this far under the catch pan, +/- this wide
 NOTCH_SEGMENTS = 4        # chords approximating the round bottom of each finger notch
 
 HOLDER_RGBA = [0.93, 0.92, 0.88, 1.0]
@@ -275,16 +278,26 @@ def geom_count(geoms):
 
 
 def build_inserts(args):
-    """inserts:<a>,<b>,...  top to bottom, one insert per holder box, on a catch pan."""
+    """inserts:<a>,<b>,...[,pitch=<mm>]  top to bottom, one insert per holder box, on a catch pan. pitch is box
+    bottom to box bottom (default the box height: rim on rim). A larger pitch leaves open air between the
+    boxes, as on BioKEA's tower frame, where each box hangs from a rod through its +X tab; a grain that
+    bounces out through a gap falls to an invisible tub floor and counts as lost."""
+    opts = dict(a.split("=", 1) for a in args if "=" in a)
+    args = [a for a in args if "=" not in a]
+    if set(opts) - {"pitch"}:
+        raise ValueError(f"unknown inserts option(s) {sorted(set(opts) - {'pitch'})}: use pitch=<mm>")
     if not args:
         raise ValueError("inserts needs insert names, e.g. inserts:5mm,2mm or inserts:mesh5,mesh2")
     fh = cad()[0]
     H, ix, iy = fh.H, fh.L / 2 - fh.WALL, fh.W / 2 - fh.WALL
+    pitch = float(opts.get("pitch", H))
+    if pitch < H:
+        raise ValueError(f"pitch {pitch:g} mm is less than the box height ({H:g} mm)")
     drain_area = fh.OPEN_L * fh.OPEN_W
     geoms = holder(0.0, solid_base=True, close_notches=True)
     layers = []
     for k, arg in enumerate(reversed(args)):          # bottom box first
-        z0 = (k + 1) * H
+        z0 = (k + 1) * pitch
         g, layer = insert(arg, z0 + fh.LEDGE_T, drain_area)
         geoms += holder(z0, close_notches=True) + g
         layer["holder_z_mm"] = [z0, z0 + H]
@@ -295,7 +308,10 @@ def build_inserts(args):
             layer["zone"] += f"_{k + 1}"
     top = layers[0]["surface_z_mm"][1]
     z_lid = top + LID_ABOVE
-    geoms += lid(ix, iy, (len(args) + 1) * H, z_lid, fh.WALL)
+    geoms += lid(ix, iy, len(args) * pitch + H, z_lid, fh.WALL)
+    if pitch > H:
+        geoms.append(box(-TUB_HALF, TUB_HALF, -TUB_HALF, TUB_HALF, -TUB_FLOOR - fh.WALL, -TUB_FLOOR, LID_RGBA, "lid"))
+    spaced = "" if pitch == H else f", {pitch - H:g} mm of open air between boxes (pitch {pitch:g} mm)"
 
     zones, z_above = [], z_lid
     for layer in layers:
@@ -304,13 +320,15 @@ def build_inserts(args):
     zones.append({"name": "catch", "box": [-ix, ix, -iy, iy, fh.LEDGE_T, z_above]})
     rules = tuple((layer["zone"], layer["rule"], layer["opening_mm"]) for layer in layers)
     return Design(
-        name="inserts:" + ",".join(args), geoms=geoms, zones=zones,
+        name="inserts:" + ",".join(args) + ("" if pitch == H else f",pitch={pitch:g}"), geoms=geoms, zones=zones,
         spawn=[-ix + SPAWN_INSET, ix - SPAWN_INSET, -iy + SPAWN_INSET, iy - SPAWN_INSET, top + SPAWN_Z[0], top + SPAWN_Z[1]],
         ideal_zone=functools.partial(ideal_zone, layers=rules, last="catch"),
         jets_default=jets(top, ix),
         info={"stacking": "tower of holder boxes (confirmed by the user), one insert per box, top to bottom in spec "
-                          "order, each box on the rim of the one below; catch pan under the bottom box = the holder "
-                          "with its open centre filled solid. Finger notches closed by invisible lids.",
+                          "order, " + (f"each box hanging {pitch:g} mm above the one below{spaced}" if spaced else
+                                       "each box on the rim of the one below") +
+                          "; catch pan under the bottom box = the holder with its open centre filled solid. Finger "
+                          "notches closed by invisible lids.", "pitch_mm": pitch,
               "open_area_note": "printed: holes x hole^2 at the top surface; mesh: wire-free area inside the six "
                                 "windows (the frame blocks the rest)",
               "layers": layers, "catch_z_mm": [fh.LEDGE_T, z_above], "top_surface_z_mm": top, "lid_z_mm": z_lid,

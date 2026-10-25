@@ -2,6 +2,14 @@
 
 Physics session, 2026-10-25, from the agent swarm that also built GRAINS.md. Nothing here is applied: `insects.py` is unchanged, and its three kinds stay frozen for the optimizer's insect leaderboard. My arithmetic and fits are marked as such; every other number links to its source.
 
+## Applied at 12:35: the real Malaise mix (proposal 1, first half)
+- **New kinds in `insects.py`**: `insect_malaise` draws body length from a lognormal fitted to EntoSieve's pooled counts (median 1.274 mm, sigma 0.779, truncated to 0.3–20 mm), then picks the body plan given that length. The three old kinds and `PLANS` are byte-identical (checked: 300 specimens per kind, same hash).
+- **Shares, 3,000 generated:** 56% under 1.5 mm (data 56–58%), 70 / 28 / 2.1% in the BugPicker classes (fit 71.0 / 26.6 / 2.4%), Diptera 68%, mites 6%, spiders 3%.
+- **Stratified kinds** `insect_malaise_lt2` / `_2to6` / `_gt6` draw from the same fit cut to one class. Oversample the rare > 6 mm with them, then weight scores by `insects.MALAISE_SHARES`.
+- **Presets:** `insects.MALAISE_MIX` (`insect_malaise=60`) and `insects.MALAISE_MIX_STRATIFIED` (24 / 24 / 12). They work in `--mix` and `--clump`, e.g. `--clump insect_malaise=40,leaf=1,twig=2,dirt=10,bond=medium`.
+- **Use the stiff contacts** (`--dt 0.000125 --timeconst 0.00025`, as the seesaw tower runs already do). At dt 0.5 ms, 8 of 40 specimens passed through the trays in 1 s; at 0.125 ms none did (0.2 mm worst overlap).
+- **Still ASSUMED:** the plan weights and per-plan sizes (they set shape, not size), the 0.3 mm floor, and legs at the radius floor below about 0.8 mm. Not done: the EntoSieve replication, liquid, per-taxon kinds.
+
 ## Summary
 
 - **"We haven't modeled the bugs yet" is half true.** `insects.py` generates detailed rigid specimens in 3 lumped kinds and 8 body plans, with poses and damage. But every number in it is an assumption, nothing in it has been compared with a real specimen, and the sim has no liquid.

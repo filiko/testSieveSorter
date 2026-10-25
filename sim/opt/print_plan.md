@@ -75,3 +75,40 @@ The clump breaker for the top of the stack (`docs/sessions/clump-breakup.md`): `
 **Bench demo clump (a suggestion to the team).** Stir rice, quinoa and a few pasta tubes with a little sugar water (a water-soluble binder) and some torn leaf bits, press it into a ball about 30 mm across and let it set for a few minutes. Put it on the breaker layer, run the shake with the spray on, and film it side-on: it should come apart on the pins, the leaf bits should stay on the breaker, and the grains should sort on the trays below. The binder dissolves in the spray, standing in for the ethanol film. How strong it is next to a real Malaise clump is an assumption.
 
 Checks: valid single solid, watertight mesh, fits the bed. A tower needs one holder box per level plus the catch pan; the holder (`frame_holder`) isn't repeated here.
+
+<!-- hand-written from here on: winners.py keeps it -->
+## Print queue (12:50, Oct 25)
+
+One P1S. **What's on the printer now isn't known to this session.** It's on the main session's list of questions for the user (PLAN.md, decision 2). Update this table when someone says.
+
+| Order | Part | Time | Status | Why |
+|---|---|---|---|---|
+| 1 | `breaker_o8_b1p6_d2p5_h12_p10_round` | 89 min | ready to print, sliced | the clump demo: break-up is the point of the system |
+| 2 | `sieve_insert_5mm_across` | 47 min | ready to print, sliced | the fix for quinoa and chia stuck on the 5 mm tray; drops into today's holder boxes |
+| 3 | `sieve_insert_2mm_across` | 65 min | ready to print, sliced | the same fix on 2 mm |
+| 4 | `seesaw_holder`, one per level | 60 min each | ready to print, sliced | centre pivot pins, no tab: levels hang about 55 mm apart at ±10° instead of 85–110 |
+| 5 | `seesaw_catch_pan` | 125 min | ready to print, sliced | deeper pan with an inward lip: grains bounced out over the ends |
+| - | winner plates 1–3 (above) | 124–152 min | sliced | translation-stroke winners from before the seesaw; superseded unless the optimizer's seesaw study picks them again |
+
+Started at 13:00, items 1 and 2 finish by about 15:20, before the live demos (15:30). Items 3–5 come after the demo.
+
+## Seesaw parts (cad/seesaw_holder.py, cad/sieve_insert.py)
+
+Built 12:30–12:40 for the per-level seesaw (docs/SYSTEM.md §3), sliced for the P1S with the default PLA process. All four are valid single solids, watertight, fit the bed, and print flat with no supports.
+
+| Part | Time | Filament | What changed and why |
+|---|---|---|---|
+| `seesaw_holder` | 60 min | 41.6 g | The holder box with no +X tab and no finger notches. It has a pivot lug in the middle of each long wall, with a blind 6.2 mm hole at mid-height for a 6 mm pin from each post. With the tab gone, levels clear each other at about half the pitch, so **specimens drop about half as far** between levels. The clump session found those drops give the largest impact force. |
+| `seesaw_catch_pan` | 125 min | 97.2 g | The bottom level. Its rim and pivot are the same as a box's, but the floor is 20 mm deeper (42 mm under the rim), and the rim has an inward lip (2 mm, 45° underside) that leaves exactly the 122 × 82 open bottom of the box above. Grains bounced out over the ends at 25°. |
+| `sieve_insert_5mm_across` | 47 min | 21.2 g | 216 holes of 5 mm (was 150), 54% of the box's open bottom. The screen reaches the ledge, the border is a 45° ramp down to the screen, and the only ribs are two 45° ridges along Y (across the slide). There's no flat top for a grain to rest on, and nothing solid runs along X for it to ride. The label on the tab reads "5X". |
+| `sieve_insert_2mm_across` | 65 min | 22.5 g | The same layout with 2 mm holes: 936 holes (was 726). |
+
+The inserts drop into the old `frame_holder` too, so items 2 and 3 can be tested on today's rig before any new box is printed.
+
+**Pitch (pivot to pivot) the seesaw holder needs:** about 42 mm at ±5°, 54 mm at ±10° and 65 mm at ±15°, with 5 mm left between neighbours (sim `rocking.py`, the same within 0.1 mm as the closed form). The 11:20 renders hung the levels 85 mm apart.
+
+**Softer landings (the clump session's finding) beyond a shorter drop:**
+- the 45° ramps and ridges turn a straight drop onto a solid strip into a glancing one;
+- a TPU 95A copy of the inserts would be the soft landing. The P1S prints TPU without the AMS, but it needs the filament on hand and prints slower (an estimate: about twice as long). Not sliced.
+
+In the sim: `inserts:5mm_across,2mm_across,pitch=55,holder=seesaw` (`sim/designs_holder.py` reads all of this from the CAD modules).

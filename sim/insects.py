@@ -42,7 +42,12 @@ long-legged specimens landing after a drop, and to a few leg strikes per 30 spec
 shaking. timeconst 0.002 removed it during shaking. LEG_R_MIN stays 0.06 so that legs still catch
 on each other (leg-leg contact depth p99 is about 0.1 mm).
 
+The real Malaise mix (new kinds insect_malaise, insect_malaise_lt2 / _2to6 / _gt6; MALAISE_MIX): body length
+fitted to EntoSieve's counted Malaise samples, 57% under 1.5 mm. See the block above _make_malaise. KINDS and
+PLANS are unchanged.
+
 Run from sim\\:  python insects.py   (prints the size and geom summary of 2000 specimens per kind)
+                python insects.py malaise   (the Malaise kinds: class shares, plan shares and geoms)
 """
 import numpy as np
 
@@ -394,6 +399,8 @@ def _length(rng, median, sigma, lo, hi):
 
 def make(kind: str, rng: np.random.Generator, size_scale: float = 1.0, plan: str | None = None) -> common.Particle:
     """One preserved specimen of the given kind. plan forces a body plan (e.g. "spider") for galleries."""
+    if kind in MALAISE_KINDS:
+        return _make_malaise(kind, rng, size_scale, plan)
     plans = PLANS[kind]
     names = list(plans)
     w = np.array([plans[n][0] for n in names])
@@ -406,7 +413,105 @@ def make(kind: str, rng: np.random.Generator, size_scale: float = 1.0, plan: str
     return _finish(sp, kind, plan, L)
 
 
+# ---------- the real Malaise mix (sim/INSECT_AUDIT.md, proposal 1) ----------
+# KINDS and PLANS above stay frozen (sim/opt/leaderboard_insects.md depends on them). These kinds are new.
+# Body length L is drawn from ONE lognormal fitted to EntoSieve's two counted Malaise samples (Ascenzi et al. 2025,
+# PMC12225705: 10,276 and 12,482 specimens in < 1.5 / 1.5-3 / 3-5 / > 5 mm bins). MALAISE_FIT is the physics
+# session's maximum-likelihood fit to the pooled counts, truncated to [0.3, 20] mm: it gives 0.570 / 0.291 / 0.099 /
+# 0.041 in those bins against the data's 0.570 / 0.290 / 0.100 / 0.041 (per sample: median 1.27 sigma 0.86, and
+# 1.28 sigma 0.70). The first bin is 0-1.5 mm, so the tail under 1 mm is extrapolated, and the 0.3 mm floor is
+# ASSUMED. Then the body plan is drawn given L:
+#     P(plan | L) ~ weight * lognormal_pdf(L; median, sigma) on [lo, hi]
+# so the size mix is the data's and the plans only decide shape. Plan weights put Diptera near 72% (BIOSCAN-5M's
+# order counts) and cut mites and spiders, which Malaise traps rarely catch; the per-plan sizes are textbook small
+# Malaise taxa (gall midges, phorids, sciarids, micro-Hymenoptera). Both are ASSUMED, not fitted.
+# Below about 0.8 mm the legs sit at LEG_R_MIN, so they are fatter than real (as for mites already).
+MALAISE_FIT = (1.274, 0.779, 0.3, 20.0)    # median L mm, sigma, min, max
+# plan: (weight, median L mm, sigma, min L, max L)
+MALAISE_PLANS = {
+    "fly": (0.50, 1.4, 0.60, 0.4, 15.0),        # gall midges, phorids, sciarids, small flies
+    "mosquito": (0.18, 2.0, 0.50, 0.6, 9.0),    # chironomids, ceratopogonids, mosquitoes
+    "cranefly": (0.04, 8.0, 0.35, 4.0, 20.0),
+    "wasp": (0.14, 1.2, 0.65, 0.3, 18.0),       # parasitoids and micro-Hymenoptera
+    "ant": (0.02, 3.5, 0.40, 1.5, 15.0),
+    "beetle": (0.06, 2.0, 0.60, 0.8, 15.0),
+    "spider": (0.03, 2.0, 0.50, 0.8, 12.0),
+    "mite": (0.03, 0.6, 0.35, 0.3, 2.0),
+}
+# kind: the L range it draws from. insect_malaise has the real shares; the three class kinds draw L from the same fit
+# cut to one BugPicker class, for stratified runs (oversample the rare > 6 mm, then weight scores by MALAISE_SHARES).
+MALAISE_KINDS = {"insect_malaise": (0.3, 20.0),
+                 "insect_malaise_lt2": (0.3, 2.0),
+                 "insect_malaise_2to6": (2.0, 6.0),
+                 "insect_malaise_gt6": (6.0, 20.0)}
+# Real BugPicker class shares under MALAISE_FIT (numerical, 0.3-20 mm): weight stratified results by these.
+MALAISE_SHARES = {"< 2 mm": 0.710, "2-6 mm": 0.266, "> 6 mm": 0.024}
+# Mix presets for --mix / --clump / optimize.py STUDIES. 60 specimens is about the insect study's 65 in cost.
+MALAISE_MIX = {"insect_malaise": 60}
+MALAISE_MIX_STRATIFIED = {"insect_malaise_lt2": 24, "insect_malaise_2to6": 24, "insect_malaise_gt6": 12}
+PLAN_COLOR = {plan: COLORS[kind] for kind, plans in PLANS.items() for plan in plans}
+
+
+def _lognormal_pdf(L, median, sigma):
+    return np.exp(-0.5 * (np.log(L / median) / sigma) ** 2) / (L * sigma)
+
+
+def malaise_length(rng, lo=MALAISE_FIT[2], hi=MALAISE_FIT[3]):
+    """Body length (mm) from the EntoSieve fit, truncated to [lo, hi] (rejection in blocks: > 6 mm accepts ~2.4%)."""
+    median, sigma = MALAISE_FIT[:2]
+    while True:
+        L = median * np.exp(sigma * rng.standard_normal(1024))
+        L = L[(L >= lo) & (L <= hi)]
+        if len(L):
+            return float(L[0])
+
+
+def malaise_plan(L, rng):
+    """A body plan for a specimen of length L: P(plan | L) ~ weight * that plan's lognormal at L, inside its range."""
+    names = list(MALAISE_PLANS)
+    p = np.array([w * _lognormal_pdf(L, m, s) if lo <= L <= hi else 0.0
+                  for w, m, s, lo, hi in (MALAISE_PLANS[n] for n in names)])
+    return names[rng.choice(len(names), p=p / p.sum())] if p.sum() > 0 else "fly"
+
+
+def _make_malaise(kind, rng, size_scale=1.0, plan=None):
+    if plan:
+        _, median, sigma, lo, hi = MALAISE_PLANS[plan]
+        L = _length(rng, median, sigma, lo, hi)
+    else:
+        L = malaise_length(rng, *MALAISE_KINDS[kind])
+        plan = malaise_plan(L, rng)
+    L *= size_scale
+    shade = _u(rng, 0.85, 1.15)
+    sp = _Spec(tuple(min(1.0, c * shade) for c in PLAN_COLOR[plan]))
+    BUILDERS[plan](sp, rng, L)
+    return _finish(sp, kind, plan, L)
+
+
+def _malaise_summary(n=3000):
+    """Print each Malaise kind's class shares, plan shares and geoms (python insects.py malaise)."""
+    rng = np.random.default_rng(0)
+    for kind in MALAISE_KINDS:
+        rows = []
+        for _ in range(n if kind == "insect_malaise" else n // 3):
+            p = make(kind, rng)
+            plan, L = p.xml.split()[1], float(p.xml.split()[2][2:-3])
+            rows.append((plan, L, p.dims["length"], p.xml.count("<geom")))
+        L = np.array([r[1] for r in rows])
+        geoms = np.array([r[3] for r in rows])
+        plans = {pl: np.mean([r[0] == pl for r in rows]) for pl in MALAISE_PLANS}
+        print(f"{kind}: n {len(rows)}, L median {np.median(L):.2f} mm, < 1.5 mm {np.mean(L < 1.5):.3f}, "
+              f"< 2 / 2-6 / > 6 mm {np.mean(L < 2):.3f} / {np.mean((L >= 2) & (L <= 6)):.3f} / {np.mean(L > 6):.3f}, "
+              f"> 5 mm {np.mean(L > 5):.3f}, geoms {geoms.min()}-{geoms.max()} (mean {geoms.mean():.1f})")
+        print("    plans: " + ", ".join(f"{pl} {s:.3f}" for pl, s in plans.items() if s > 0)
+              + f"; Diptera {sum(plans[pl] for pl in ('fly', 'mosquito', 'cranefly')):.3f}")
+
+
 if __name__ == "__main__":
+    import sys
+    if "malaise" in sys.argv[1:]:
+        _malaise_summary()
+        sys.exit()
     rng = np.random.default_rng(0)
     print(f"{'kind':16s} {'plan':9s} {'share':>5s} {'L med':>6s} {'L p90':>6s} {'<5mm':>5s} "
           f"{'w med':>6s} {'span/L':>7s} {'span max':>8s} {'geoms':>6s}")

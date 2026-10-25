@@ -90,7 +90,18 @@ The fixes came from the sim:
 
 The buzz trades plain-rice retention for clearing the fine grains. Tune its amplitude on the bench.
 
-**4. What the optimizer learned along the way** (`sim/opt/LOG.md`):
+**4. Sorting on the seesaw, designed by the optimizer** (`sim/opt/leaderboard_seesaw.md`, alternating seesaw, ends tip):
+
+| Design | Motion | Score |
+|---|---|---|
+| **Plinko rods 4.7 / 1.5 mm** (one box, three layers) | ±14°, 1.9 s + 0.35 mm 40 Hz buzz | **0.998**: every class 100% pure and recovered, t90 0.6 s |
+| Plinko rods 4.5 / 1.4 mm | ±10.5°, 1.5 s + 0.2 mm buzz | 0.997 |
+| Best separate-trays design (inserts 5.2 / 1.8 mm) | + buzz | 0.63 |
+| Seesaw alone, best of any design | no buzz | 0.345 |
+
+The buzz is what makes the seesaw sort. With separate 5 / 2 mm trays the buzz also pushes rice through 2 mm, while rod layers keep the classes clean.
+
+**5. What the optimizer learned along the way** (`sim/opt/LOG.md`):
 - On a symmetric seesaw, gated containers can't sort at all, and plinko rods are the only style that does.
 - On a vibrating-tool shake, plinko rod layers sort the demo grains at about 100%, against 0.52 for today's glued mesh.
 

@@ -31,6 +31,7 @@ Show `sim/opt/leaderboard_malaise.md` and `sim/opt/LOG.md`.
 - The optimizer proposes printable breakers and motions, runs each across weak / medium / strong clumps, and ranks by the worse of two checks: its first run, and freshly packed clumps. No design wins on one lucky clump; round 2's 0.700 "leader" fell to 0.42 and was dropped.
 - **The winner, B-164f355a, scores 0.630 and frees 94% of fresh clumps,** against 0.45 for our hand-designed breaker with the buzz and 0.23 for no breaker. Its pins are 8 mm, shorter than the 12 mm we'd have printed.
 - It writes down why the losers lost, and it found on its own that gated containers can't sort on a symmetric seesaw.
+- **On the seesaw itself, it found a design that sorts every class at 100% in the sim:** plinko rods 4.7 / 1.5 mm, ±14° with a 0.35 mm buzz, scoring 0.998. With the seesaw alone, nothing beats 0.35. The buzz is the lever.
 - **Parameters to G-code with no hand-drawing:** B-164f355a is sliced at 57 min and 19.6 g. Show the printed part if it's done.
 
 ## 4:00 Bench and honesty (30 s)

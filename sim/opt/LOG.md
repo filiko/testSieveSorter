@@ -894,3 +894,61 @@ This overrides my 10:10 reading ("x matches attached at the mid points"). So rou
 - **The cost:** grains are hit harder. The peak-force p90 is about 250 mN against 34 mN with no breaker, where the clump just sits whole.
 
 **Correction (13:27):** the malaise round entries above give the pin spacing as "every ~X mm", which is the `pitch` key (a target). The CAD stands pins on grid nodes, every k-th with k = round(pitch / (open + bar)), so the real spacing is k x (open + bar). For every leader so far k = 1, so it's the grid step: 12.9 mm for B-164f355a, 10.1 for B-87f42099 and 13.9 for B-31c4ea6d. The leaderboard now shows the real spacing.
+## seesaw round 1 (2026-10-25 13:41, auto)
+
+**Tried:** inserts: 9 (baseline, ce, lhs); across: 2 (current); plinko: 16 (ce, lhs). 135 runs, 19 min wall.
+
+**Leader so far:** P-3bbfc231 (plinko, round 1) rods L1 gap 4.7 (rod 3.5 wide, 3.2 tall) / L2 gap 1.5 (rod 2.9, 2.2), stroke seesaw +/-14 deg (ends tip, neighbours alternate), 1.9 s per cycle, constant speed + 0.35 mm buzz at 40 Hz: robust 0.998 (mean 0.998 +/- 0.000); big (pasta, chickpea) 100% pure / 100% recovered, rice 100% pure / 100% recovered, quinoa 100% pure / 100% recovered; ok.
+
+**Screen results this round (10 s, progress score), best per family:**
+
+- inserts: best I-beceacfc screen robust 0.849; median 0.644; failures in 0 of 9 candidates
+- across: best A-860ce30b screen robust 0.779; median 0.361; failures in 0 of 2 candidates
+- plinko: best P-690b1645 screen robust 1.000; median 0.894; failures in 0 of 16 candidates
+
+**Why the losers failed** (particles per run, over this round's screened candidates in the bottom half of each family; the most common modes):
+
+- inserts: quinoa: held upstream -> on_h1p55b1p25 (21.0 in 1 cands); rice: held upstream -> on_h2p95b1p65 (20.7 in 1 cands); quinoa: held upstream -> on_h1p55b1p35 (19.7 in 1 cands); quinoa: held upstream -> on_h4p45b1p45 (15.3 in 1 cands); quinoa: held upstream -> on_h4p55b1p25 (13.7 in 1 cands); rice: held upstream -> on_h4p45b1p45 (13.3 in 1 cands)
+- across: rice: leaked downstream -> catch (27.7 in 1 cands)
+- plinko: rice: leaked downstream -> layer_3_catch (11.9 in 3 cands); quinoa: held upstream -> layer_2_rods (5.9 in 6 cands); rice: held upstream -> layer_1_rods (4.1 in 6 cands); quinoa: held upstream -> layer_1_rods (3.9 in 6 cands)
+
+**Leaders' remaining losses** (full runs, top 3):
+
+- P-3bbfc231: none
+- P-3b817251: none
+- P-690b1645: rice: between -> in the floor of layer_1_rods 0.2
+
+**Parameters at a bound among each family's elite** (the range may be too narrow):
+
+- inserts: ss_shape constant_speed 0.40/sine 0.60
+- plinko: ss_shape constant_speed 0.66/sine 0.34
+
+**Next hypothesis (auto):** the leader sorts cleanly; refine for robustness and throughput.
+
+
+
+## Seesaw round 1: the buzz makes the seesaw sort (notes, 2026-10-25 13:45)
+
+**Winners (`winners_seesaw.json`, full runs at 16 s, 2 seeds x 3 friction sets, no flags):**
+1. **P-3bbfc231:** plinko rods L1 gap 4.7 (rod 3.5 wide, 3.2 tall) / L2 gap 1.5 (rod 2.9, 2.2), on a seesaw of **+/-14 deg at 1.9 s, constant speed, + a 0.35 mm buzz at 40 Hz** (1.8 g). Robust **0.998**: every class 100% pure and 100% recovered, t90 0.6 s.
+2. **P-3b817251:** plinko 4.5 / 1.4 (rods 2.3 x 2.8 / 2.2 x 2.6), **+/-10.5 deg at 1.5 s + 0.2 mm** (1.3 g). Robust **0.997**. This one sits at the user's +/-10 deg default with a gentler buzz.
+3. P-690b1645: plinko 4.9 / 1.4, +/-13 deg, 2.1 s + 0.4 mm. Robust 0.974, gate overlap flagged (stiff-contact rerun running).
+
+**The buzz is what does it.** In round 0, with no buzz, the best plinko scored 0.345. Every round-1 elite has a buzz of 0.2-0.45 mm, and below 0.15 mm scores fall to 0.5-0.7 (screen). This is the seesaw session's finding (SEESAW.md 12:30) turned into a design: the seesaw carries grains end to end, and the buzz shakes them off solid parts and into the openings.
+
+**Separate trays (inserts), which is what the rig hangs:**
+- The best searched design is I-beceacfc: holes 5.2 / 1.8, +/-11.5 deg, 1.9 s sine + 0.35 mm. Robust 0.630, with gate overlap flagged and 3 grains per run past an opening they can't fit.
+- The demo rig + 0.3 mm buzz scores 0.389, against 0.364 without. The buzz clears the 5 mm tray (quinoa 100% recovered), but it pushes the long rice through the 2 mm square holes corner to corner (rice recovery 57%).
+- **Ribs across (bambu's `5mm_across` / `2mm_across` in the seesaw holder):** 0.528 on the plain seesaw, the best separate-tray result without a buzz (quinoa 73% through, against 44% for the demo rig). With the 0.3 mm buzz it fails at -0.03: rice falls through the 2 mm across insert (5% kept). **Ribs across want no buzz, or a finer second tray.**
+
+**Caveats (assumed):**
+- **Plinko is one holder box** with its three rod layers inside, rocking as one level. The user's rig hangs separate trays, so plinko goes in as a single tray holding all three layers. The tray-per-class designs sort less well (0.63 at best).
+- Angle, period, buzz and pivot height are all unmeasured. Whether the rig's motor can add a 40 Hz buzz of 0.2-0.35 mm (1.3-1.8 g) is the question for the bench. The handheld tool does buzz.
+- Full runs are 16 s on 2 seeds, not 30 s on 3 (seesaw runs cost about 25x a translation run per sim second even after the 20x fix). Not stress-tested on printer undersize.
+- The sim ranks designs; it isn't calibrated against bench counts.
+
+**Where this leaves the story (for main / PITCH.md):**
+- Seesaw alone sorts the big grains only.
+- Seesaw + buzz with plinko rods sorts all three classes in the sim.
+- Breaker (short pins) + buzz frees 94% of a fresh grain clump, against 48% with no breaker (malaise, EXPLORATORY).
+- The buzz is the common lever.

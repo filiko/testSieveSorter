@@ -69,9 +69,12 @@ Python 3.12. Dependencies are in [requirements.txt](requirements.txt).
 | [docs/codex-astra-answer.md](docs/codex-astra-answer.md) | Codex Astra's answer, verbatim |
 | [docs/bugsorter-line-breakdown.html](docs/bugsorter-line-breakdown.html) | Earlier report: all five modules and the BugSorter-to-BugDisperser handoff. Its pantry stand-ins (chia, couscous, noodles) predate the switch to rice, pasta and quinoa. |
 | [sim/README.md](sim/README.md) | How the sim works: engine, shaking, geometry, contacts, and what each file does |
+| [sim/opt/leaderboard.md](sim/opt/leaderboard.md) | The design optimizer's ranking: top 10, best of each family, the fixed references (including the stacked demo rig) and a stress test. [winners.json](sim/opt/winners.json) has the top 3 with CAD parameters, and [LOG.md](sim/opt/LOG.md) has each round's reading and next hypothesis. Sim ranks only; uncalibrated |
+| [sim/VERTICAL.md](sim/VERTICAL.md) | Up-and-down vs angled vs along-the-tray shaking, on one tray and on the stacked rig; contact settings for vertical strokes |
+| [sim/PERF.md](sim/PERF.md) | Sim speed on this laptop (WSL), worker scaling, chosen solver defaults |
 | [sim/BENCH.md](sim/BENCH.md) | What to measure on the bench, and which CSV template each number goes in |
 | [cad/WORKING_DIMENSIONS.md](cad/WORKING_DIMENSIONS.md) | Current holder and insert dimensions |
-| [docs/sessions/](docs/sessions/) | Work-stream briefs: [CAD and Bambu](docs/sessions/bambu.md), [physics](docs/sessions/physics.md), [design optimizer](docs/sessions/design-optimizer.md), [Forum's footage](docs/sessions/forum-footage.md) |
+| [docs/sessions/](docs/sessions/) | Work-stream briefs: [CAD and Bambu](docs/sessions/bambu.md), [physics](docs/sessions/physics.md), [design optimizer](docs/sessions/design-optimizer.md), [demo rig and up-and-down shaking](docs/sessions/demo-rig.md), [physics handoff](docs/sessions/physics-handoff.md) |
 
 ## Key sources
 

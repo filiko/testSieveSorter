@@ -112,3 +112,19 @@ The inserts drop into the old `frame_holder` too, so items 2 and 3 can be tested
 - a TPU 95A copy of the inserts would be the soft landing. The P1S prints TPU without the AMS, but it needs the filament on hand and prints slower (an estimate: about twice as long). Not sliced.
 
 In the sim: `inserts:5mm_across,2mm_across,pitch=55,holder=seesaw` (`sim/designs_holder.py` reads all of this from the CAD modules).
+
+### Sim check: the old parts against the new (one seed, uncalibrated)
+
+Both towers ran ±10°, 2 s per cycle, constant angular speed, neighbours in opposite phase. Each got the same 71 grains of all 10 kinds, 10 s after a 1 s settle, seed 1. Old: `inserts:5mm,2mm,pitch=85`. New: `inserts:5mm_across,2mm_across,pitch=55,holder=seesaw`. Grain counts left on the 5 mm tray:
+
+| Grain (count) | Old: on 5 mm | New: on 5 mm | Old: in the catch | New: in the catch |
+|---|---|---|---|---|
+| quinoa (12) | **7** | **1** | 3 | 10 |
+| chia (12) | 6 | 4 | 5 | 7 |
+| couscous (10) | 0 | 1 | 8 | 8 |
+| the 5 rice kinds (30) | 7 | 8 | 2 | 1 |
+| pasta (4), chickpea (3) | 7 | 7 | 0 | 0 |
+
+- **Small grains stuck on the 5 mm tray, all kinds but pasta and chickpea:** 20 of 64 on the old parts, 14 of 64 on the new. Most of the gain is quinoa. Chia still sticks (4 of 12): at ±10° it doesn't slide on plastic, ramps or not.
+- **Gentler:** the largest contact overlap fell from 0.16 to 0.10 mm on the trays and from 0.054 to 0.016 mm between particles, a crude proxy for impact. The drop is 55 mm instead of 85, so the free-fall impact speed is about 1.0 m/s instead of 1.3 (√(2gh), in air), and the energy about 35% lower.
+- **One seed only.** Seeds 2 and 3 were started and then stopped when the laptop ran low on memory. Treat this as a direction, not a number. Replays: `sim/out/runs/ab_old/view.html` and `ab_new/view.html` (local, `--rig bugsorter`).

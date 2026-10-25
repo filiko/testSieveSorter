@@ -53,6 +53,24 @@ Every part is exactly the size of a 24-well plate (127.76 × 85.47 × 20.27 mm),
 | `pool` + gate strips | One open plane, shaken along the long side, with swappable gates (see **Pool sorter** below). P1S estimate: 58 min, 44 g. |
 | `pool_coupon` | One gate slot of the pool (46 mm long), to check the strip fit and gate behaviour before printing the pool. 29 min. |
 
+### Round layer stack (`round_stack.py`)
+
+![round stack section](cad/out/round_stack_section.png)
+
+Full layers, all the same size (85 mm across, 20.27 mm tall), with the gates in each floor. Anything smaller than a layer's gates falls through to the layer below. Each layer's lip nests into the rim of the one below, and each layer lifts off carrying its own class.
+
+| Part | Gates | Keeps | Passes |
+|---|---|---|---|
+| `round_lid` | — | — | — |
+| `layer_x_square_5p0` | 73 square, 5.0 mm | Pasta | Rice, quinoa |
+| `layer_y_slot_1p4` | 95 slots, 1.4 × 10 mm | Long-grain rice (~1.7 mm thick) | Quinoa (~1.0 mm thick) |
+| `layer_y_square_2p3` | 261 square, 2.3 mm | Short-grain rice | Quinoa (swap in instead of the slot layer if your rice is short-grain) |
+| `round_collector` | — | Quinoa | — |
+
+- **Square gates** sort by width. **Slots** sort by thickness: shaking tips grains edge-first into a floor slot, the way grain graders sort barley.
+- Every gate widens 8° downward, so near-size grains fall free.
+- Prints flat, right side up, no supports. Rebuild with `round_stack.py` and change sizes in `LAYERS`.
+
 ### Tiered sorter
 
 ![tiered section](cad/out/tiered_section.png)

@@ -27,9 +27,9 @@ BugSorter changes the electronics and control, not the sieving itself: insects s
 
 Full reasoning, tests and targets: [docs/gates-verdict.md](docs/gates-verdict.md)
 
-### Demo tray and next step
+### Demo rig and next step
 
-The demo rig, from the team's photos: a white 3D-printed square-grid sieve tray, bolted onto a **handheld DeWalt 20V MAX cordless tool**, sorting tube pasta from rice and grains. The next big improvement is **shaking it up and down**, not only side to side. The sim models just the tray, the grains and the shaking motion, not the tool. It gets vertical and angled strokes, then a direct comparison against horizontal shaking on this tray ([docs/sessions/demo-rig.md](docs/sessions/demo-rig.md)). The photos are local reference only (`media/`, gitignored).
+The sorter is a **stack of separate trays, one above the other**: coarse on top, finer below, and a catch pan at the bottom. The whole stack shakes together. In the team's photos, one of those trays (a white 3D-printed square-grid sieve) is bolted onto a **handheld DeWalt 20V MAX cordless tool**, sorting tube pasta from rice and grains. The next big improvement is **shaking it up and down**, not only side to side. The sim models just the stacked trays, the grains and the shaking motion, not the tool (`inserts:5mm,2mm`: each tray in its own holder box, stacked straight up). It gets vertical and angled strokes, then a direct comparison against horizontal shaking on the stack ([docs/sessions/demo-rig.md](docs/sessions/demo-rig.md)). The photos are local reference only (`media/`, gitignored).
 
 ## Repository layout
 

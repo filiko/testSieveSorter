@@ -47,7 +47,7 @@ def plan_md(built: dict, sliced: dict, plates: dict, printer: str, breakers=()) 
     lines = [f"# Print plan: {built['study']} winners", "",
              f"Built {built['built']} from `{repo_rel(built['source'])}`, "
              f"sliced for the {printer} (Bambu Studio's default process, PLA). Made by `cad/winners.py`.", "",
-             f"**Caveat:** {built.get('caveat') or 'sim ranking only'}." + (
+             f"**Caveat:** {(built.get('caveat') or 'sim ranking only').rstrip('.')}." + (
                  f" The CAD is drawn at the nominal sizes; the sim assumed openings print "
                  f"{built['undersize_mm_assumed']} mm small. Check that against `hole_gauge` before trusting a gate "
                  "size to 0.1 mm." if built.get("undersize_mm_assumed") is not None else ""), ""]

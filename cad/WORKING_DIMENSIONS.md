@@ -32,7 +32,7 @@ Each box tips about its own pivot across its middle (at the body's centre, mid-h
 | ±20° | 89.5 | 74.4 |
 | ±25° | 103.6 | 84.9 |
 
-The pitch is about how far a specimen drops from one screen to the next, so the smallest pitch that clears is the gentlest. Use **55 mm at ±10°** and **65 mm at ±15°** with the seesaw holder (5 mm clear in the sim's `rocking.py`). Preview: `out/seesaw_tower.png` (±10°, seesaw holders with the ribs-across inserts over the catch pan).
+The pitch is about how far a specimen drops from one screen to the next, so the smallest pitch that clears is the gentlest. Use **55 mm at ±10°** and **65 mm at ±15°** with the seesaw holder (5 mm clear in the sim's `rocking.py`). Preview: `out/seesaw_tower.png` is still the 11:06 one (frame_holder boxes at ±25°, 105 mm). The ±10° re-render with the seesaw parts was stopped when the laptop ran low on memory.
 
 ## Seesaw holder and catch pan (`seesaw_holder.py`)
 

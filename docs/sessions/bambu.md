@@ -15,3 +15,9 @@ Worktree `Documents\Github\testSieveSorter-bambu`, branch `bambu-viz`. Read [REA
 
 ## Done when
 Bambu Studio is installed, `slice.py hole_gauge` prints an estimate, the gated-container parts rebuild, and their previews are updated in a PR.
+
+## Status, 12:50 (relaunched at 12:25 for PLAN.md's bambu section)
+- **CAD fixes, done (PR #21):** `cad/seesaw_holder.py` (a centre-pivot holder with no tab, and the deep catch pan with a lip) and `sieve_insert.py` ACROSS (ribs-across 5 / 2 mm). Each has a preview, checks, a P1S slice and a print-plan entry. The sim builds them as `inserts:5mm_across,2mm_across,pitch=55,holder=seesaw`.
+- **Clump finding (drops of ~100 mm hit hardest):** without the tab, the levels clear at ~54 mm pitch at ±10°, so the drop is about halved. The 45° ramps and ridges make landings glancing, and TPU inserts would be the soft option (not sliced).
+- **Print queue:** `sim/opt/print_plan.md`, top of the hand-written part. What's on the printer is a question for the user.
+- **Next:** the tower preview, then an A/B sim of the old vs the new parts, then the hero visuals at ~13:45 (local `media/`, never committed).

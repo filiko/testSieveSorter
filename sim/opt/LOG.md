@@ -474,3 +474,20 @@ P-7dd9222c (plinko 3.6 / 1.6, sine 20 Hz at 2.1 g along the tray) **stays flagge
 
 A design-pipeline fix went in at the same time. Every step now recomputes all summaries from the run cache when it starts, so none decides what to stress, verify or replay from stale saved numbers. That staleness is why winner #2 (P-547508e5) and the firmware pick (P-cbe7dbec) hadn't been stress-tested; they are running now.
 
+## Every winner stress-tested; a rule for the L2 rod gap (notes, 2026-10-25 09:20)
+
+The two designs that hadn't been stress-tested failed it:
+- P-547508e5, plinko 3.1 / **1.7**: worst 0.630;
+- P-cbe7dbec, plinko 5.1 / **1.7**, firmware: worst 0.654.
+
+In both, the loose-printer variant (openings 0.05 mm under nominal instead of 0.15) lets rice through layer 2. The firmware one also loses ground at a 0.02 s stroke reversal (0.681).
+
+**Rule for printing: plinko layer-2 gap 1.5-1.6 mm nominal.** Every stress-tested plinko with a 1.7 mm gap drops to about 0.63-0.65 when the printer runs 0.1 mm loose. With 1.5-1.6 mm the worst cases are 0.87-0.98. Sim rice is 1.7 mm thick (+/- 7%). The gap has to stay under rice's thin tail even when it prints loose, while staying 0.3+ mm over quinoa (1.1 mm). Measuring real rice and the printer's undersize (`hole_gauge.py`) would pin this down.
+
+**winners.json, all stress-tested, ranked by worst case:**
+1. P-ae394887, plinko 3.7 / 1.5, vibrating tool 48 Hz 2.2 g 20 deg: 0.999 (worst 0.978);
+2. G-a1ecf9bb, gated_mid, tunnels 3.5 / 1.6, vibrating tool 48 Hz 3.7 g 30 deg: 0.985 (worst 0.925);
+3. P-ba5dd6b3, plinko 5.6 / 1.6, **firmware** 9.5 mm at 47 mm/s, 5 deg up: 0.929 (worst 0.870). Also the best per drive for BioKEA's stage.
+
+P-6e03ce14 (plinko 4.1 / 1.6, firmware at 25 deg) scores 0.958 but falls to 0.826 at a 0.02 s reversal, so it ranks just below.
+

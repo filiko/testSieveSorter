@@ -1,6 +1,6 @@
 # Leaderboard: Demo set: surrogate grains (pasta + chickpea / rice / quinoa)
 
-Generated 2026-10-25 09:08 by `sim/optimize.py` (study `demo`). 201 candidates, 2700 sim runs so far.
+Generated 2026-10-25 09:15 by `sim/optimize.py` (study `demo`). 201 candidates, 2754 sim runs so far.
 
 **The sim ranks designs; it does not predict real percentages.** It is uncalibrated until `calibrate.py` has bench counts, has no water, rigid particles, and about 80 particles per run. Sizes are simulated at the as-printed opening, nominal - 0.15 mm (ASSUMED until the hole gauge is measured).
 
@@ -55,7 +55,9 @@ Ranked by the robust score (mean - 1 sd) over 3 friction sets x 3 seeds at the f
 | P-6e03ce14 | plinko | 0.958 | 0.983 | 0.826 | 0.937 | 0.936 | **0.826** | rods L1 gap 4.1 (rod 1.7 wide, 2.2 tall) / L2 gap 1.6 (rod 2.1, 3.2) |
 | G-060cecb0 | gated_mid | 0.955 | - | - | 0.760 | 0.954 | **0.760** | L1 w3.1x3.1 / L2 t1.8; slope 0.3 deg, tunnel width 8.3, tooth 1.1, L1 gate at x 31.8 with slot 7.4, L2 at x 53, unflipped |
 | P-fdf86953 | plinko | 0.937 | - | - | 0.650 | 0.977 | **0.650** | rods L1 gap 5.1 (rod 2.4 wide, 3.4 tall) / L2 gap 1.7 (rod 2.3, 3.2) |
+| P-547508e5 | plinko | 0.937 | - | - | 0.630 | 0.964 | **0.630** | rods L1 gap 3.1 (rod 2.8 wide, 1.8 tall) / L2 gap 1.7 (rod 2.3, 1.8) |
 | P-ba5dd6b3 | plinko | 0.929 | 0.971 | 0.892 | 0.930 | 0.870 | **0.870** | rods L1 gap 5.6 (rod 1.8 wide, 2.6 tall) / L2 gap 1.6 (rod 2.2, 2.8) |
+| P-cbe7dbec | plinko | 0.891 | 0.938 | 0.681 | 0.654 | 0.852 | **0.654** | rods L1 gap 5.1 (rod 1.4 wide, 1.6 tall) / L2 gap 1.7 (rod 1.9, 3.2) |
 | I-f660966d | inserts | 0.714 | 0.729 | 0.655 | 0.599 | 0.710 | **0.599** | square holes 5 (bar 1.2) / 2 (bar 1) |
 | P-99a23702 | plinko | 0.670 | 0.934 | 0.530 | 0.799 | 0.485 | **0.485** | rods L1 gap 5 (rod 2.4 wide, 3 tall) / L2 gap 1.4 (rod 2, 2.6) |
 | C-243bf513 | current | 0.523 | 0.518 | 0.522 | 0.523 | 0.523 | **0.518** | TODAY on the bench: glued mesh inserts mesh5 / mesh2, firmware cap stroke |

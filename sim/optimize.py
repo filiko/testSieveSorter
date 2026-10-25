@@ -137,8 +137,16 @@ class P:
 # rig's (sine; frequency and peak acceleration; amplitude follows). angle_deg tilts the stroke from the design's flow axis
 # (0) to straight up (90) (sorter.py stroke_axis, docs/sessions/demo-rig.md). Older candidates have no drive or angle:
 # firmware and 0 deg, so their strokes and cache keys are unchanged.
-STROKE_PARAMS = [P("drive", 0, 0, 0, ("firmware", "tool")), P("amp", 5.0, 15.0, 0.5), P("speed", 15.0, 50.0, 1.0),
-                 P("freq", 10.0, 50.0, 1.0), P("accel", 1.0, 5.0, 0.1), P("angle", 0.0, 90.0, 5.0)]
+STROKE_PARAMS = [P("drive", 0, 0, 0, ("firmware", "tool", "rock")), P("amp", 5.0, 15.0, 0.5),
+                 P("speed", 15.0, 50.0, 1.0), P("freq", 10.0, 50.0, 1.0), P("accel", 1.0, 5.0, 0.1),
+                 P("angle", 0.0, 90.0, 5.0), P("rock_axis", 0, 0, 0, ("x", "y")), P("rock_deg", 2.0, 20.0, 0.5),
+                 P("rock_period", 0.4, 6.0, 0.1)]
+# rock: the tray seesaws about a horizontal axis through its centre (the user, 10:10: "side to side like a seesaw",
+# trays on side pivots). x = about the tray's long axis (the width tips), y = about its short axis (the ends tip).
+# The tilt runs at constant angular speed between +/- rock_deg with hard reversals (the firmware's motion, mapped
+# through a lever), so the reversal jolt is there too. Pivot axis and amplitude are unmeasured: searched.
+ROCK_DEFAULT = {"rock_axis": "x", "rock_deg": 10.0, "rock_period": 1.6}
+FORCE_DRIVE = None                # run --drive rock: every new candidate (and reference) of this run uses that drive
 CE_DEFAULTS = {"drive": "firmware", "angle": 0.0}     # what a candidate without these params ran with
 
 
@@ -427,6 +435,10 @@ def show(c):
 
 
 def stroke_of(p):
+    if p.get("drive", "firmware") == "rock":
+        q = {**ROCK_DEFAULT, **{k: p[k] for k in ROCK_DEFAULT if k in p}}
+        return {"profile": "none", "rock": {"axis": q["rock_axis"], "deg": q["rock_deg"], "period_s": q["rock_period"],
+                                            "ramp_s": RAMP_S}}
     if p.get("drive", "firmware") == "tool":
         f, a = p["freq"], p["accel"]
         s = {"profile": "sine", "amp_mm": round(a * 9810.0 / (2 * math.pi * f) ** 2, 4), "freq_hz": f}
@@ -438,6 +450,9 @@ def stroke_of(p):
 
 
 def stroke_show(st):
+    if st.get("rock"):
+        r = st["rock"]
+        return f"seesaw +/-{r['deg']:g} deg about the tray's {'long' if r['axis'] == 'x' else 'short'} axis, {r['period_s']:g} s per cycle"
     if st.get("profile") == "sine":
         g = st["amp_mm"] * (2 * math.pi * st["freq_hz"]) ** 2 / 9810.0
         out = f"tool sine {st['freq_hz']:g} Hz, {g:.1f} g ({st['amp_mm']:.2f} mm)"
@@ -448,6 +463,8 @@ def stroke_show(st):
 
 def make_cand(family, params, origin, rnd, label=None, study="demo"):
     f = FAMILIES[family]
+    if FORCE_DRIVE:
+        params = {**params, "drive": FORCE_DRIVE}
     p = {q.name: q.quant(params[q.name]) for q in params_of(family, study) if q.name in params}
     c = {"family": family, "params": p, "spec": f["spec"](p), "inject": f["inject"](p), "stroke": stroke_of(p),
          "origin": origin, "round": rnd, "label": label}
@@ -613,6 +630,8 @@ def run_job(job):
     import sorter
     t0 = time.time()
     rec = {"key": job["key"], "tags": job["tags"], "config": job["cfg"]}
+    mujoco.mj_step = getattr(mujoco, "_orig_mj_step", mujoco.mj_step)   # one wrapper per run, never nested
+    mujoco._orig_mj_step = mujoco.mj_step
     try:
         apply_inject(job.get("inject") or {})
         import designs
@@ -634,6 +653,9 @@ def run_job(job):
             if seen["n"] % 50 == 0 and d.warning[bad].number:
                 raise Unstable(f"BADQACC at t = {d.time:.4f} s, DOF {int(d.warning[bad].lastinfo)}")
 
+        rock = job["cfg"]["stroke"].get("rock")
+        if rock:
+            checked_step = rocking(checked_step, rock, job["cfg"], seen)
         mujoco.mj_step = checked_step
         res = sorter.run(sorter.RunConfig(**job["cfg"]))
         if res.get("unstable_resets"):             # sorter.py's own reset detection (d.time going backwards)
@@ -656,6 +678,46 @@ def run_job(job):
         rec.update({"error": traceback.format_exc()[-3000:]})
     rec["wall_total_s"] = round(time.time() - t0, 2)
     return rec
+
+
+def rocking(inner, rock, cfg, seen):
+    """Wrap mj_step so the tray seesaws instead of translating (the sim runs in the tray frame, sorter.py only
+    translates). Before each step: gravity is rotated into the tilted tray frame, and every particle gets the
+    rotating-frame forces m (-alpha x r - w x (w x r) - 2 w x v), r measured in plan from the tray centre (the
+    pivot axis is taken through the centre of each tray, at the particle's own height). The tilt follows the
+    firmware's constant-speed, hard-reversal profile (sorter.stroke_profile constant_speed, in radians)."""
+    import mujoco
+    import sorter
+    dt, settle = cfg["dt"], cfg["settle_s"]
+    n = round(cfg["duration_s"] / dt) + 2
+    q = round(rock["period_s"] / 4 / dt)          # start a quarter cycle in, where the tilt passes level
+    th_amp = np.radians(rock["deg"])
+    th, om, al = sorter.stroke_profile({"profile": "constant_speed", "amp_mm": th_amp, "freq_hz": 1.0 / rock["period_s"],
+                                        "ramp_s": rock.get("ramp_s", RAMP_S)}, n + q, dt)
+    th, om, al = th[q:], om[q:], al[q:]
+    e = np.array([1.0, 0.0, 0.0]) if rock["axis"] == "x" else np.array([0.0, 1.0, 0.0])
+    st = {}
+
+    def step(m, d):
+        if "roots" not in st:
+            st["roots"] = np.array([b for b in range(1, m.nbody) if m.body_rootid[b] == b])
+            st["mass"] = m.body_subtreemass[st["roots"]][:, None]
+            st["dof"] = m.jnt_dofadr[m.body_jntadr[st["roots"]]]
+        i = int(round((d.time - settle) / dt))
+        if i >= 0 and i < n:
+            c, s_ = np.cos(th[i]), np.sin(th[i])
+            g = np.array([0.0, 0.0, -sorter.G])
+            # gravity seen from a frame rotated by th about e (Rodrigues, rotating the vector by -th)
+            m.opt.gravity[:] = g * c - np.cross(e, g) * s_ + e * (e @ g) * (1 - c)
+            w, a = om[i] * e, al[i] * e
+            pos = d.xipos[st["roots"]].copy()
+            pos[:, 2] = 0.0
+            vel = d.qvel[st["dof"][:, None] + np.arange(3)]
+            f = -np.cross(a, pos) - np.cross(w, np.cross(w, pos)) - 2 * np.cross(w, vel)
+            d.xfrc_applied[st["roots"], :3] = st["mass"] * f
+        inner(m, d)
+
+    return step
 
 
 def run_in_child(job, job_dir):
@@ -1045,13 +1107,14 @@ def leaderboard_md(study, cands, summ, meta):
     by_drive = {}
     for c in pool:
         if c["family"] in FAMILIES:
-            by_drive.setdefault(c["stroke"].get("profile"), c)
+            by_drive.setdefault(drive_of(c), c)
     if by_drive:
         lines += ["", "## Best per drive", "",
                   "BioKEA's stage can only run the firmware stroke (constant speed); the demo rig is a vibrating tool "
                   "(sine). Best full-run design for each, whether or not it is flagged:", "",
                   "| drive | id | family | robust | flags | design (CAD, nominal mm) | stroke |", "|---|---|---|---|---|---|---|"]
-        for prof, name in (("constant_speed", "firmware (BioKEA's stage)"), ("sine", "vibrating tool (demo rig)")):
+        for prof, name in (("rock", "seesaw (the rig's current rocking motor)"), ("constant_speed", "firmware (BioKEA's stage)"),
+                           ("sine", "vibrating tool (demo rig)")):
             c = by_drive.get(prof)
             if c:
                 sm = summ[c["id"]]["full"]
@@ -1149,8 +1212,9 @@ def winners_json(study, cands, summ):
             "stress_tested": stressed(summ[c["id"]]), "worst_case_robust": round(win_key(summ[c["id"]]), 4),
             "replay": f"sim/out/opt/{study}/replay/{c['id']}/view.html"})
     out["best_by_drive"] = {}
-    for drive, prof in (("firmware (BioKEA's stage)", "constant_speed"), ("vibrating tool (demo rig)", "sine")):
-        pick = next((c for c in clean if c["stroke"].get("profile") == prof), None)
+    for drive, prof in (("seesaw (the rig's current rocking motor)", "rock"), ("firmware (BioKEA's stage)", "constant_speed"),
+                        ("vibrating tool (demo rig)", "sine")):
+        pick = next((c for c in clean if drive_of(c) == prof), None)
         if pick:
             s = summ[pick["id"]]["full"]
             out["best_by_drive"][drive] = {
@@ -1160,6 +1224,10 @@ def winners_json(study, cands, summ):
                 "per_class": [{"class": cl["name"], "purity": s["purity"][k], "recovery": s["recovery"][k]}
                               for k, cl in enumerate(STUDIES[study]["classes"])]}
     return out
+
+
+def drive_of(c):
+    return "rock" if c["stroke"].get("rock") else c["stroke"].get("profile")
 
 
 def verified(sm):
@@ -1336,6 +1404,9 @@ def evaluate(cands, study, fid, base, sets, workers, summ):
 def refs(study, rnd):
     out = [make_cand(f, p, "baseline", rnd, label, study) for f, label, p in BASELINES.get(study, [])]
     for ref in [CURRENT] + ([DEMO_RIG] if study in ("demo", "smoke") else []):   # fixed, non-family references
+        if FORCE_DRIVE == "rock":
+            ref = dict(ref, stroke=stroke_of({"drive": "rock"}), label=ref["label"].split(",")[0] + ", seesaw "
+                       f"(default {ROCK_DEFAULT['rock_deg']:g} deg, {ROCK_DEFAULT['rock_period']:g} s, long axis)")
         cur = dict(ref, origin="current", round=rnd)
         cur["id"] = cand_id(cur)
         out.append(cur)
@@ -1431,6 +1502,11 @@ def replay(args):
                              duration_s=FULL_S, seed=0)
         cfg["record_fps"], cfg["out_dir"] = args.fps, str(out)
         apply_inject(c["inject"])
+        import mujoco
+        mujoco.mj_step = getattr(mujoco, "_orig_mj_step", mujoco.mj_step)
+        mujoco._orig_mj_step = mujoco.mj_step
+        if c["stroke"].get("rock"):
+            mujoco.mj_step = rocking(mujoco._orig_mj_step, c["stroke"]["rock"], cfg, {})
         r = sorter.run(sorter.RunConfig(**cfg))
         page = viewer.build(out)
         print(cid, c["spec"], {k: v for k, v in r["recovery"].items()}, "->", page)
@@ -1505,14 +1581,16 @@ def main():
     ap.add_argument("--top", type=int, default=3)
     ap.add_argument("--ids", help="replay / stress: extra candidate ids, comma separated")
     ap.add_argument("--ramps", default="0.005,0.02", help="stress: reversal times to try, s")
+    ap.add_argument("--drive", choices=["firmware", "tool", "rock"], help="run: every new candidate uses this drive")
     ap.add_argument("--undersize", default="0.05,0.25", help="stress: printer undersizes to try, mm")
     ap.add_argument("--fps", type=float, default=20.0)
     ap.add_argument("--screen-s", type=float, help="override the screen length (smoke tests)")
     ap.add_argument("--full-s", type=float, help="override the full length (smoke tests)")
     args = ap.parse_args()
     args.workers = min(args.workers, MAX_WORKERS)
-    global SCREEN_S, FULL_S
+    global SCREEN_S, FULL_S, FORCE_DRIVE
     SCREEN_S, FULL_S = args.screen_s or SCREEN_S, args.full_s or FULL_S
+    FORCE_DRIVE = args.drive
     {"run": run_study, "report": report, "replay": replay, "plan": plan, "stress": stress,
      "verify": verify}[args.cmd](args)
 

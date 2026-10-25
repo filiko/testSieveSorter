@@ -626,3 +626,21 @@ It's provisionally winner #2 (stress test queued next: printer undersize +/- 0.1
 
 All three are stacks of removable trays, one class per tray.
 
+## The rig rocks: a seesaw drive (notes, 2026-10-25 10:10)
+
+**From the user (10:05-10:15), with a photo of the rig.** The trays are separate levels hung one above another in an aluminium frame. Each section drops into the next tray. Each tray is attached at its mid-points to the motor, which rocks it **side to side like a seesaw** (the holder's mounting tab at the middle of its +X end, `frame_holder.py`). That is the motion of the machine as it stands, so it's the quickest thing to improve. The shaking results above stay valid, for a rig that shakes.
+
+**What the optimizer did until now.** Every stroke was a translation: the firmware stage, or a vibrating tool, at any angle. `sorter.py` only translates the tray (a uniform pseudo-force).
+
+**New drive, `rock`** (in `optimize.py`'s run wrapper, without touching `sorter.py`):
+1. **Tilt.** Gravity is rotated into the tilted tray frame every step.
+2. **Rotating-frame forces.** Every particle also gets m(-alpha x r - w x (w x r) - 2 w x v), with r measured in plan from the tray centre, where the pivot axis runs. This includes the jolt from the angular acceleration at each hard reversal, so the tray ends jerk while the middle doesn't.
+3. **Profile.** The tilt follows the firmware's constant-speed profile with hard reversals, starting level, between +/- `rock_deg`, `rock_period` s per cycle.
+4. **Search space.** The pivot axis is a categorical: x = the tray's long axis (the width tips side to side; this matches "attached at the mid points") or y = its short axis (the ends tip). The amplitude is 2-20 deg and the period 0.4-6 s. All three are unmeasured.
+
+**Checked (executed, plinko 3.7 / 1.5, 2 s, mu 0.4):** rocking about the long axis put 27/30 rice on its tray against 19/30 with no motion; about the short axis, 23/30. The tilt traces as expected: gravity's x component reaches 1703 mm/s^2 = g sin 10 deg. A first smoke test showed identical counts for every motion. That was my test, not the physics: three runs in one process each wrapped the previous run's step. `run_job` now always starts from MuJoCo's own `mj_step`, and `replay` applies the rocking as well.
+
+**Not modelled yet.** The levels hang apart in the frame rather than rim on rim, so the drop between trays is longer than in the sim's tower. The pivot height relative to each tray floor isn't known either. Both are assumptions to check against the rig.
+
+**Next.** A demo round with every new candidate and reference on the seesaw drive (`run --drive rock`). `winners.json` gets a "seesaw" entry in its best-per-drive list: the design for the rig's current motor.
+

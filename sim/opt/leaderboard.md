@@ -1,6 +1,6 @@
 # Leaderboard: Demo set: surrogate grains (pasta + chickpea / rice / quinoa)
 
-Generated 2026-10-25 10:02 by `sim/optimize.py` (study `demo`). 265 candidates, 3573 sim runs so far.
+Generated 2026-10-25 10:09 by `sim/optimize.py` (study `demo`). 265 candidates, 3627 sim runs so far.
 
 **The sim ranks designs; it does not predict real percentages.** It is uncalibrated until `calibrate.py` has bench counts, has no water, rigid particles, and about 80 particles per run. Sizes are simulated at the as-printed opening, nominal - 0.15 mm (ASSUMED until the hole gauge is measured).
 
@@ -49,12 +49,15 @@ Ranked by the robust score (mean - 1 sd) over 3 friction sets x 3 seeds at the f
 | id | family | as ranked (ramp 0.01 s, undersize 0.15 mm) | ramp 0.005 s | ramp 0.02 s | undersize 0.05 mm | undersize 0.25 mm | worst | design |
 |---|---|---|---|---|---|---|---|---|
 | P-b192da7c | plinko | 1.000 | - | - | 0.937 | 0.999 | **0.937** | rods L1 gap 4.7 (rod 2.6 wide, 2.2 tall) / L2 gap 1.6 (rod 2.3, 3.2) |
+| P-e6f1f8db | plinko | 0.999 | - | - | 1.000 | 0.999 | **0.999** | rods L1 gap 4.3 (rod 1.8 wide, 1.8 tall) / L2 gap 1.5 (rod 2.6, 3.2) |
 | P-ae394887 | plinko | 0.999 | - | - | 0.978 | 0.997 | **0.978** | rods L1 gap 3.7 (rod 2.6 wide, 1.6 tall) / L2 gap 1.5 (rod 1.8, 2.4) |
 | P-7dd9222c | plinko | 0.999 | - | - | 0.937 | 0.999 | **0.937** | rods L1 gap 3.6 (rod 2.1 wide, 1.8 tall) / L2 gap 1.6 (rod 2, 2.8) |
+| P-cbc9ed5d | plinko | 0.999 | - | - | 0.937 | 0.998 | **0.937** | rods L1 gap 3.3 (rod 2.7 wide, 1.8 tall) / L2 gap 1.6 (rod 2.4, 3) |
 | P-668db784 | plinko | 0.998 | - | - | 0.937 | 0.997 | **0.937** | rods L1 gap 3.5 (rod 3.7 wide, 2 tall) / L2 gap 1.6 (rod 2.9, 2.2) |
 | G-a1ecf9bb | gated_mid | 0.985 | - | - | 0.925 | 0.965 | **0.925** | L1 t3.5 / L2 t1.6; slope 2.7 deg, tunnel width 5, tooth 0.8, L1 gate at x 22.2 with slot 8.1, L2 at x 53, unflipped |
 | P-6e03ce14 | plinko | 0.958 | 0.983 | 0.826 | 0.937 | 0.936 | **0.826** | rods L1 gap 4.1 (rod 1.7 wide, 2.2 tall) / L2 gap 1.6 (rod 2.1, 3.2) |
 | G-060cecb0 | gated_mid | 0.955 | - | - | 0.760 | 0.954 | **0.760** | L1 w3.1x3.1 / L2 t1.8; slope 0.3 deg, tunnel width 8.3, tooth 1.1, L1 gate at x 31.8 with slot 7.4, L2 at x 53, unflipped |
+| G-e5083752 | gated | 0.950 | - | - | 0.947 | 0.893 | **0.893** | L1 t5.3 / L2 t1.6; slope 3.1 deg, tunnel width 8.3, tooth 1.7, slot 7.2 |
 | G-d726c2e8 | gated | 0.946 | - | - | 0.839 | 0.956 | **0.839** | L1 t4.4 / L2 t1.8; slope 2.4 deg, tunnel width 8, tooth 1.1, slot 6 |
 | P-fdf86953 | plinko | 0.937 | - | - | 0.650 | 0.977 | **0.650** | rods L1 gap 5.1 (rod 2.4 wide, 3.4 tall) / L2 gap 1.7 (rod 2.3, 3.2) |
 | P-547508e5 | plinko | 0.937 | - | - | 0.630 | 0.964 | **0.630** | rods L1 gap 3.1 (rod 2.8 wide, 1.8 tall) / L2 gap 1.7 (rod 2.3, 1.8) |

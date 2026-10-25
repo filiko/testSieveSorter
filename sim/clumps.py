@@ -6,7 +6,8 @@ apart gently is the system's real job; size sorting comes after. This module add
 The clump (Clumps):
   - N specimens (insects.py kinds, or grains.py surrogates for the bench demo) plus debris, packed into a ball by a
     short pre-sim of the clump alone: no gravity, every body pulled toward the clump's centre of mass at PULL_G
-    with its speed damped, then the pull switched off and the pile relaxed, so no contact is left loaded. Leaves
+    with its speed damped, then the pull switched off and the pile relaxed while its contacts stiffen to the run's
+    own, so no contact is left loaded (grains: no overlap left; interlocked insect legs keep about 0.1 mm). Leaves
     join after the core has packed: each is laid against the ball's surface (mostly the upper half) and pressed
     on, so it sticks to the outside instead of splitting the ball in two.
   - Every pair of bodies whose geoms come within gap_mm of each other is joined by a breakable bond: a MuJoCo
@@ -22,15 +23,17 @@ The clump (Clumps):
     where r_pair = 2 r1 r2 / (r1 + r2) is the harmonic mean of the two bodies' half widths (a capillary bridge
     pulls with 2 pi gamma R, so strength per mm of radius is the natural unit), w is the mean wetness of the two
     bodies from spray.py (0 with no spray), and sigma (uN per mm) comes from the bond set:
-        weak    1000   1 mN between two rice grains (r_pair 1 mm), 6 x a grain's weight; 2 water menisci
-        medium  3000   3 mN, 18 x
-        strong  8000   8 mN, 48 x
-    ASSUMED: nobody has measured what holds a Malaise clump together, so the sets are placed on the load the
-    seesaw itself puts on bonds. With unbreakable bonds, one +/-25 deg, 2 s cycle of the demo tower gave a
-    bond's peak load over r_pair of 955 / 3040 / 7260 uN/mm at the 20th / 50th / 80th percentile (50 rice +
-    50 quinoa + 6 pasta + debris), so weak breaks most bonds in a cycle, medium about half and strong a fifth,
-    before any cascade. Rank designs across all three, like the friction sets. k_wet (0.6) is ASSUMED too:
-    wetting weakens bonds (SYSTEM.md section 4).
+        weak     5000   5 mN between two rice grains (r_pair 1 mm), 30 x a grain's weight
+        medium  10000   10 mN, 60 x
+        strong  25000   25 mN, 150 x
+    ASSUMED: nobody has measured what holds a Malaise clump together, so the sets are placed on the loads the
+    clump itself sees, measured with unbreakable bonds on the demo clump (50 rice + 50 quinoa + 6 pasta +
+    debris) in inserts:5mm,2mm,pitch=85 (CLUMPS.md). Lying still on the 5 mm tray, a bond's load over r_pair
+    peaks at 4530 uN/mm (p99 2130); over one +/-10 deg, 2 s seesaw cycle at p90 4680, p99 10060, max 25700.
+    So weak just holds itself up at rest (any weaker and the clump falls apart under its own weight as soon
+    as it is set down), medium is the cycle's p99 and strong its maximum. Rank designs across all three,
+    like the friction sets. k_wet (0.6) is ASSUMED too: wetting weakens bonds (SYSTEM.md section 4); fully
+    wet, strong drops to medium and medium to below what holds the clump up.
   - Bonded pairs keep their contacts, so the clump's geoms still collide with each other; a freed specimen is
     an ordinary particle.
 
@@ -63,8 +66,9 @@ Use from sorter.py (--clump), e.g. a bench-demo clump of grain surrogates on the
 Options in --clump (with the kinds): bond (weak / medium / strong, or sigma in uN/mm), k_wet, type (connect /
 weld), gap_mm, timeconst (bond solref, s), fragile_mN, pull_g, seed, solver (cg / newton / pgs).
 
-Solver (option solver): the packing pre-sim uses CG, which is 6x faster there (3.6 ms against 20 per step for 106
-grains: Newton's sparse Cholesky fills in on a bonded ball) and only has to leave a tidy pile. The run itself keeps
+Solver (option solver): the packing pre-sim uses CG for grains, which is 6x faster there (3.6 ms against 20 per step
+for 106 grains: Newton's sparse Cholesky fills in on a bonded ball) and only has to leave a tidy pile; insects pack
+with Newton, because CG blew up on their interlocked legs within 0.03 s. The run itself keeps
 Newton. On the seesaw tower, whose driven trays weigh 1e6 g against milligram grains, CG and PGS hit their
 iteration cap and their constraint forces disagree with Newton's (bond-load p90 5.7 mN with CG, 0.9 with PGS, 1.4
 with Newton in the same 0.3 s), and those forces are exactly what breaks bonds. Newton costs about 12 ms per step
@@ -80,15 +84,16 @@ import numpy as np
 import common
 
 DEBRIS = ("leaf", "twig", "dirt")
-BOND_SETS = {"weak": 1000.0, "medium": 3000.0, "strong": 8000.0}  # sigma, uN per mm of r_pair (ASSUMED)
+BOND_SETS = {"weak": 5000.0, "medium": 10000.0, "strong": 25000.0}  # sigma, uN per mm of r_pair (ASSUMED)
 DEFAULTS = {"bond": "medium", "k_wet": 0.6, "type": "connect", "gap_mm": 0.3, "timeconst": 0.002,
             "fragile_mN": 5.0, "pull_g": 3.0, "seed": None, "solver": "newton"}
 SOLVERS = {"newton": mujoco.mjtSolver.mjSOL_NEWTON, "cg": mujoco.mjtSolver.mjSOL_CG, "pgs": mujoco.mjtSolver.mjSOL_PGS}
 FRAGILE_MN = DEFAULTS["fragile_mN"]
 G = 9810.0
 PACK_DT = 2e-4             # s, packing pre-sim timestep
-PACK_S, LEAF_S, RELAX_S = 0.4, 0.15, 0.06    # s: core packing, leaves pressed on, relax with the pull off
+PACK_S, LEAF_S, RELAX_S = 0.4, 0.15, 0.12    # s: core packing, leaves pressed on, relax with the pull off
 PACK_DAMP, RELAX_DAMP = 30.0, 300.0          # 1/s, speed damping while packing and relaxing
+RELAX_STAGES = 4           # the relax stiffens contacts from 2 ms to the run's time constant in this many steps
 PACK_R0 = 2.0              # mm: the pull fades linearly inside this distance of the centre
 BOND_SOLIMP = "0.9 0.95 0.001"
 BLIND_DZ = 2.0             # mm: a leaf this close to a screen's top surface lies on it
@@ -192,7 +197,8 @@ def pack(parts, rng, friction=0.4, pull_g=3.0, gap=0.3, timeconst=0.002, dt=PACK
         q /= np.linalg.norm(q)
         bodies.append(f'<body name="c{i}" pos="{xyz[0]:.4f} {xyz[1]:.4f} {xyz[2]:.4f}" '
                       f'quat="{q[0]:.5f} {q[1]:.5f} {q[2]:.5f} {q[3]:.5f}"><freejoint/>{p.xml.replace("{p}", f"c{i}")}</body>')
-    m = mujoco.MjModel.from_xml_string(f"""<mujoco><option timestep="{PACK_DT}" gravity="0 0 0" integrator="implicitfast" solver="CG"/>
+    solver = "Newton" if any(p.group == "insect" for p in parts) else "CG"    # CG blows up on interlocked legs
+    m = mujoco.MjModel.from_xml_string(f"""<mujoco><option timestep="{PACK_DT}" gravity="0 0 0" integrator="implicitfast" solver="{solver}"/>
   <size memory="64M"/><default><geom solref="0.002 1" solimp="{sorter.SOLIMP}" friction="{friction} 0.005 0.0001"/></default>
   <worldbody>{"".join(bodies)}</worldbody></mujoco>""")
     d = mujoco.MjData(m)
@@ -228,12 +234,17 @@ def pack(parts, rng, friction=0.4, pull_g=3.0, gap=0.3, timeconst=0.002, dt=PACK
             d.qpos[qadr[i] + 3:qadr[i] + 7] = _quat_z_to(u, rng.uniform(0, 2 * np.pi))
         d.qvel[:] = 0.0
         run(LEAF_S, np.ones(n, bool), PACK_DAMP)
-    m.geom_solref[:, 0] = timeconst                     # relax with the run's own contact stiffness, so the run
-    m.opt.timestep = min(PACK_DT, dt)                    # starts with no contact loaded
-    run(RELAX_S, np.zeros(n, bool), RELAX_DAMP)
+    # Relax with the pull off, stiffening the contacts step by step to the run's own, so the run starts with no
+    # contact loaded. Going straight to stiff contacts blows up interlocked insect legs.
+    m.opt.timestep = min(PACK_DT, dt)
+    for tc in np.geomspace(0.002, min(timeconst, 0.002), RELAX_STAGES):
+        m.geom_solref[:, 0] = max(tc, 2 * m.opt.timestep)
+        run(RELAX_S / RELAX_STAGES, np.zeros(n, bool), RELAX_DAMP)
     d.qvel[:] = 0.0
     mujoco.mj_forward(m, d)
     overlap = float(max(0.0, -min((d.contact[k].dist for k in range(d.ncon)), default=0.0)))
+    if not np.all(np.isfinite(d.qpos)) or np.abs(d.xpos[ids]).max() > 50 * side:
+        raise RuntimeError(f"clump packing blew up ({len(parts)} bodies); try a softer run timeconst or a smaller pull_g")
     c = (mass[:, None] * d.xipos[ids]).sum(0) / mass.sum()
     reach = np.linalg.norm(d.geom_xpos - c, axis=1) + m.geom_rbound
     spec = np.array([parts[np.searchsorted(ids, b)].group != "debris" for b in m.geom_bodyid])

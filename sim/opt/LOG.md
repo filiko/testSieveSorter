@@ -817,3 +817,23 @@ This overrides my 10:10 reading ("x matches attached at the mid points"). So rou
 - peak force p90, mN: top half 204.95, bottom half 136.25
 - rank correlation with the robust score (+ helps): vib_mm +0.68, bar +0.48, pin_h -0.34, ss_period +0.31, open +0.23, pin_d +0.13
 
+
+## malaise round 2 (EXPLORATORY, 2026-10-25 13:11, auto)
+
+**Tried:** 8 candidates (ce), 24 runs, 4 min wall.
+
+**Leader:** B-31c4ea6d: grid 12 mm (bars 1.9), pins 2.8 x 6 mm round every ~9 mm; seesaw +/-10.5 deg, 3.6 s + 0.3 mm buzz at 40 Hz. Robust 0.700 (mean 0.759); free 100%, gentle 30%, sort 90%, largest cluster 1.0.
+
+- reference NO BREAKER: robust 0.217; free 31%, gentle 76%, sort 17%
+- reference cad/breaker_layer.py default (open 8, pins 2.5 x 12 every 10, round) on the default seesaw: robust 0.287; free 65%, gentle 46%, sort 22%
+- reference the CAD default breaker, default seesaw + 0.3 mm buzz at 40 Hz (1.9 g, the tool's): robust 0.479; free 85%, gentle 35%, sort 75%
+
+**Why the losers lost:**
+
+- free at the end: top half 0.93, bottom half 0.76
+- gentleness: top half 0.32, bottom half 0.36
+- in the ideal zone: top half 0.83, bottom half 0.52
+- largest cluster left: top half 4.02, bottom half 12.81
+- peak force p90, mN: top half 228.96, bottom half 150.38
+- rank correlation with the robust score (+ helps): vib_mm +0.50, open +0.43, bar +0.37, pin_h -0.33, pin_d +0.27, tip=round +0.25
+

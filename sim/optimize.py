@@ -8,6 +8,9 @@ Run from sim\\ (on this laptop: the WSL venv ~/venvs/sieve, see docs/sessions/RE
     python optimize.py report --study demo                               rebuild leaderboard / winners / log tables
     python optimize.py replay --study demo [--top 3]                     record the winners and build their view.html
     python optimize.py plan --study demo                                 print the round plan and a cost estimate
+    python optimize.py verify --study demo [--top 4]                     rerun the flagged leaders with stiffer contacts
+                                                                         (dt 0.125 ms, timeconst 0.25 ms); a design that
+                                                                         comes back unflagged counts as clean
     python optimize.py stress --study demo [--top 3] [--ramps 0.005,0.02] [--undersize 0.05,0.25]
                                                                          rerun the leaders with other stroke reversal
                                                                          times (the 0.01 s ramp is a guess) and other
@@ -76,6 +79,7 @@ SCREEN_S, FULL_S = 8.0, 30.0
 # tunnel; dt 0.25 ms with timeconst 0.5 ms gave a median 0.07 mm (max 0.18) for about 1.6x the wall time.
 # Switch to sim/PERF.md's settings once the physics session commits them.
 DT, TIMECONST = 2.5e-4, 5e-4
+STIFF_DT, STIFF_TIMECONST = 1.25e-4, 2.5e-4   # `verify`: half the overlap, about 2x the wall time
 SEEDS = (0, 1, 2)
 PROMOTE = 0.2
 UNDERSIZE_MM = 0.15              # ASSUMED: nominal minus printed opening (XY); replace with hole_gauge data
@@ -408,8 +412,8 @@ ROUNDN = {"gated": 12, "gated_rib": 16, "gated_mid": 10, "plinko": 8, "inserts":
 EXPLORE = {"gated": 8, "gated_rib": 6, "gated_mid": 6, "plinko": 8, "inserts": 3}      # extra Latin hypercube when a
 #                                                                     family gains parameters (e.g. the stroke angle)
 # Insect runs cost about 3x a grain run per step (legs: many contacts), so the insect study searches fewer candidates.
-BUDGET = {"insects": ({"gated": 16, "gated_rib": 12, "gated_mid": 10, "plinko": 10, "inserts": 4},
-                      {"gated": 8, "gated_rib": 8, "gated_mid": 6, "plinko": 6, "inserts": 2})}
+BUDGET = {"insects": ({"gated": 10, "gated_rib": 8, "gated_mid": 8, "plinko": 8, "inserts": 3},
+                      {"gated": 6, "gated_rib": 6, "gated_mid": 6, "plinko": 6, "inserts": 2})}
 
 
 # ---------------------------------------------------------------- candidates
@@ -566,11 +570,14 @@ def jobs_for(c, study, fid, base, sets):
     dur = SCREEN_S if fid == "screen" else FULL_S
     stroke = dict(c["stroke"], ramp_s=float(fid[4:])) if fid.startswith("ramp") else c["stroke"]
     spec, inject = at_undersize(c, float(fid[2:])) if fid.startswith("us") else (c["spec"], c["inject"])
+    stiff = {"dt": STIFF_DT, "contact": {"timeconst": STIFF_TIMECONST}} if fid == "stiff" else {}
     out = []
     for label, contact in sets:
         for seed in SEEDS:
             cfg = sweep.make_cfg(base, design=spec, stroke=stroke, contact=contact, duration_s=dur,
                                  seed=seed)
+            if stiff:
+                cfg = sweep.make_cfg(cfg, **stiff)
             job = {"cfg": cfg, "inject": inject,
                    "tags": {"cand": c["id"], "fid": fid, "set": label, "seed": seed}}
             job["key"] = hashlib.sha1(json.dumps([cfg, inject], sort_keys=True, default=sweep.jsonable)
@@ -1017,6 +1024,35 @@ def leaderboard_md(study, cands, summ, meta):
             cells = " | ".join(fmt(v, "{:.3f}") for v in vals)
             lines.append(f"| {c['id']} | {c['family']} | {summ[c['id']]['full']['robust']:.3f} | {cells} | "
                          f"**{worst:.3f}** | {show(c)} |")
+    ver = [c for c in pool if (summ[c["id"]] or {}).get("stiff")]
+    if ver:
+        lines += ["", "## Verification of flagged leaders at stiffer contacts", "",
+                  f"Rerun at dt {STIFF_DT * 1e3:g} ms and contact timeconst {STIFF_TIMECONST * 1e3:g} ms (half the "
+                  "overlap of the standard solver), same 3 friction sets x 3 seeds, 30 s. A design that comes back with "
+                  "no flagged or failed run counts as clean for `winners.json`, ranked by the lower of its two scores.", "",
+                  "| id | family | robust (standard) | flags (standard) | robust (stiff) | flags (stiff) | verdict | design |",
+                  "|---|---|---|---|---|---|---|---|"]
+        for c in ver:
+            sm = summ[c["id"]]
+            v = verified(sm)
+            lines.append(f"| {c['id']} | {c['family']} | {sm['full']['robust']:.3f} | {flags(sm['full'])} | "
+                         f"{sm['stiff']['robust']:.3f} | {flags(sm['stiff'])} | "
+                         f"{'clean' if v['clean'] else 'still flagged'} | {show(c)} |")
+    by_drive = {}
+    for c in pool:
+        if c["family"] in FAMILIES:
+            by_drive.setdefault(c["stroke"].get("profile"), c)
+    if by_drive:
+        lines += ["", "## Best per drive", "",
+                  "BioKEA's stage can only run the firmware stroke (constant speed); the demo rig is a vibrating tool "
+                  "(sine). Best full-run design for each, whether or not it is flagged:", "",
+                  "| drive | id | family | robust | flags | design (CAD, nominal mm) | stroke |", "|---|---|---|---|---|---|---|"]
+        for prof, name in (("constant_speed", "firmware (BioKEA's stage)"), ("sine", "vibrating tool (demo rig)")):
+            c = by_drive.get(prof)
+            if c:
+                sm = summ[c["id"]]["full"]
+                lines.append(f"| {name} | {c['id']} | {c['family']} | {sm['robust']:.3f} | {flags(sm)} | {show(c)} | "
+                             f"{stroke_show(c['stroke'])} |")
     lines += ["", "## Count matrices of the top 3 (summed over the 9 full runs)", ""]
     for i, c in enumerate(ranked[:3], 1):
         lines += matrix_md(f"{i}. {c['id']} ({c['family']}) {show(c)}; sim `{c['spec']}`", summ[c["id"]]["full"], cl)
@@ -1075,12 +1111,14 @@ def winners_json(study, cands, summ):
     working = [c for c in ranking(cands, summ) if c["family"] in FAMILIES and not summ[c["id"]]["full"]["fails"]
                and summ[c["id"]]["full"]["robust"] >= MIN_WINNER
                and not FAMILIES[c["family"]]["ok"](c["params"])]    # constraints added since still apply
-    clean = [c for c in working if not summ[c["id"]]["full"]["flagged"]]
-    flagged = [c for c in working if summ[c["id"]]["full"]["flagged"]]
+    clean = sorted((c for c in working if trusted(summ[c["id"]])), key=lambda c: -win_key(summ[c["id"]]))
+    flagged = [c for c in working if not trusted(summ[c["id"]])]
     eligible = clean[:3] + flagged[:max(0, 3 - len(clean))]     # fill with flagged ones only if needed, marked
     out = {"study": study, "title": STUDIES[study]["title"], "exploratory": STUDIES[study]["exploratory"],
            "generated": f"{datetime.now():%Y-%m-%d %H:%M}",
-           "rule": f"top 3 by robust full-run score (mean - 1 sd over 3 friction sets x 3 seeds, 30 s) among working "
+           "rule": "a flagged design that `verify` reran with stiffer contacts (dt 0.125 ms, timeconst 0.25 ms) with no "
+                   "failed or flagged run counts as clean, ranked by the lower of its two robust scores. "
+                   f"Otherwise: top 3 by robust full-run score (mean - 1 sd over 3 friction sets x 3 seeds, 30 s) among working "
                    f"sorters (robust >= {MIN_WINNER}, no failed run, meeting today's print constraints) with no penetration-flagged run; if fewer than 3 "
                    "qualify, the rest are the best working flagged ones, marked flagged (see opt/LOG.md for how this "
                    "rule came about)",
@@ -1099,10 +1137,44 @@ def winners_json(study, cands, summ):
             "count_matrix": {"rows": [cl["name"] for cl in STUDIES[study]["classes"]], "cols": s["cols"],
                              "counts_over_9_runs": s["matrix"]},
             "jammed_per_run": s["between"], "lost_per_run": s["lost"], "t90_s": s["t90"],
-            "flagged": bool(s["flagged"]), "flagged_runs": s["flagged"], "gate_clearance_mm": s["clearance"],
+            "flagged": not trusted(summ[c["id"]]), "flagged_runs": s["flagged"], "gate_clearance_mm": s["clearance"],
             "max_gate_overlap_mm": s["pen"],
+            "verified_stiff": verified(summ[c["id"]]),
             "replay": f"sim/out/opt/{study}/replay/{c['id']}/view.html"})
+    out["best_by_drive"] = {}
+    for drive, prof in (("firmware (BioKEA's stage)", "constant_speed"), ("vibrating tool (demo rig)", "sine")):
+        pick = next((c for c in clean if c["stroke"].get("profile") == prof), None)
+        if pick:
+            s = summ[pick["id"]]["full"]
+            out["best_by_drive"][drive] = {
+                "id": pick["id"], "family": pick["family"], "sim_spec": pick["spec"], "stroke": pick["stroke"],
+                "stroke_human": stroke_show(pick["stroke"]), "design": show(pick),
+                "cad": FAMILIES[pick["family"]]["cad"](pick["params"]), "robust": round(win_key(summ[pick["id"]]), 4),
+                "per_class": [{"class": cl["name"], "purity": s["purity"][k], "recovery": s["recovery"][k]}
+                              for k, cl in enumerate(STUDIES[study]["classes"])]}
     return out
+
+
+def verified(sm):
+    """The stiff-contact rerun's verdict: None if not run, else whether it came back clean."""
+    st = sm.get("stiff")
+    if not st:
+        return None
+    return {"clean": not st["fails"] and not st["flagged"], "robust": round(st["robust"], 4),
+            "flagged_runs": st["flagged"], "max_gate_overlap_mm": st["pen"], "clearance_mm": st["clearance"]}
+
+
+def trusted(sm):
+    """Unflagged at the standard solver, or verified clean (and still a working sorter) at the stiff one."""
+    if not sm["full"]["flagged"]:
+        return True
+    v = verified(sm)
+    return bool(v and v["clean"] and v["robust"] >= MIN_WINNER)
+
+
+def win_key(sm):
+    v = sm.get("stiff")
+    return min(sm["full"]["robust"], v["robust"]) if v else sm["full"]["robust"]
 
 
 def log_round(study, rnd, cands, summ, new_ids, meta):
@@ -1308,7 +1380,7 @@ def report(args):
     base = base_cfg(args.study)
     sets, _ = sweep.param_sets()
     for c in cands:
-        for fid in ["screen", "full", *[k for k in (summ.get(c["id"]) or {}) if k.startswith(("ramp", "us"))]]:
+        for fid in ["screen", "full", *[k for k in (summ.get(c["id"]) or {}) if k.startswith(("ramp", "us", "stiff"))]]:
             s = summarize(c, args.study, fid, base, sets)
             if s:
                 summ.setdefault(c["id"], {})[fid] = s
@@ -1347,7 +1419,10 @@ def stress(args):
     sets, _ = sweep.param_sets()
     top = ranking(cands, summ)[:args.top]
     refs_ = [c for c in cands if c["origin"] in ("baseline", "current") and (summ.get(c["id"]) or {}).get("full")]
-    pick = list({c["id"]: c for c in top + refs_}.values())
+    win = winners_json(args.study, cands, summ)            # the current winners and the best per drive, too
+    by_id = {c["id"]: c for c in cands}
+    wins = [by_id[w["id"]] for w in win["winners"]] + [by_id[v["id"]] for v in win["best_by_drive"].values()]
+    pick = list({c["id"]: c for c in wins + top + refs_}.values())
     fids = [f"ramp{float(r):g}" for r in args.ramps.split(",") if r] + \
            [f"us{float(u):g}" for u in args.undersize.split(",") if u]
     def applies(c, fid):
@@ -1364,6 +1439,20 @@ def stress(args):
     print("stress done; leaderboard rewritten")
 
 
+def verify(args):
+    """Rerun the top flagged designs (full length) with stiffer contacts."""
+    cands, summ = load_state(args.study)
+    base = base_cfg(args.study)
+    sets, _ = sweep.param_sets()
+    pick = [c for c in ranking(cands, summ)[:args.top * 3] if c["family"] in FAMILIES
+            and summ[c["id"]]["full"]["flagged"] and summ[c["id"]]["full"]["robust"] >= MIN_WINNER][:args.top]
+    print(f"verify: {[c['id'] for c in pick]} at dt {STIFF_DT} s, timeconst {STIFF_TIMECONST} s", flush=True)
+    evaluate(pick, args.study, "stiff", base, sets, args.workers, summ)
+    meta = {"n_cands": len(cands), "n_runs": len(list((OUT / args.study / "runs").glob("*.json")))}
+    write_outputs(args.study, cands, summ, meta)
+    print("verify done; leaderboard rewritten")
+
+
 def plan(args):
     sets, source = sweep.param_sets()
     r0, rn = BUDGET.get(args.study, (ROUND0, ROUNDN))
@@ -1378,7 +1467,7 @@ def plan(args):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("cmd", choices=["run", "report", "replay", "plan", "stress"])
+    ap.add_argument("cmd", choices=["run", "report", "replay", "plan", "stress", "verify"])
     ap.add_argument("--study", default="demo", choices=list(STUDIES))
     ap.add_argument("--rounds", type=int, default=1)
     ap.add_argument("--workers", type=int, default=MAX_WORKERS)
@@ -1397,7 +1486,8 @@ def main():
     args.workers = min(args.workers, MAX_WORKERS)
     global SCREEN_S, FULL_S
     SCREEN_S, FULL_S = args.screen_s or SCREEN_S, args.full_s or FULL_S
-    {"run": run_study, "report": report, "replay": replay, "plan": plan, "stress": stress}[args.cmd](args)
+    {"run": run_study, "report": report, "replay": replay, "plan": plan, "stress": stress,
+     "verify": verify}[args.cmd](args)
 
 
 if __name__ == "__main__":

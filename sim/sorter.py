@@ -35,6 +35,7 @@ from pathlib import Path
 import mujoco
 import numpy as np
 
+import clumps
 import designs
 import rocking
 
@@ -63,6 +64,7 @@ class RunConfig:
     dt: float = 5e-4
     contact: dict = field(default_factory=lambda: {"friction": 0.4, "timeconst": 0.002, "dampratio": 1.0})
     spray: dict | None = None
+    clump: dict | None = None        # clumps.py: a clump of specimens and debris joined by breakable bonds
     record_fps: float = 30.0
     out_dir: str | None = None
 
@@ -71,6 +73,8 @@ def make_particle(kind, rng):
     if kind.startswith("insect_"):
         import insects
         return insects.make(kind, rng)
+    if kind in clumps.DEBRIS:
+        return clumps.make_debris(kind, rng)
     import grains
     return grains.make(kind, rng)
 
@@ -164,14 +168,16 @@ def tray_xml(design):
     return "".join(assets), "".join(geoms)
 
 
-def build_model(cfg, design, particles, rng, extras="", rock=None):
+def build_model(cfg, design, particles, rng, extras="", rock=None, clump=None):
     c = cfg.contact
     mu = c["friction"]
-    pos = place(particles, design.spawn, rng)
+    pos = place(particles, design.spawn, rng) if clump is None else clump.place(particles, design.spawn, rng)
     bodies = []
     for i, (p, xyz) in enumerate(zip(particles, pos)):
         q = rng.normal(size=4)
         q /= np.linalg.norm(q)
+        if clump is not None:     # the clump's particles keep their packed orientations
+            q = clump.quat(i, q)
         name = f"p{i:03d}"
         bodies.append(f'<body name="{name}" pos="{xyz[0]:.4f} {xyz[1]:.4f} {xyz[2]:.4f}" '
                       f'quat="{q[0]:.5f} {q[1]:.5f} {q[2]:.5f} {q[3]:.5f}" childclass="particle">'
@@ -181,6 +187,8 @@ def build_model(cfg, design, particles, rng, extras="", rock=None):
     if rock is not None:          # seesaw: the tray geoms move onto one hinged body per level, after the particles
         tray, levels = rock.split_xml(assets, tray)
         extras += rock.contact_xml()
+    if clump is not None:         # the clump's breakable bonds
+        extras += clump.equality_xml()
     xml = f"""<mujoco model="{design.name}">
   <option timestep="{cfg.dt}" gravity="0 0 {-G}" integrator="implicitfast"/>
   <size memory="{MEMORY}"/>
@@ -254,6 +262,10 @@ def run(cfg: RunConfig) -> dict:
     rock = rocking.Seesaw.of(cfg, design)            # None unless the stroke is a seesaw
     kinds = list(cfg.mix)
     particles = [make_particle(k, rng) for k in kinds for _ in range(cfg.mix[k])]
+    cl = clumps.Clumps.of(cfg, rng)                  # None unless cfg.clump; its particles go after the loose ones
+    if cl:
+        particles += cl.particles
+        kinds += [k for k in cl.kinds if k not in kinds]
     names = [f"p{i:03d}" for i in range(len(particles))]
 
     sp = None
@@ -267,7 +279,7 @@ def run(cfg: RunConfig) -> dict:
             jets = spray.jets_from_csv(Path(__file__).resolve().parent / "bench" / "jets.csv")
         jets = [spray.Jet(**j) for j in jets]
         extras = spray.Spray.mjcf_extras(names, cfg.spray.get("params"))
-    m = build_model(cfg, design, particles, rng, extras, rock)
+    m = build_model(cfg, design, particles, rng, extras, rock, cl)
     d = mujoco.MjData(m)
     roots = np.array([m.body(n).id for n in names])
     pbodies = np.arange(1, m.nbody - (rock.n if rock else 0))       # every particle body, roots and children
@@ -300,6 +312,8 @@ def run(cfg: RunConfig) -> dict:
     # run would still finish with plausible-looking results. Record each reset (step time) instead of hiding it.
     # The reset also clears the warning counters, so it is detected by d.time going backwards.
     resets = []
+    if cl:
+        cl.bind(m, d, design, rock, sp, every, n_settle)
     for i in range(steps):
         m.opt.gravity[:] = -a[i] * axis
         m.opt.gravity[2] -= G
@@ -314,6 +328,8 @@ def run(cfg: RunConfig) -> dict:
         mujoco.mj_step(m, d)
         if d.time < t_before:
             resets.append(round((i + 1) * cfg.dt, 5))
+        if cl:
+            cl.step(m, d, i)                         # break overloaded bonds, log peak contact forces
         if i >= n_settle and i % 10 == 0 and d.ncon:   # overlap where it matters: particle against tray
             dist = d.contact.dist[:d.ncon]
             on_tray = np.any(tray_body[m.geom_bodyid[d.contact.geom[:d.ncon]]], axis=1)
@@ -347,7 +363,7 @@ def run(cfg: RunConfig) -> dict:
         "zones": zone_names, "kinds": kinds,
         "counts": {k: {zn: int(zc[-1, ki, zi]) for zi, zn in enumerate(zone_names)} for ki, k in enumerate(kinds)},
         "recovery": {k: round(float(np.mean([p["final_zone"] == p["ideal_zone"] for p in plist if p["kind"] == k])), 4)
-                     for k in kinds if cfg.mix[k] > 0},
+                     for k in kinds if any(p.kind == k for p in particles)},
         "particles": plist,
         "timeseries": {"t": [round(t, 4) for t in rec["t"]],
                        "counts": {k: {zn: zc[:, ki, zi].tolist() for zi, zn in enumerate(zone_names)}
@@ -357,6 +373,8 @@ def run(cfg: RunConfig) -> dict:
     }
     if rock:
         results["seesaw"] = rock.summary()
+    if cl:
+        results["clumps"] = cl.metrics(plist, d)
     if cfg.out_dir:
         write_recording(Path(cfg.out_dir), cfg, design, m, results, rec, kinds, zone_names, particles, names, sp, rock)
     return results
@@ -423,6 +441,8 @@ def main():
     ap.add_argument("--timeconst", type=float, default=0.002, help="contact stiffness time constant, s (>= 2 dt)")
     ap.add_argument("--spray", choices=["none", "default", "bench"], default="none",
                     help="default: the design's placeholder jets; bench: bench/jets.csv")
+    ap.add_argument("--clump", default=None, help="clumps.py: kinds and options, e.g. rice=50,quinoa=50,pasta=6,"
+                    "leaf=1,twig=2,dirt=10,bond=medium (weak|medium|strong)")
     ap.add_argument("--fps", type=float, default=30.0)
     ap.add_argument("--out", default=None, help="run dir for scene.json, traj.npz, results.json")
     args = ap.parse_args()
@@ -431,6 +451,7 @@ def main():
                     duration_s=args.duration, settle_s=args.settle, seed=args.seed, dt=args.dt,
                     contact={"friction": args.friction, "timeconst": args.timeconst, "dampratio": 1.0},
                     spray=None if args.spray == "none" else {"jets": args.spray},
+                    clump=clumps.parse(args.clump) if args.clump else None,
                     record_fps=args.fps, out_dir=args.out)
     r = run(cfg)
     print(f"{r['design']}: {r['sim_s']} s simulated in {r['wall_s']} s wall, {r['steps']} steps, "
@@ -439,6 +460,8 @@ def main():
         c = r["seesaw"]["clearance"]
         print(f"  seesaw +/-{r['seesaw']['deg']:g} deg, {r['seesaw']['period_s']:g} s: neighbouring boxes come within "
               f"{c['min_mm']} mm" + ("  TOUCHING: raise pitch= (rocking.py)" if c["touching"] else ""))
+    if "clumps" in r:
+        print(clumps.summary(r["clumps"]))
     if r["unstable_resets"]:
         print(f"UNSTABLE: MuJoCo reset the state {len(r['unstable_resets'])} times (at {r['unstable_resets'][:5]} s); "
               "the results are not valid")

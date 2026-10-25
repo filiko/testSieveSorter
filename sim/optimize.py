@@ -8,6 +8,9 @@ Run from sim\\ (on this laptop: the WSL venv ~/venvs/sieve, see docs/sessions/RE
     python optimize.py report --study demo                               rebuild leaderboard / winners / log tables
     python optimize.py replay --study demo [--top 3]                     record the winners and build their view.html
     python optimize.py plan --study demo                                 print the round plan and a cost estimate
+    python optimize.py stress --study demo [--top 5] [--ramps 0.005,0.02]
+                                                                         rerun the leaders with other stroke reversal
+                                                                         times (the 0.01 s ramp is a guess) at full length
 
 Studies (classes are what the sorter should do, not what each design's openings happen to do):
     demo      pasta + chickpea / rice / quinoa: the surrogate grains we can bench today
@@ -18,6 +21,8 @@ Families (each maps one to one onto CAD parameters, so a winner can be printed a
               tunnel width, tooth, drop-slot length
     plinko    cad/plinko_layers.py LAYERS: rod gap, rod top width and rod height per layer
     inserts   cad/sieve_insert.py INSERTS: square hole and bar per insert
+    gated_rib gated + a ratchet floor (PROPOSAL geometry, not in the CAD): tested and rejected, see opt/LOG.md;
+              not run unless named in --families. The mid-slot tower (designs_gated.py gx=, flip=0) was rejected too.
     every family also searches the stroke within BioKEA's firmware: constant speed <= 50 mm/s, amplitude 5-15 mm
 
 Sizes. The search runs on CAD (nominal) openings on 0.1 mm steps; the sim builds the as-printed (effective)
@@ -135,35 +140,50 @@ def tok(v):
 def gated_spec(p):
     s1, s2 = eff(p["s1"]), eff(p["s2"])
     l1 = f"w{tok(s1)}x{tok(eff(p['gh']))}" if p["k1"] == "w" else f"t{tok(s1)}"
-    return (f"gated:{p['slope']:g},{l1},t{tok(s2)},tw={eff(p['tw']):g},tooth={p['tooth'] + UNDERSIZE_MM:g},"
-            f"slot={p['slot']:g}")
+    l2 = f"w{tok(s2)}x{tok(eff(p['gh']))}" if p.get("k2", "t") == "w" else f"t{tok(s2)}"
+    rib = f",rib={p['rib_h']:g}x{p['rib_pitch']:g}x{p['rib_steep']:g}" if "rib_h" in p else ""
+    return (f"gated:{p['slope']:g},{l1},{l2},tw={eff(p['tw']):g},tooth={p['tooth'] + UNDERSIZE_MM:g},"
+            f"slot={p['slot']:g}{rib}")
 
 
 def gated_ok(p):
-    if p["k1"] == "t" and p["s1"] <= p["s2"] + 0.4:
-        return "L1 tunnel must be well above the L2 tunnel"
+    if p["s1"] <= p["s2"] + 0.4:
+        return "L1 opening must be well above the L2 opening"
     if min(p["s1"], p["s2"], p["tw"], p["tooth"], p["gh"]) < MIN_FEATURE:
         return "feature under 0.4 mm"
     return None
 
 
 def gated_cad(p):
+    k2 = p.get("k2", "t")
     s1n = f"gate_{p['k1']}{tok(p['s1'])}"
-    s2n = f"gate_t{tok(p['s2'])}"
-    return {"file": "cad/gated_container.py",
-            "constants": {"FLOOR_SLOPE_DEG": p["slope"], "GATE_H": p["gh"] if p["k1"] == "w" else 8.0,
-                          "TUNNEL_W": p["tw"], "TOOTH": p["tooth"],
-                          "GATE_X": round(61.0 - p["slot"] - 1.0, 3)},
-            "STRIPS": {s1n: [p["k1"], p["s1"]], s2n: ["t", p["s2"]]},
-            "tower": [f"L1 (top, gate at +X): {s1n}", f"L2 (flipped 180 deg): {s2n}", "catch pan under L2"],
-            "note": "GATE_H applies to every w strip, TUNNEL_W to every t strip: build each winner with its own "
-                    "constants. GATE_X = OPEN_X - slot - STRIP_T / 2."}
+    s2n = f"gate_{k2}{tok(p['s2'])}"
+    out = {"file": "cad/gated_container.py",
+           "constants": {"FLOOR_SLOPE_DEG": p["slope"], "GATE_H": p["gh"] if "w" in (p["k1"], k2) else 8.0,
+                         "TUNNEL_W": p["tw"], "TOOTH": p["tooth"],
+                         "GATE_X": round(61.0 - p["slot"] - 1.0, 3)},
+           "STRIPS": {s1n: [p["k1"], p["s1"]], s2n: [k2, p["s2"]]},
+           "tower": [f"L1 (top, gate at +X): {s1n}", f"L2 (flipped 180 deg): {s2n}", "catch pan under L2"],
+           "note": "GATE_H applies to every w strip, TUNNEL_W to every t strip: build each winner with its own "
+                   "constants. GATE_X = OPEN_X - slot - STRIP_T / 2."}
+    if "rib_h" in p:
+        out["ratchet_floor_PROPOSAL"] = {
+            "RIB_H": p["rib_h"], "RIB_PITCH": p["rib_pitch"], "RIB_STEEP": p["rib_steep"], "RIB_CLEAR": 3.0,
+            "geometry": "not in gated_container.py yet: sawtooth ribs across the full inside width on the sloped "
+                        "floor, from the upstream wall to 3 mm before the strip's upstream face, one every RIB_PITCH "
+                        "mm. Each rises RIB_H above the floor surface along (1 - RIB_STEEP) x RIB_PITCH toward the "
+                        "gate, then drops back over RIB_STEEP x RIB_PITCH on the gate side. Print right side up; "
+                        "RIB_H is a Z feature (0.2 mm layers). Sim: sim/designs_gated.py rib=<h>x<pitch>x<steep>."}
+    return out
 
 
 def gated_show(p):
     l1 = f"w{p['s1']:g}x{p['gh']:g}" if p["k1"] == "w" else f"t{p['s1']:g}"
-    return (f"L1 {l1} / L2 t{p['s2']:g}; slope {p['slope']:g} deg, tunnel width {p['tw']:g}, tooth {p['tooth']:g}, "
-            f"slot {p['slot']:g}")
+    l2 = f"w{p['s2']:g}x{p['gh']:g}" if p.get("k2", "t") == "w" else f"t{p['s2']:g}"
+    rib = (f"; ratchet ribs {p['rib_h']:g} tall every {p['rib_pitch']:g} (steep {p['rib_steep']:g})"
+           if "rib_h" in p else "")
+    return (f"L1 {l1} / L2 {l2}; slope {p['slope']:g} deg, tunnel width {p['tw']:g}, tooth {p['tooth']:g}, "
+            f"slot {p['slot']:g}{rib}")
 
 
 # plinko ------------------------------------------------------------------------------------------
@@ -243,6 +263,13 @@ FAMILIES = {
                    P("tooth", 0.8, 3.0, XY_STEP), P("slot", 6.0, 14.0, XY_STEP), *STROKE_PARAMS],
         "spec": gated_spec, "inject": lambda p: {}, "ok": gated_ok, "cad": gated_cad, "show": gated_show,
     },
+    "gated_rib": {
+        "params": [P("slope", 0.5, 4.0, 0.1), P("k1", 0, 0, 0, ("w", "t")), P("s1", 2.3, 5.4, XY_STEP),
+                   P("gh", 2.4, 8.0, XY_STEP), P("s2", 1.2, 2.0, XY_STEP), P("tw", 3.0, 12.0, XY_STEP),
+                   P("tooth", 0.8, 3.0, XY_STEP), P("slot", 6.0, 14.0, XY_STEP), P("rib_h", 0.4, 1.4, Z_STEP),
+                   P("rib_pitch", 3.0, 12.0, XY_STEP), P("rib_steep", 0.05, 0.4, 0.05), *STROKE_PARAMS],
+        "spec": gated_spec, "inject": lambda p: {}, "ok": gated_ok, "cad": gated_cad, "show": gated_show,
+    },
     "plinko": {
         "params": [P("g1", 2.6, 5.6, XY_STEP), P("b1", 1.2, 4.0, XY_STEP), P("h1", 1.6, 4.0, Z_STEP),
                    P("g2", 1.2, 2.0, XY_STEP), P("b2", 1.0, 3.0, XY_STEP), P("h2", 1.6, 3.6, Z_STEP), *STROKE_PARAMS],
@@ -256,6 +283,27 @@ FAMILIES = {
         "spec": inserts_spec, "inject": inserts_inject, "ok": inserts_ok, "cad": inserts_cad, "show": inserts_show,
     },
 }
+
+# Per-study search ranges where a study's items need other sizes: {study: {family: {param: P}}}. Insects: L1 keeps
+# bodies over 6 mm (about 2-3 mm thick; gatecalc t2.75 effective), L2 keeps 2-6 mm (cut near 1 mm; gatecalc w1.05).
+STUDY_RANGES = {
+    "insects": {
+        **{fam: {"s1": P("s1", 1.8, 4.2, XY_STEP), "k2": P("k2", 0, 0, 0, ("w", "t")), "s2": P("s2", 0.6, 1.6, XY_STEP),
+                 "gh": P("gh", 1.2, 8.0, XY_STEP), "tw": P("tw", 2.0, 10.0, XY_STEP)}
+           for fam in ("gated", "gated_rib")},
+        "plinko": {"g1": P("g1", 1.6, 4.2, XY_STEP), "g2": P("g2", 0.6, 1.6, XY_STEP), "b2": P("b2", 0.8, 3.0, XY_STEP)},
+        "inserts": {"a1": P("a1", 1.8, 4.5, XY_STEP), "a2": P("a2", 0.6, 1.8, XY_STEP)},
+    },
+}
+
+
+def params_of(family, study):
+    """The family's parameters for a study: its ranges with the study's overrides, plus the study's extras."""
+    over = STUDY_RANGES.get(study, {}).get(family, {})
+    base = [over.get(q.name, q) for q in FAMILIES[family]["params"]]
+    names = {q.name for q in base}
+    return base + [q for n, q in over.items() if n not in names]
+
 
 # Fixed reference designs, never tuned. CAD numbers as they are in the repo today, built at the effective size.
 BASELINES = {
@@ -272,13 +320,22 @@ BASELINES = {
          {"a1": 5.0, "bar1": 1.2, "a2": 2.0, "bar2": 1.0, "amp": 10.0, "speed": 50.0}),
     ],
 }
-BASELINES["insects"] = []
+BASELINES["insects"] = [
+    ("gated", "gatecalc plan (skill) for the length classes: gated t2.9 / w1.2 (8 tall), firmware cap stroke",
+     {"slope": 2.0, "k1": "t", "s1": 2.9, "gh": 8.0, "k2": "w", "s2": 1.2, "tw": 8.0, "tooth": 2.0, "slot": 7.0,
+      "amp": 10.0, "speed": 50.0}),
+    ("plinko", "plinko_layers.py as in the repo: rods 5.0 / 1.4, firmware cap stroke",
+     {"g1": 5.0, "b1": 2.4, "h1": 3.0, "g2": 1.4, "b2": 2.0, "h2": 2.6, "amp": 10.0, "speed": 50.0}),
+    ("inserts", "printed inserts as in the repo: 5 mm / 2 mm square holes, firmware cap stroke",
+     {"a1": 5.0, "bar1": 1.2, "a2": 2.0, "bar2": 1.0, "amp": 10.0, "speed": 50.0}),
+]
 # Today's bench setup: glued woven mesh (not a family: it isn't printable). Reported for reference.
 CURRENT = {"family": "current", "label": "TODAY on the bench: glued mesh inserts mesh5 / mesh2, firmware cap stroke",
            "spec": "inserts:mesh5,mesh2", "inject": {}, "stroke": FIRMWARE, "params": {}}
 
-ROUND0 = {"gated": 28, "plinko": 12, "inserts": 6}       # Latin hypercube size per family
-ROUNDN = {"gated": 16, "plinko": 8, "inserts": 3}       # cross-entropy proposals per family per round
+DEFAULT_FAMILIES = ("gated", "plinko", "inserts")
+ROUND0 = {"gated": 28, "gated_rib": 24, "plinko": 12, "inserts": 6}   # Latin hypercube size per family
+ROUNDN = {"gated": 16, "gated_rib": 16, "plinko": 8, "inserts": 3}   # cross-entropy proposals per family per round
 
 
 # ---------------------------------------------------------------- candidates
@@ -292,9 +349,9 @@ def stroke_of(p):
     return {"profile": "constant_speed", "amp_mm": p["amp"], "speed_mm_s": p["speed"], "ramp_s": RAMP_S}
 
 
-def make_cand(family, params, origin, rnd, label=None):
+def make_cand(family, params, origin, rnd, label=None, study="demo"):
     f = FAMILIES[family]
-    p = {q.name: q.quant(params[q.name]) for q in f["params"]}
+    p = {q.name: q.quant(params[q.name]) for q in params_of(family, study) if q.name in params}
     c = {"family": family, "params": p, "spec": f["spec"](p), "inject": f["inject"](p), "stroke": stroke_of(p),
          "origin": origin, "round": rnd, "label": label}
     c["id"] = cand_id(c)
@@ -321,25 +378,26 @@ def lhs(n, params, rng):
     return out
 
 
-def propose(family, n, rnd, rng, existing):
-    """Round 0: Latin hypercube. Later: cross-entropy around the family's elites."""
+def propose(family, n, rnd, rng, existing, study="demo", fresh=False):
+    """A family's first round: Latin hypercube. Later: cross-entropy around the family's elites."""
     f = FAMILIES[family]
+    ps = params_of(family, study)
     out, tries = [], 0
-    dist = ce_dist(family) if rnd > 0 else None
-    pool = lhs(n * 3, f["params"], rng) if dist is None else None
+    dist = ce_dist(family) if rnd > 0 and not fresh else None
+    pool = lhs(n * 3, ps, rng) if dist is None else None
     while len(out) < n and tries < n * 50:
         tries += 1
         if dist is None:
-            raw = pool[tries - 1] if tries - 1 < len(pool) else lhs(1, f["params"], rng)[0]
+            raw = pool[tries - 1] if tries - 1 < len(pool) else lhs(1, ps, rng)[0]
         else:
             raw = {}
-            for q in f["params"]:
+            for q in ps:
                 if q.choices:
                     raw[q.name] = q.choices[rng.choice(len(q.choices), p=dist["cat"][q.name])]
                 else:
                     u = rng.normal(dist["mean"][q.name], dist["sd"][q.name])
                     raw[q.name] = q.lo + min(max(u, 0.0), 1.0) * (q.hi - q.lo)
-        c = make_cand(family, raw, "lhs" if dist is None else "ce", rnd)
+        c = make_cand(family, raw, "lhs" if dist is None else "ce", rnd, study=study)
         if f["ok"](c["params"]) or c["id"] in existing or any(o["id"] == c["id"] for o in out):
             continue
         out.append(c)
@@ -353,9 +411,9 @@ def ce_dist(family):
     return CE_STATE.get(family)
 
 
-def ce_update(family, cands, summaries, rng):
+def ce_update(family, cands, summaries, rng, study="demo"):
     """Fit mean / sd (normalized) and categorical weights to the family's elites; smooth with the old fit."""
-    f = FAMILIES[family]
+    ps = params_of(family, study)
     ranked = sorted((c for c in cands if c["family"] == family and best_score(summaries.get(c["id"])) is not None),
                     key=lambda c: (not summaries[c["id"]].get("full"), -best_score(summaries[c["id"]])))
     if len(ranked) < 3:
@@ -364,7 +422,7 @@ def ce_update(family, cands, summaries, rng):
     elite = ranked[:k]
     old = CE_STATE.get(family)
     mean, sd, cat = {}, {}, {}
-    for q in f["params"]:
+    for q in ps:
         if q.choices:
             counts = np.array([sum(c["params"][q.name] == ch for c in elite) for ch in q.choices], float) + 0.5
             w = counts / counts.sum()
@@ -392,11 +450,13 @@ def base_cfg(study):
 
 
 def jobs_for(c, study, fid, base, sets):
+    """fid: screen, full, or ramp<seconds> (full length, stroke reversal time changed)."""
     dur = SCREEN_S if fid == "screen" else FULL_S
+    stroke = dict(c["stroke"], ramp_s=float(fid[4:])) if fid.startswith("ramp") else c["stroke"]
     out = []
     for label, contact in sets:
         for seed in SEEDS:
-            cfg = sweep.make_cfg(base, design=c["spec"], stroke=c["stroke"], contact=contact, duration_s=dur,
+            cfg = sweep.make_cfg(base, design=c["spec"], stroke=stroke, contact=contact, duration_s=dur,
                                  seed=seed)
             job = {"cfg": cfg, "inject": c["inject"],
                    "tags": {"cand": c["id"], "fid": fid, "set": label, "seed": seed}}
@@ -816,6 +876,19 @@ def leaderboard_md(study, cands, summ, meta):
                                                                      for k in range(len(cl)))
                              + f" | {fmt(s['between'], '{:.1f}')} | {fmt(s['lost'], '{:.1f}')} | {t90_cell(s)} | "
                              f"{flags(s)} | `{c['spec']}` |")
+    stressed = [c for c in ranked if any(k.startswith("ramp") for k in summ[c["id"]])]
+    if stressed:
+        ramps = sorted({k for c in stressed for k in summ[c["id"]] if k.startswith("ramp")}, key=lambda k: float(k[4:]))
+        lines += ["", "## Stroke sensitivity: the leaders at other reversal times", "",
+                  "The firmware reverses at constant speed with no ramp; how sharp the real reversal is depends on the "
+                  f"stage and is unmeasured (sweep.py FIRMWARE assumes {RAMP_S:g} s). Transport depends on it, so the "
+                  "leaders are rerun at other ramps (full length, same 3 friction sets x 3 seeds). A design whose rank "
+                  "holds across ramps is safer to print.", "",
+                  f"| id | family | robust at ramp {RAMP_S:g} s | " + " | ".join(f"robust at ramp {k[4:]} s" for k in ramps)
+                  + " | design |", "|" + "---|" * (4 + len(ramps))]
+        for c in stressed:
+            cells = " | ".join(fmt((summ[c["id"]].get(k) or {}).get("robust"), "{:.3f}") for k in ramps)
+            lines.append(f"| {c['id']} | {c['family']} | {summ[c['id']]['full']['robust']:.3f} | {cells} | {show(c)} |")
     lines += ["", "## Count matrices of the top 3 (summed over the 9 full runs)", ""]
     for i, c in enumerate(ranked[:3], 1):
         lines += matrix_md(f"{i}. {c['id']} ({c['family']}) {show(c)}; sim `{c['spec']}`", summ[c["id"]]["full"], cl)
@@ -948,7 +1021,7 @@ def log_round(study, rnd, cands, summ, new_ids, meta):
         if not dist:
             continue
         hits = []
-        for q in FAMILIES[f]["params"]:
+        for q in params_of(f, study):
             if q.choices:
                 hits.append(f"{q.name} " + "/".join(f"{ch} {w:.2f}" for ch, w in zip(q.choices, dist["cat"][q.name])))
             elif dist["mean"][q.name] < 0.1 or dist["mean"][q.name] > 0.9:
@@ -1031,8 +1104,8 @@ def evaluate(cands, study, fid, base, sets, workers, summ):
 
 
 def refs(study, rnd):
-    out = [make_cand(f, p, "baseline", rnd, label) for f, label, p in BASELINES.get(study, [])]
-    if study == "demo":
+    out = [make_cand(f, p, "baseline", rnd, label, study) for f, label, p in BASELINES.get(study, [])]
+    if True:                         # today's mesh inserts: the reference for every study
         cur = dict(CURRENT, origin="current", round=rnd)
         cur["id"] = cand_id(cur)
         out.append(cur)
@@ -1049,15 +1122,15 @@ def run_study(args):
     fams = args.families.split(",")
     for rnd in range(done_rounds + 1, done_rounds + 1 + args.rounds):
         t0 = time.time()
-        if rnd == 0:
-            new = [c for c in refs(study, rnd) if c["id"] not in have]
-            for f in fams:
-                new += propose(f, ROUND0[f] if not args.small else max(4, ROUND0[f] // 4), rnd, rng, have)
-        else:
-            new = []
-            for f in fams:
-                ce_update(f, cands, summ, rng)
-                new += propose(f, ROUNDN[f] if not args.small else max(3, ROUNDN[f] // 4), rnd, rng, have)
+        new = [c for c in refs(study, rnd) if c["id"] not in have] if rnd == 0 else []
+        for f in fams:
+            fresh = not any(c["family"] == f for c in cands)     # a family's first round is a Latin hypercube
+            if fresh:
+                n = ROUND0[f] if not args.small else max(4, ROUND0[f] // 4)
+            else:
+                ce_update(f, cands, summ, rng, study)
+                n = ROUNDN[f] if not args.small else max(3, ROUNDN[f] // 4)
+            new += propose(f, n, rnd, rng, have, study, fresh)
         cands += new
         have |= {c["id"] for c in new}
         print(f"round {rnd}: {len(new)} candidates ({source}); screening at {SCREEN_S:g} s", flush=True)
@@ -1072,7 +1145,7 @@ def run_study(args):
         print(f"round {rnd}: promoting {len(prom)} to the full {FULL_S:g} s run", flush=True)
         n2, m2 = evaluate(prom, study, "full", base, sets, args.workers, summ)
         for f in fams:
-            ce_update(f, cands, summ, rng)
+            ce_update(f, cands, summ, rng, study)
         meta = {"n_cands": len(cands), "n_runs": len(list((OUT / study / "runs").glob("*.json"))),
                 "round_runs": n1 + n2, "round_min": (time.time() - t0) / 60}
         write_outputs(study, cands, summ, meta)
@@ -1085,7 +1158,7 @@ def report(args):
     base = base_cfg(args.study)
     sets, _ = sweep.param_sets()
     for c in cands:
-        for fid in ("screen", "full"):
+        for fid in ["screen", "full", *[k for k in (summ.get(c["id"]) or {}) if k.startswith("ramp")]]:
             s = summarize(c, args.study, fid, base, sets)
             if s:
                 summ.setdefault(c["id"], {})[fid] = s
@@ -1117,28 +1190,47 @@ def replay(args):
         print(cid, c["spec"], {k: v for k, v in r["recovery"].items()}, "->", page)
 
 
+def stress(args):
+    """Rerun the top designs (and the references) at other stroke reversal times."""
+    cands, summ = load_state(args.study)
+    base = base_cfg(args.study)
+    sets, _ = sweep.param_sets()
+    top = ranking(cands, summ)[:args.top]
+    refs_ = [c for c in cands if c["origin"] in ("baseline", "current") and (summ.get(c["id"]) or {}).get("full")]
+    pick = list({c["id"]: c for c in top + refs_}.values())
+    for ramp in (float(r) for r in args.ramps.split(",")):
+        fid = f"ramp{ramp:g}"
+        print(f"stress: {len(pick)} designs at ramp {ramp:g} s", flush=True)
+        evaluate(pick, args.study, fid, base, sets, args.workers, summ)
+    meta = {"n_cands": len(cands), "n_runs": len(list((OUT / args.study / "runs").glob("*.json")))}
+    write_outputs(args.study, cands, summ, meta)
+    print("stress done; leaderboard rewritten")
+
+
 def plan(args):
     sets, source = sweep.param_sets()
-    n0 = sum(ROUND0.values()) + len(BASELINES.get(args.study, [])) + 1
+    n0 = sum(ROUND0[f] for f in DEFAULT_FAMILIES) + len(BASELINES.get(args.study, [])) + 1
     per = len(sets) * len(SEEDS)
     print(f"param sets: {source}; {per} runs per candidate per fidelity")
     print(f"round 0: {n0} candidates -> {n0 * per} screen runs ({SCREEN_S:g} s) + ~{math.ceil(PROMOTE * n0) + 4} "
           f"promoted -> {(math.ceil(PROMOTE * n0) + 4) * per} full runs ({FULL_S:g} s)")
-    n1 = sum(ROUNDN.values())
+    n1 = sum(ROUNDN[f] for f in DEFAULT_FAMILIES)
     print(f"each later round: {n1} candidates -> {n1 * per} screen + ~{(math.ceil(PROMOTE * n1) + 3) * per} full runs")
 
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("cmd", choices=["run", "report", "replay", "plan"])
+    ap.add_argument("cmd", choices=["run", "report", "replay", "plan", "stress"])
     ap.add_argument("--study", default="demo", choices=list(STUDIES))
     ap.add_argument("--rounds", type=int, default=1)
     ap.add_argument("--workers", type=int, default=MAX_WORKERS)
-    ap.add_argument("--families", default=",".join(FAMILIES))
+    ap.add_argument("--families", default=",".join(DEFAULT_FAMILIES),
+                    help=f"comma list from {list(FAMILIES)}; gated_rib was tested and rejected (see opt/LOG.md)")
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--small", action="store_true", help="a quarter of the candidates (smoke test)")
     ap.add_argument("--top", type=int, default=3)
     ap.add_argument("--ids", help="replay: extra candidate ids")
+    ap.add_argument("--ramps", default="0.005,0.02", help="stress: reversal times to try, s")
     ap.add_argument("--fps", type=float, default=20.0)
     ap.add_argument("--screen-s", type=float, help="override the screen length (smoke tests)")
     ap.add_argument("--full-s", type=float, help="override the full length (smoke tests)")
@@ -1146,7 +1238,7 @@ def main():
     args.workers = min(args.workers, MAX_WORKERS)
     global SCREEN_S, FULL_S
     SCREEN_S, FULL_S = args.screen_s or SCREEN_S, args.full_s or FULL_S
-    {"run": run_study, "report": report, "replay": replay, "plan": plan}[args.cmd](args)
+    {"run": run_study, "report": report, "replay": replay, "plan": plan, "stress": stress}[args.cmd](args)
 
 
 if __name__ == "__main__":

@@ -9,6 +9,16 @@ frame (see common.Design). Units mm.
              height: w4.6x5.0 (a "window" gate: the gap's height is capped at 5.0 instead of GATE_H)
     key=value  overrides of gated_container.py constants for every level:
              gh=GATE_H  tw=TUNNEL_W  tooth=TOOTH  slot=<drop slot length, sets GATE_X>
+             rib=<h>x<pitch>x<steep>  a ratchet floor (PROPOSAL, not in the CAD yet): sawtooth ribs across the
+             floor, h tall, one every pitch mm, each rising gently toward the gate and dropping on the gate
+             side over steep x pitch, so a symmetric stroke walks grains toward the gate. They stop 3 mm short
+             of the strip.
+             gx=<x1>/<x2>/...  gate position (strip centre, mm along the container, gate end +X) per level instead
+             of GATE_X (PROPOSAL, mid-slot tower): with slot=<length> the drop slot runs from the strip's downstream
+             face for that length, and a 30 deg wedge (capped 2 mm under the wall top) fills the rest of the
+             container beyond it, sloping back into the slot. The strip and its rails must clear the pull tabs
+             (|x| >= 13.15).
+             flip=0   don't flip alternate levels (with gx: what passes L1 lands just upstream of L2's gate)
 
     e.g. gated:2,w5p0,t1p4              today's CAD with two existing strips
          gated:2.6,w4.4x6,t1.5,tw=6,tooth=1.6,slot=9
@@ -56,7 +66,10 @@ LID_ABOVE = 60.0           # invisible lid this far above the top holder's rim
 SPAWN_RUN = 50.0           # the sample is poured on this length of the top container's high end
 SPAWN_INSET = 3.0
 TOKEN = re.compile(r"^(?:gate_)?([wt])(\d+(?:[.p]\d+)?)(?:x(\d+(?:[.p]\d+)?))?$")
-KEYS = {"gh": "GATE_H", "tw": "TUNNEL_W", "tooth": "TOOTH", "slot": "slot"}
+KEYS = {"gh": "GATE_H", "tw": "TUNNEL_W", "tooth": "TOOTH", "slot": "slot", "rib": "rib", "gx": "gx", "flip": "flip"}
+WEDGE_DEG = 30.0           # mid-slot containers: slope of the fill beyond the slot, back toward it
+RIB_CLEAR = 3.0            # ribs stop this far upstream of the strip
+RIB_EMBED = 0.3            # ribs reach this far into the floor, so they fuse with it
 
 
 def num(s):
@@ -73,7 +86,10 @@ def parse(args):
             k, _, v = a.partition("=")
             if k not in KEYS:
                 raise ValueError(f"unknown gated key {k!r}: use {list(KEYS)}")
-            over[KEYS[k]] = float(v)
+            over[KEYS[k]] = (tuple(num(x) for x in v.split("x")) if k == "rib" else
+                             tuple(float(x) for x in v.split("/")) if k == "gx" or "/" in v else float(v))
+            if k == "rib" and len(over["rib"]) != 3:
+                raise ValueError(f"rib takes <h>x<pitch>x<steep>, got {v!r}")
             continue
         name = a if a.startswith("gate_") else f"gate_{a}"
         if name in gc.STRIPS:
@@ -89,6 +105,19 @@ def parse(args):
         strips.append((kind, size, num(h) if h else None))
     if not strips:
         raise ValueError("gated needs at least one strip")
+    if "gx" in over:
+        if len(over["gx"]) != len(strips):
+            raise ValueError(f"gx needs one position per level, got {over['gx']} for {len(strips)} strips")
+        if "slot" not in over:
+            raise ValueError("gx needs slot=<length>")
+        if not isinstance(over["slot"], tuple):
+            over["slot"] = (over["slot"],) * len(strips)
+        for g, sl in zip(over["gx"], over["slot"]):
+            clear = gc.STRIP_T / 2 + gc.SLOT_FIT / 2 + gc.RAIL_T
+            if abs(g) - clear < gc.TAB_W / 2:
+                raise ValueError(f"gate at x {g:g}: the strip and rails would hit the pull tabs (|x| < {gc.TAB_W / 2 + clear:g})")
+            if g + gc.STRIP_T / 2 + sl > gc.OPEN_X + 1e-6 or g - gc.STRIP_T / 2 < -gc.OPEN_X:
+                raise ValueError(f"gate at x {g:g} with slot {sl:g}: the slot must lie over the holder's open bottom")
     return slope, strips, over
 
 
@@ -96,16 +125,22 @@ def token(kind, size, h=None):
     return f"{kind}{size:g}".replace(".", "p") + (f"x{h:g}".replace(".", "p") if h else "")
 
 
-def params(slope, over):
-    """Container numbers for this spec, from gated_container.py with the overrides applied."""
+def params(slope, over, level=0):
+    """Container numbers for one level of this spec, from gated_container.py with the overrides applied."""
     p = {"slope": slope, "GATE_H": over.get("GATE_H", gc.GATE_H), "TUNNEL_W": over.get("TUNNEL_W", gc.TUNNEL_W),
          "TOOTH": over.get("TOOTH", gc.TOOTH)}
-    gate_x = gc.OPEN_X - over["slot"] - gc.STRIP_T / 2 if "slot" in over else gc.GATE_X
+    if "gx" in over:
+        gate_x = over["gx"][level]
+        p["slot"] = over["slot"][level]
+    else:
+        gate_x = gc.OPEN_X - over["slot"] - gc.STRIP_T / 2 if "slot" in over else gc.GATE_X
+        p["slot"] = gc.OPEN_X - (gate_x + gc.STRIP_T / 2)
     p["GATE_X"] = gate_x
-    p["slot"] = gc.OPEN_X - (gate_x + gc.STRIP_T / 2)
+    p["slot_end"] = gate_x + gc.STRIP_T / 2 + p["slot"]
     x_lo = -gc.IN_L / 2 - 0.5
     p["x_lo"] = x_lo
     p["rise"] = (gate_x - gc.STRIP_T / 2 - x_lo) * math.tan(math.radians(slope))
+    p["rib"] = over.get("rib")
     return p
 
 
@@ -150,13 +185,34 @@ def container(lv, strip, p, tab_top):
     # floor: the slope up to the strip's upstream face, then flat under the strip (two convex pieces)
     lv.prism_x([(x_lo, 0), (x_up, 0), (x_up, FT), (x_lo, FT + rise)], -hy, hy, FLOOR_RGBA, "floor")
     lv.box(x_up, x_dn, -hy, hy, 0, FT, FLOOR_RGBA, "floor")
+    # ratchet ribs (proposal) on the slope
+    if p.get("rib"):
+        h, pitch, steep = p["rib"]
+        x_end = x_up - RIB_CLEAR
+        tan = math.tan(math.radians(p["slope"]))
+        z = lambda x: FT + (x_up - x) * tan
+        x0 = -IN_L / 2
+        while x0 + pitch <= x_end + 1e-9:
+            x1, xa = x0 + pitch, x0 + pitch * (1 - steep)
+            lv.prism_x([(x0, z(x0) - RIB_EMBED), (x1, z(x1) - RIB_EMBED), (x1, z(x1)), (xa, z(xa) + h), (x0, z(x0))],
+                       -hy, hy, FLOOR_RGBA, "floor")
+            x0 = x1
     # ledge beside the drop slot, over the holder's ledge
+    x_se = p["slot_end"]
     for sy in (-1, 1):
-        lv.box(x_dn, gc.OPEN_X + 0.5, sy * gc.OPEN_Y, sy * hy, 0, FT, FLOOR_RGBA, "floor")
-    # 45 deg ramp from the slot's far edge to the end wall, with a 0.4 mm lip
-    run, lip = IN_L / 2 + 0.5 - gc.OPEN_X, 0.4
-    lv.prism_x([(gc.OPEN_X, 0), (IN_L / 2 + 0.5, 0), (IN_L / 2 + 0.5, run + lip), (gc.OPEN_X, lip)],
-               -hy, hy, FLOOR_RGBA, "floor")
+        lv.box(x_dn, x_se + 0.5, sy * gc.OPEN_Y, sy * hy, 0, FT, FLOOR_RGBA, "floor")
+    lip = 0.4
+    if x_se >= gc.OPEN_X - 1e-6:
+        # 45 deg ramp from the slot's far edge to the end wall, with a 0.4 mm lip
+        run = IN_L / 2 + 0.5 - gc.OPEN_X
+        lv.prism_x([(gc.OPEN_X, 0), (IN_L / 2 + 0.5, 0), (IN_L / 2 + 0.5, run + lip), (gc.OPEN_X, lip)],
+                   -hy, hy, FLOOR_RGBA, "floor")
+    else:
+        # mid-slot: a wedge fills the container beyond the slot, sloping back into it
+        x_end = IN_L / 2 + 0.5
+        top = min(lip + (x_end - x_se) * math.tan(math.radians(WEDGE_DEG)), gc.WALL_H - 2.0)
+        x_knee = x_se + (top - lip) / math.tan(math.radians(WEDGE_DEG))
+        lv.prism_x([(x_se, 0), (x_end, 0), (x_end, top), (x_knee, top), (x_se, lip)], -hy, hy, FLOOR_RGBA, "floor")
     # rails, two per side
     for side in (-1, 1):
         rx = gx + side * (gc.STRIP_T / 2 + gc.SLOT_FIT / 2 + gc.RAIL_T / 2)
@@ -183,7 +239,9 @@ def container(lv, strip, p, tab_top):
 
 def build(args):
     slope, strips, over = parse(args)
-    p = params(slope, over)
+    ps = [params(slope, over, k) for k in range(len(strips))]
+    p = ps[0]
+    flip = over.get("flip", 1.0) != 0
     fh = dh.cad()[0]
     H, n = fh.H, len(strips)
     hx, hy = fh.L / 2 - fh.WALL, fh.W / 2 - fh.WALL
@@ -193,14 +251,15 @@ def build(args):
     for k, strip in enumerate(strips):               # k = 0 is the top level
         z_h = (n - k) * H
         geoms += dh.holder(z_h, close_notches=True)
-        lv = Level(z_h + fh.LEDGE_T, flip=k % 2 == 1)
-        info = container(lv, strip, p, tab_top)
+        lv = Level(z_h + fh.LEDGE_T, flip=flip and k % 2 == 1)
+        info = container(lv, strip, ps[k], tab_top)
         geoms += lv.geoms
         z_c = z_h + fh.LEDGE_T
-        x_up = p["GATE_X"] - gc.STRIP_T / 2
+        x_up = ps[k]["GATE_X"] - gc.STRIP_T / 2
         a, b = sorted((lv.s * -gc.IN_L / 2, lv.s * x_up))
         levels.append({**info, "level": f"L{k + 1}", "gate_end": "+X" if lv.s > 0 else "-X",
-                       "container_bottom_z_mm": z_c, "token": token(*strip)})
+                       "container_bottom_z_mm": z_c, "token": token(*strip), "gate_x_mm": round(ps[k]["GATE_X"], 3),
+                       "slot_end_mm": round(ps[k]["slot_end"], 3), "floor_rise_mm": round(ps[k]["rise"], 3)})
         zones.append({"name": f"L{k + 1}", "box": [a, b, -gc.IN_W / 2, gc.IN_W / 2, z_c, z_h + H]})
     z_bottom = H + fh.LEDGE_T
     zones.append({"name": "catch", "box": [-hx, hx, -hy, hy, fh.LEDGE_T, z_bottom]})
@@ -208,7 +267,7 @@ def build(args):
     zones[0]["box"][5] = rim + LID_ABOVE
     geoms += dh.lid(hx, hy, rim, rim + LID_ABOVE, fh.WALL)
 
-    open_ = [opening(*s, p) for s in strips]
+    open_ = [opening(*s, pk) for s, pk in zip(strips, ps)]
 
     def ideal_zone(dims):
         for k, (ow, oh) in enumerate(open_):
@@ -218,9 +277,10 @@ def build(args):
 
     z_top = H * n + fh.LEDGE_T
     x0 = -gc.IN_L / 2 + SPAWN_INSET
-    spawn = [x0, x0 + SPAWN_RUN, -gc.IN_W / 2 + SPAWN_INSET + gc.TAB_T, gc.IN_W / 2 - SPAWN_INSET - gc.TAB_T,
-             z_top + gc.FLOOR_T + p["rise"] + 1.0, rim + LID_ABOVE - 5.0]
-    jets = [{"pos_lab": [(1 if k % 2 == 0 else -1) * (p["GATE_X"] - 10.0), 0.0, rim + 40.0],
+    x1 = min(x0 + SPAWN_RUN, p["GATE_X"] - gc.STRIP_T / 2 - 10.0)
+    spawn = [x0, x1, -gc.IN_W / 2 + SPAWN_INSET + gc.TAB_T, gc.IN_W / 2 - SPAWN_INSET - gc.TAB_T,
+             z_top + gc.FLOOR_T + p["rise"] + 1.0 + (p["rib"][0] if p["rib"] else 0.0), rim + LID_ABOVE - 5.0]
+    jets = [{"pos_lab": [(1 if k % 2 == 0 or not flip else -1) * (ps[k]["GATE_X"] - 10.0), 0.0, rim + 40.0],
              "dir": list(np.array([0.0, 0.0, -1.0])), **designs.JET_PLACEHOLDER} for k in range(n)]
     name = f"gated:{slope:g}," + ",".join(token(*s) for s in strips)
     extra = []
@@ -228,7 +288,15 @@ def build(args):
         if const in over:
             extra.append(f"{key}={over[const]:g}")
     if "slot" in over:
-        extra.append(f"slot={over['slot']:g}")
+        sl = over["slot"]
+        extra.append("slot=" + ("/".join(f"{v:g}" for v in sl) if isinstance(sl, tuple) and len(set(sl)) > 1 else
+                                f"{sl[0] if isinstance(sl, tuple) else sl:g}"))
+    if over.get("rib"):
+        extra.append("rib=" + "x".join(f"{v:g}" for v in over["rib"]))
+    if "gx" in over:
+        extra.append("gx=" + "/".join(f"{v:g}" for v in over["gx"]))
+    if not flip:
+        extra.append("flip=0")
     name += "".join("," + e for e in extra)
     return Design(
         name=name, geoms=geoms, zones=zones, spawn=spawn, ideal_zone=ideal_zone, stroke_axis=[1.0, 0.0, 0.0],
@@ -236,8 +304,10 @@ def build(args):
         info={"levels": levels, "floor_slope_deg": slope, "floor_rise_mm": round(p["rise"], 3),
               "gate_x_mm": round(p["GATE_X"], 3), "drop_slot_mm": [round(p["slot"], 3), 2 * gc.OPEN_Y],
               "GATE_H": p["GATE_H"], "TUNNEL_W": p["TUNNEL_W"], "TOOTH": p["TOOTH"],
+              "ratchet_rib_h_pitch_steep": p["rib"],
               "TAB_CLASH": f"gated_container TAB_TOP {gc.TAB_TOP:g} mm is {gc.TAB_TOP - (H - fh.LEDGE_T):g} mm above "
                            f"the ledge of the box above in a rim-on-rim stack; tabs cut to {tab_top:g} mm here",
+              "flipped_levels": flip,
               "stacking": "holder boxes rim on rim, one gated container per box, alternate levels flipped 180 deg, "
                           "catch pan under the bottom box; sample poured on the top container's high end",
               "jets": "placeholder: one per level, 40 mm above the top rim, straight down"})

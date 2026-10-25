@@ -1,9 +1,11 @@
 """Replay page for one recorded sorter run: a single standalone three.js HTML file.
 
-Run from sim\\:  python viewer.py <run_dir> [--open]
+Run from sim\\:  python viewer.py <run_dir> [--open] [--rig bugsorter]
 Reads run_dir/scene.json and run_dir/traj.npz (sim_contract.md, "Recording") and writes
 run_dir/view.html. three.js, the scene and the trajectory are inlined, so the page opens from
-file:// with no server and no network. --open opens it in the default browser.
+file:// with no server and no network. --open opens it in the default browser. --rig draws the
+bench tower (frame, rods and knobs, spray plate, tub) round a holder-box run: display only, from
+rig.py, with sizes estimated from a photo.
 
 The trajectory is quantized (positions int16 at 0.01 mm, so +/-327 mm; quaternions int16 at
 1/32767; wetness uint8), delta-coded along time, byte-shuffled, zlib-compressed and base64'd.
@@ -111,8 +113,11 @@ def script_json(obj) -> str:
     return json.dumps(json_safe(obj), separators=(",", ":")).replace("</", "<\\/")
 
 
-def build(run_dir: Path) -> Path:
+def build(run_dir: Path, rig: str | None = None) -> Path:
     scene = json.loads((run_dir / "scene.json").read_text(encoding="utf-8"))
+    if rig:                        # display-only surroundings, in the lab frame (rig.py)
+        import rig as rig_module
+        scene["rig"] = {"name": rig, "geoms": getattr(rig_module, rig)(scene)}
     with np.load(run_dir / "traj.npz") as z:
         traj = {k: z[k] for k in z.files}
     for g in scene.get("tray", {}).get("geoms", []):
@@ -154,8 +159,10 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("run_dir", type=Path)
     ap.add_argument("--open", action="store_true", help="open the page in the default browser")
+    ap.add_argument("--rig", choices=["bugsorter"],
+                    help="draw the bench tower round a holder-box run (rig.py; display only, sizes estimated)")
     args = ap.parse_args()
-    out = build(args.run_dir)
+    out = build(args.run_dir, args.rig)
     if args.open:
         os.startfile(out)
 

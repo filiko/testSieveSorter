@@ -59,4 +59,15 @@ python side_by_side.py --real ../../testSieveSorter/media/forum-2026-10-24/IMG_1
 - **The clip** shows sim t = 0–2.4 s at 1/5 speed (12 s). The pour runs to t = 1 s, with no shaking. At 1/5 speed the 20 Hz shake plays as a visible 4 Hz bounce.
 - **Forum's photos and the clip stay local:** `media/` is gitignored. Copy the clip into the main checkout's `media/`.
 
+**The bench tower.** BioKEA's BugSorter hangs its holder boxes one above the other in an extrusion frame, with open air between them, a rod and knob through each box's tab, a spray plate above and a water tub below. `pitch=` on an `inserts:` design spaces the boxes like that; the default is still rim on rim. `viewer.py --rig bugsorter` draws the frame, rods, knobs, spray plate, controller, tub and acrylic around the run. The tower is display only (`rig.py`), so it never touches the physics, and its sizes are estimated from the team's photo until someone measures the unit. A grain that bounces out through a gap lands on an invisible tub floor and counts as lost. The drop between boxes needs the stiffer contacts: 0.42 mm overlap at the production settings, 0.14 mm at these.
+
+```
+wsl: python sorter.py --design inserts:5mm,2mm,pitch=65 --mix pasta=15,rice=40,quinoa=40 --stroke sine:amp_mm=1.24,freq_hz=20,angle_deg=90 --duration 10 --dt 0.000125 --timeconst 0.00025 --fps 240 --out out/runs/demo_tower_stiff
+python viewer.py out/runs/demo_tower_stiff --rig bugsorter
+python record_view.py out/runs/demo_tower_stiff --view "?cam=-139.2,382.5,354.4&target=0,0,100&fov=45&aspect=7:8" --speed 0.2 --start 0 --duration 2.6 --height 960 -o out/runs/demo_tower_stiff/sim_tower_0p2x.mp4
+python side_by_side.py --real <photo of the tower> --sim out/runs/demo_tower_stiff/sim_tower_0p2x.mp4 -o ../../testSieveSorter/media/tower_side_by_side.mp4 --height 960 --real-label "BugSorter tower (bench)" --caption "..."
+```
+
+On the replay page, the **Bench tower** checkbox hides the tower; in the URL, `rig=0` hides it and `jets=1` shows the jet cones, which are hidden by default when the tower is drawn and the spray is off.
+
 `side_by_side.py` writes `..\media\demo_side_by_side.mp4`, capped under 19 MB. A photo as `--real` is held for the whole sim clip. A video works too (`--slow`, `--loops`). It also takes a Record-button `.webm` and fixes Chrome's colour-range tagging (light greys would otherwise clip to white).

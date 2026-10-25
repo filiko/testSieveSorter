@@ -451,7 +451,7 @@ def replay(args):
     import viewer
     cands, summ = load()
     by_id = {c["id"]: c for c in cands}
-    ids = [c["id"] for c in ranking(cands, summ)[:args.top]] + (args.ids.split(",") if args.ids else [])
+    ids = [c["id"] for c in (winners(cands, summ) or ranking(cands, summ))[:args.top]] + (args.ids.split(",") if args.ids else [])
     o.one_box_seesaw()
     for cid in ids:
         c = by_id[cid]

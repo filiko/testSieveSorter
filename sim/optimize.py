@@ -163,7 +163,10 @@ RIG_ROCK_AXIS = "y"
 # (plinko) rocks as one level (one_box_seesaw). Towers are spaced by pitch (box bottom to box bottom): at +/-15 deg
 # neighbours touch at 72 mm with the +X tab (rocking.py), and PLAN.md asks for 85-110.
 SEESAW_PARAMS = [P("ss_deg", 5.0, 15.0, 0.5), P("ss_period", 0.4, 6.0, 0.1),
-                 P("ss_shape", 0, 0, 0, ("constant_speed", "sine"))]
+                 P("ss_shape", 0, 0, 0, ("constant_speed", "sine")), P("vib_mm", 0.0, 0.5, 0.05)]
+# vib_mm (from round 1): rocking.py's buzz of the whole tower on top of the seesaw, 40 Hz straight up (the tool's);
+# the seesaw session saw 0.3 mm (1.9 g) clear the stuck quinoa and chia off the 5 mm tray (SEESAW.md, 12:30).
+VIB_HZ = 40.0
 PITCH = P("pitch", 80.0, 110.0, 5.0)
 SEESAW_DEFAULT = {"ss_deg": 10.0, "ss_period": 2.0, "ss_shape": "constant_speed", "pitch": 85.0}
 FORCE_DRIVE = None                # run --drive rock: every new candidate (and reference) of this run uses that drive
@@ -428,7 +431,13 @@ BASELINES["seesaw"] = [
     ("inserts", "DEMO RIG the team built: printed 5 mm / 2 mm trays, 85 mm apart, on the default seesaw "
                 "(+/-10 deg, 2 s, neighbours alternate)",
      {"a1": 5.0, "bar1": 1.2, "a2": 2.0, "bar2": 1.0, **SEESAW_DEFAULT}),
+    ("inserts", "DEMO RIG on the default seesaw + a 0.3 mm buzz at 40 Hz (1.9 g; SEESAW.md 12:30)",
+     {"a1": 5.0, "bar1": 1.2, "a2": 2.0, "bar2": 1.0, **SEESAW_DEFAULT, "vib_mm": 0.3}),
 ]
+# bambu's seesaw parts (not a family: the ribs-across inserts aren't parametric yet): 5 / 2 mm holes with ridges
+# along Y only and 45 deg border ramps, in the tabless seesaw holder over the deep catch pan with its lip.
+ACROSS = {"family": "across", "label": "RIBS ACROSS (bambu): 5mm_across / 2mm_across in the seesaw holder, 85 mm apart",
+          "spec": "inserts:5mm_across,2mm_across,pitch=85,holder=seesaw", "inject": {}, "params": {}}
 BASELINES["insects"] = [
     ("gated", "gatecalc plan (skill) for the length classes: gated t2.9 / w1.2 (8 tall), firmware cap stroke",
      {"slope": 2.0, "k1": "t", "s1": 2.9, "gh": 8.0, "k2": "w", "s2": 1.2, "tw": 8.0, "tooth": 2.0, "slot": 7.0,
@@ -469,7 +478,10 @@ def show(c):
 
 def stroke_of(p):
     if "ss_deg" in p:
-        return {"profile": "seesaw", "deg": p["ss_deg"], "period_s": p["ss_period"], "shape": p["ss_shape"]}
+        s = {"profile": "seesaw", "deg": p["ss_deg"], "period_s": p["ss_period"], "shape": p["ss_shape"]}
+        if p.get("vib_mm"):
+            s.update(vib_mm=p["vib_mm"], vib_hz=VIB_HZ)
+        return s
     if p.get("drive", "firmware") == "rock":
         q = {**ROCK_DEFAULT, **{k: p[k] for k in ROCK_DEFAULT if k in p}}
         return {"profile": "none", "rock": {"axis": q["rock_axis"], "deg": q["rock_deg"], "period_s": q["rock_period"],
@@ -487,7 +499,8 @@ def stroke_of(p):
 def stroke_show(st):
     if st.get("profile") == "seesaw":
         shape = "sine" if st.get("shape") == "sine" else "constant speed"
-        return f"seesaw +/-{st['deg']:g} deg (ends tip, neighbours alternate), {st['period_s']:g} s per cycle, {shape}"
+        buzz = f" + {st['vib_mm']:g} mm buzz at {st['vib_hz']:g} Hz" if st.get("vib_mm") else ""
+        return f"seesaw +/-{st['deg']:g} deg (ends tip, neighbours alternate), {st['period_s']:g} s per cycle, {shape}{buzz}"
     if st.get("rock"):
         r = st["rock"]
         return f"seesaw +/-{r['deg']:g} deg about the tray's {'long' if r['axis'] == 'x' else 'short'} axis, {r['period_s']:g} s per cycle"
@@ -1127,7 +1140,7 @@ def leaderboard_md(study, cands, summ, meta):
               " | ".join(f"{c} pur / rec" for c in cl) + " | jammed | lost | t90 s | flags | design (CAD, nominal mm) "
               "| sim spec (as printed) | stroke |",
               "|" + "---|" * (13 + len(cl))]
-    for f in [*FAMILIES, "current", "demo_rig"]:
+    for f in [*FAMILIES, "current", "demo_rig", "across"]:
         fam = [c for c in ranking(cands, summ, exclude_refs=False) if c["family"] == f]
         if fam:
             lines.append(row(ranking(cands, summ, exclude_refs=False).index(fam[0]) + 1, fam[0],
@@ -1496,6 +1509,12 @@ def refs(study, rnd):
         cur = dict(ref, origin="current", round=rnd)
         cur["id"] = cand_id(cur)
         out.append(cur)
+    if STUDIES[study].get("seesaw") and rnd >= 1:     # bambu's ribs-across parts, alone and with the buzz
+        for vib, tail in ((0.0, ", default seesaw (+/-10 deg, 2 s)"), (0.3, ", default seesaw + 0.3 mm buzz at 40 Hz")):
+            st = stroke_of({**SEESAW_DEFAULT, "vib_mm": vib})
+            cur = dict(ACROSS, label=ACROSS["label"] + tail, stroke=st, origin="current", round=rnd)
+            cur["id"] = cand_id(cur)
+            out.append(cur)
     return out
 
 

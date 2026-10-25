@@ -55,6 +55,16 @@ The one-page system description is [docs/SYSTEM.md](docs/SYSTEM.md), the work pl
   - pasta and chickpea stay on 5 mm every time, and the rice kinds mostly end on 2 mm;
   - **half the quinoa and chia got stranded on the 5 mm tray's ribs**, because a gentle rock is below the ~22° at which grains slide;
   - that led to the **ribs-across inserts** and a **small vibration on top of the seesaw** (`seesaw:...,vib_mm,vib_hz`).
+- **The system designed a breaker that frees the clump** (`sim/opt/leaderboard_malaise.md`, EXPLORATORY, grain-surrogate clump, scored across weak / medium / strong bonds):
+
+  | Setup | Robust score | Freed | Sorted |
+  |---|---|---|---|
+  | Optimizer's breaker: 11.4 mm grid, 1.4 × 6.8 mm pins every 8 mm, ±12° seesaw + 0.35 mm 40 Hz buzz | **0.638** | **97%** | **85%** |
+  | The CAD default breaker + buzz | 0.479 | 85% | 75% |
+  | The CAD default breaker, no buzz | 0.287 | 65% | 22% |
+  | No breaker | 0.217 | 31% | 17% |
+
+  Without a breaker, a medium clump stays whole (2% freed). The buzz is the strongest single factor.
 - **Clump break-up** (first run, at ±25°):
   - 84% of the specimens are free within 0.4 s;
   - the hardest hits on specimens come from **the drops between levels**, not from the break-up;

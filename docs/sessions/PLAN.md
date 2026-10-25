@@ -37,6 +37,13 @@ Why:
 **Memory:** the laptop hit 214 MB free at 12:53, and several batches were killed. Run **one seed at a time, ≤ 3 workers each**, and cache everything so a rerun resumes. The optimizer keeps its workers but should drop to 8 if memory goes under 2 GB.
 
 
+## 13:05 update: the optimizer's breaker is the hero part
+Malaise round 0 (PR #27, grain clump): optimizer leader B-32a7c82c, an 11.4 mm grid with 1.4 × 6.8 mm round pins every 8 mm, on a ±12° seesaw at 2.5 s with a 0.35 mm, 40 Hz buzz. Robust score **0.638, 97% freed, 85% sorted**. Compare: the CAD default + buzz 0.479, the default without buzz 0.287, no breaker 0.217. Final rounds end ~13:40.
+- **bambu:** once `sim/opt/winners_malaise.json` is final (~13:40), build and slice its #1 breaker with `cad/breaker_layer.py` (same keys). **Send it to the printer by ~13:50.** At about 90 min it's ready for the 15:30 live demo. Add it to the print plan, plus a clip of it breaking a clump (from its replay).
+- **optimizer:** after the final round, write the winner's replay (`view.html`) and say in `leaderboard_malaise.md` which stroke settings the bench should use.
+
+## Next steps per session
+
 ### clump (`clump-sim`): critical path
 1. **~12:15, PR:** `sim/clumps.py` plus the hook, and one clump that builds and visibly **breaks apart** on the seesaw tower, with a `view.html`. It's running now. Get it to `main`.
 2. **Also an insect clump,** not only grains. Malaise clumps are insects (`insects.py` kinds, at the real size shares in `sim/INSECT_AUDIT.md`). Keep the grain clump as the bench-demo surrogate.

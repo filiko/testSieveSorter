@@ -15,7 +15,7 @@ Details: [docs/sessions/clump-breakup.md](sessions/clump-breakup.md).
 - **The boxes are separate**, stacked one above the other. They aren't one block, and they aren't side by side.
 
 ## 3. The motion: each tray seesaws, neighbours alternate (confirmed by the user, 10:50)
-- **Seesaw, ends tip.** Each tray rocks about **its own pivot across its middle**: a horizontal axis along the tray's width (Y), through its centre. The two short ends (−X and +X) go up and down in turn, **about 20–30° either side**. Grains slide end to end across the sieve, as in a gold pan; rice on plastic starts sliding at about 22°.
+- **Seesaw, ends tip.** Each tray rocks about **its own pivot across its middle**: a horizontal axis along the tray's width (Y), through its centre. The two short ends (−X and +X) go up and down in turn. **The angle is smaller than first said:** after seeing ±25° in the replay (11:20), the user said that's too wide. Renders at ±5°, ±10° and ±15° are being made so the user can pick. Until then, use **±10° as the default and sweep 5–15°**. Don't use 20–30°. Grains slide end to end across the sieve, as in a gold pan; rice on plastic starts sliding at about 22°.
 - **Each level has its own pivot, and neighbours alternate:** opposite phase, so when one tray tips its −X end down, the trays above and below tip it up. The user chose this so material doesn't fly off. Whatever drops from a level lands on a tray tilted the other way.
 - **Consequence for the hardware:** when neighbours tilt opposite ways, their facing ends close in by about L·sin θ (L ≈ 140 mm: 48 mm at 20°, 59 mm at 25°, 70 mm at 30°). Measured on the real holder solid (`cad/seesaw_tower.py`, PR #14, 3 mm clearance, pivot assumed at the box centre). The **+X mounting tab** decides the spacing:
 
@@ -27,7 +27,7 @@ Details: [docs/sessions/clump-breakup.md](sessions/clump-breakup.md).
 
   A middle pivot doesn't need the tab, so cut it off for the seesaw: about 85 mm at ±25°. Otherwise allow about 105 mm. The sim should use a `pitch=` in this range and check that trays never touch at either end.
 - **Not known yet (ASSUMED; sweep them):**
-  - the exact angle (20–30°, search 10–30°);
+  - the exact angle (default ±10° while the user picks from the 5 / 10 / 15° renders; search 5–15°);
   - the period (the optimizer's seesaw uses 0.4–6 s per cycle);
   - the motion profile: constant angular speed with hard reversals (as the firmware drives its stage) or a smooth sine.
 - **Superseded:** earlier notes in this file (rigid up-and-down translation, then "yaw about the +X tab") and the optimizer's default `rock_axis: x` (long sides tipping). The axis is **Y** (the ends tip). The pure translation strokes (`angle_deg`, the firmware stroke, VERTICAL.md, the leaderboards before 10:50) are simplifications; re-check them under the seesaw before the pitch quotes them.

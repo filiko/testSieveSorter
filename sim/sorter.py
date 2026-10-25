@@ -1,0 +1,395 @@
+"""Sorter sim core: drop a mix of grains and insects into a design, shake it, and record where
+everything goes. Units mm, g, s.
+
+The sim runs in the tray frame: design geoms are static and the shake is a uniform pseudo-force,
+gravity minus the tray's acceleration, which is exact for a tray that only translates. The lab
+frame is the tray frame shifted by the tray displacement; spray jets stay fixed in the lab.
+
+Stroke profiles (along the design's flow axis unless "axis" is given):
+    sine            amp_mm, freq_hz
+    constant_speed  amp_mm, freq_hz or speed_mm_s, ramp_s: constant speed with smoothed reversals.
+                    BioKEA's firmware (github.com/BioKEA/BugSorter src/main.cpp) runs a 2 cm stroke
+                    (amp_mm=10) at 5 mm/s by default, capped at 50 mm/s, with no acceleration ramp
+    sawtooth        amp_mm, freq_hz, forward_fraction, ramp_s: slow stroke along the axis, fast return
+    csv             csv: a measured "t_s,x_mm" file (looped), smoothed before differentiating
+    none
+
+Run from sim\\:
+    <venv python> sorter.py --design pool:w5p0,t1p4 --mix rice=30,quinoa=30,chickpea=8,pasta=8 \\
+        --stroke sine:amp_mm=3,freq_hz=10 --duration 10 --out out/runs/demo
+    <venv python> viewer.py out/runs/demo --open
+"""
+import argparse
+import json
+import time
+from dataclasses import asdict, dataclass, field
+from pathlib import Path
+
+import mujoco
+import numpy as np
+
+import designs
+
+G = 9810.0
+SOLIMP = "0.95 0.99 0.0001"
+MEMORY = "128M"           # MuJoCo arena per run; sweeps run about 10 at once
+CSV_SMOOTH_S = 0.005
+# While particles settle, their speed is damped at this rate (1/s), capping the fall at about
+# g / rate = 100 mm/s. Soft contacts let a hard landing push a grain through an opening slightly
+# smaller than it, which a rigid printed part would never allow.
+SETTLE_DAMPING = 100.0
+GEOM_TYPES = {mujoco.mjtGeom.mjGEOM_SPHERE: "sphere", mujoco.mjtGeom.mjGEOM_CAPSULE: "capsule",
+              mujoco.mjtGeom.mjGEOM_ELLIPSOID: "ellipsoid", mujoco.mjtGeom.mjGEOM_CYLINDER: "cylinder",
+              mujoco.mjtGeom.mjGEOM_BOX: "box"}
+GEOM_NSIZE = {"sphere": 1, "capsule": 2, "ellipsoid": 3, "cylinder": 2, "box": 3}
+
+
+@dataclass
+class RunConfig:
+    design: str = "pool:w5p0,t1p4"
+    mix: dict = field(default_factory=lambda: {"rice": 30, "quinoa": 30, "chickpea": 8, "pasta": 8})
+    stroke: dict = field(default_factory=lambda: {"profile": "sine", "amp_mm": 3.0, "freq_hz": 10.0})
+    duration_s: float = 10.0
+    settle_s: float = 1.0
+    seed: int = 0
+    dt: float = 5e-4
+    contact: dict = field(default_factory=lambda: {"friction": 0.4, "timeconst": 0.002, "dampratio": 1.0})
+    spray: dict | None = None
+    record_fps: float = 30.0
+    out_dir: str | None = None
+
+
+def make_particle(kind, rng):
+    if kind.startswith("insect_"):
+        import insects
+        return insects.make(kind, rng)
+    import grains
+    return grains.make(kind, rng)
+
+
+def smooth(x, n):
+    return np.convolve(x, np.ones(n) / n, mode="same") if n > 1 else x
+
+
+def stroke_profile(stroke, n, dt):
+    """Displacement, velocity and acceleration along the stroke axis at each of n steps."""
+    p = stroke.get("profile", "sine")
+    t = np.arange(n) * dt
+    if p == "none":
+        return np.zeros(n), np.zeros(n), np.zeros(n)
+    amp, f = stroke.get("amp_mm", 3.0), stroke.get("freq_hz", 10.0)
+    if "speed_mm_s" in stroke:                       # constant_speed by firmware settings: speed and stroke length
+        f = stroke["speed_mm_s"] / (4 * amp)
+    if p == "sine":
+        w = 2 * np.pi * f
+        return amp * np.sin(w * t), amp * w * np.cos(w * t), -amp * w * w * np.sin(w * t)
+    ramp = max(1, round(stroke.get("ramp_s", 0.01) / dt))
+    if p in ("constant_speed", "sawtooth"):
+        phase = (t * f) % 1.0
+        r = 0.5 if p == "constant_speed" else stroke.get("forward_fraction", 0.7)
+        v = np.where(phase < r, 1.0 / r, -1.0 / (1.0 - r))   # zero net travel per cycle
+        v = smooth(v, ramp)
+    elif p == "csv":
+        rows = np.loadtxt(stroke["csv"], delimiter=",", skiprows=1)
+        tt, xx = rows[:, 0] - rows[0, 0], rows[:, 1] - rows[:, 1].mean()
+        x = np.interp(t % tt[-1], tt, xx)
+        x = smooth(x, max(1, round(CSV_SMOOTH_S / dt)))
+        v = np.gradient(x, dt)
+        return x, v, np.gradient(smooth(v, max(1, round(CSV_SMOOTH_S / dt))), dt)
+    else:
+        raise ValueError(f"unknown stroke profile {p!r}")
+    x = np.cumsum(v) * dt
+    x -= (x.max() + x.min()) / 2
+    k = amp / max(x.max(), 1e-9)                     # scale so the peak displacement is amp
+    x, v = x * k, v * k
+    return x, v, np.gradient(v, dt)
+
+
+def place(particles, spawn, rng):
+    """Positions packed from the bottom of the spawn box, no bounding spheres overlapping."""
+    x0, x1, y0, y1, z0, z1 = spawn
+    centres, radii, out = np.zeros((0, 3)), np.zeros(0), [None] * len(particles)
+    order = sorted(range(len(particles)), key=lambda i: -particles[i].dims["span"])
+    for i in order:
+        dims = particles[i].dims
+        r = min(dims["span"] / 2, dims["length"]) * 1.05      # long thin legs may interleave
+        rx, ry, rz = (min(r, (b - a) / 2 - 0.01) for a, b in ((x0, x1), (y0, y1), (z0, z1)))
+        for z in np.arange(z0 + rz, z1 - rz + 1e-9, 1.0):
+            p = np.column_stack([rng.uniform(x0 + rx, x1 - rx, 40), rng.uniform(y0 + ry, y1 - ry, 40), np.full(40, z)])
+            ok = np.all(np.linalg.norm(p[:, None] - centres[None], axis=2) > r + radii, axis=1)
+            if ok.any():
+                out[i] = p[np.argmax(ok)]
+                centres, radii = np.vstack([centres, out[i]]), np.append(radii, r)
+                break
+        else:
+            raise RuntimeError(f"no room to drop particle {i} ({particles[i].kind}); use fewer particles")
+    return out
+
+
+def tray_xml(design):
+    assets, geoms = [], []
+    for i, g in enumerate(design.geoms):
+        rgba = " ".join(f"{c:g}" for c in g["rgba"])
+        if g["type"] == "mesh":
+            vert = " ".join(f"{c:.4f}" for v in g["vertices"] for c in v)
+            assets.append(f'<mesh name="tray{i}" vertex="{vert}"/>')
+            geoms.append(f'<geom name="tray{i}" type="mesh" mesh="tray{i}" rgba="{rgba}"/>')
+        else:
+            geoms.append(f'<geom name="tray{i}" type="{g["type"]}" size="{" ".join(f"{c:.4f}" for c in g["size"])}" '
+                         f'pos="{" ".join(f"{c:.4f}" for c in g["pos"])}" quat="{" ".join(f"{c:.6f}" for c in g["quat"])}" '
+                         f'rgba="{rgba}"/>')
+    return "".join(assets), "".join(geoms)
+
+
+def build_model(cfg, design, particles, rng, extras=""):
+    c = cfg.contact
+    mu = c["friction"]
+    pos = place(particles, design.spawn, rng)
+    bodies = []
+    for i, (p, xyz) in enumerate(zip(particles, pos)):
+        q = rng.normal(size=4)
+        q /= np.linalg.norm(q)
+        name = f"p{i:03d}"
+        bodies.append(f'<body name="{name}" pos="{xyz[0]:.4f} {xyz[1]:.4f} {xyz[2]:.4f}" '
+                      f'quat="{q[0]:.5f} {q[1]:.5f} {q[2]:.5f} {q[3]:.5f}" childclass="particle">'
+                      f'<freejoint/>{p.xml.replace("{p}", name)}</body>')
+    assets, tray = tray_xml(design)
+    xml = f"""<mujoco model="{design.name}">
+  <option timestep="{cfg.dt}" gravity="0 0 {-G}" integrator="implicitfast"/>
+  <size memory="{MEMORY}"/>
+  <visual><global offwidth="1280" offheight="720"/><quality shadowsize="4096"/></visual>
+  <default>
+    <geom solref="{c['timeconst']} {c['dampratio']}" solimp="{SOLIMP}" friction="{mu} 0.005 0.0001"/>
+    <default class="particle"><geom priority="1"/></default>
+  </default>
+  <asset>{assets}</asset>
+  <worldbody>
+    <light pos="0 -80 300" dir="0 0.25 -1" diffuse="0.8 0.8 0.8"/>
+    <camera name="iso" pos="0 -170 170" xyaxes="1 0 0 0 0.707 0.707"/>
+    {tray}
+    {"".join(bodies)}
+  </worldbody>
+  {extras}
+</mujoco>"""
+    return mujoco.MjModel.from_xml_string(xml)
+
+
+def assign_zones(xyz, design, bounds):
+    """Zone index per particle root: design zones in order, then between, then lost."""
+    n_z = len(design.zones)
+    zone = np.full(len(xyz), n_z, dtype=np.int32)                  # between
+    for k in reversed(range(n_z)):
+        x0, x1, y0, y1, z0, z1 = design.zones[k]["box"]
+        inside = ((xyz[:, 0] >= x0) & (xyz[:, 0] <= x1) & (xyz[:, 1] >= y0) & (xyz[:, 1] <= y1)
+                  & (xyz[:, 2] >= z0) & (xyz[:, 2] <= z1))
+        zone[inside] = k
+    lo, hi = bounds
+    lost = np.any(xyz < lo, axis=1) | np.any(xyz > hi, axis=1)
+    zone[lost] = n_z + 1
+    return zone
+
+
+def scene_geoms(design, m):
+    """Tray geoms for the viewer; a mesh comes out as the convex hull MuJoCo compiled, in the tray frame."""
+    out = []
+    for i, g in enumerate(design.geoms):
+        if g["role"] == "lid":
+            continue
+        if g["type"] == "mesh":
+            gid = m.geom(f"tray{i}").id
+            k = m.geom_dataid[gid]
+            v0, nv, f0, nf = m.mesh_vertadr[k], m.mesh_vertnum[k], m.mesh_faceadr[k], m.mesh_facenum[k]
+            rot = np.zeros(9)
+            mujoco.mju_quat2Mat(rot, m.geom_quat[gid])
+            verts = m.mesh_vert[v0:v0 + nv] @ rot.reshape(3, 3).T + m.geom_pos[gid]
+            out.append({"type": "mesh", "vertices": verts.round(4).tolist(), "faces": m.mesh_face[f0:f0 + nf].tolist(),
+                        "rgba": g["rgba"], "role": g["role"]})
+        else:
+            out.append({k: g[k] for k in ("type", "size", "pos", "quat", "rgba", "role")})
+    return out
+
+
+def body_geoms(m, b):
+    out = []
+    for g in np.flatnonzero(m.geom_bodyid == b):
+        t = GEOM_TYPES[int(m.geom_type[g])]
+        out.append({"type": t, "size": m.geom_size[g][:GEOM_NSIZE[t]].round(5).tolist(),
+                    "pos": m.geom_pos[g].round(5).tolist(), "quat": m.geom_quat[g].round(6).tolist(),
+                    "rgba": m.geom_rgba[g].round(3).tolist()})
+    return out
+
+
+def run(cfg: RunConfig) -> dict:
+    rng = np.random.default_rng(cfg.seed)
+    design = designs.build(cfg.design)
+    kinds = list(cfg.mix)
+    particles = [make_particle(k, rng) for k in kinds for _ in range(cfg.mix[k])]
+    names = [f"p{i:03d}" for i in range(len(particles))]
+
+    sp = None
+    extras = ""
+    if cfg.spray:
+        import spray
+        jets = cfg.spray.get("jets", "default")
+        if jets == "default":
+            jets = design.jets_default
+        elif jets == "bench":                       # the nozzles the team measured (BENCH.md step 7)
+            jets = spray.jets_from_csv(Path(__file__).resolve().parent / "bench" / "jets.csv")
+        jets = [spray.Jet(**j) for j in jets]
+        extras = spray.Spray.mjcf_extras(names, cfg.spray.get("params"))
+    m = build_model(cfg, design, particles, rng, extras)
+    d = mujoco.MjData(m)
+    roots = np.array([m.body(n).id for n in names])
+    pbodies = np.arange(1, m.nbody)                                  # every particle body, roots and children
+    if cfg.spray:
+        sp = spray.Spray(m, d, jets, list(pbodies), cfg.spray.get("params"))
+
+    axis = np.array(cfg.stroke.get("axis") or design.stroke_axis, dtype=float)
+    axis /= np.linalg.norm(axis)
+    n_settle, n_shake = round(cfg.settle_s / cfg.dt), round(cfg.duration_s / cfg.dt)
+    x, v, a = stroke_profile(cfg.stroke, n_shake, cfg.dt)
+    x, v, a = (np.concatenate([np.zeros(n_settle), s]) for s in (x, v, a))
+    steps = n_settle + n_shake
+
+    extent = np.array([[g["pos"][i] + s * g["size"][i] for g in design.geoms if g["type"] == "box" for s in (-1, 1)]
+                       for i in range(3)])
+    bounds = (extent.min(axis=1) - 5.0, extent.max(axis=1) + 5.0)
+    zone_names = [z["name"] for z in design.zones] + ["between", "lost"]
+    kind_idx = np.array([kinds.index(p.kind) for p in particles])
+
+    fps = cfg.record_fps if cfg.out_dir and cfg.record_fps > 0 else 10.0
+    every = max(1, round(1.0 / (fps * cfg.dt)))
+    rec = {"t": [], "tray_d": [], "pos": [], "quat": [], "zone_counts": [], "wet": []}
+    recording = bool(cfg.out_dir and cfg.record_fps > 0)
+    max_pen = max_pen_pp = 0.0
+    t0 = time.perf_counter()
+    settle_keep = np.exp(-SETTLE_DAMPING * cfg.dt)
+    for i in range(steps):
+        m.opt.gravity[:] = -a[i] * axis
+        m.opt.gravity[2] -= G
+        if i < n_settle:
+            d.qvel *= settle_keep
+        if sp is not None:
+            d.xfrc_applied[:] = 0.0
+            sp.step(m, d, d.time, x[i] * axis, v[i] * axis)
+        mujoco.mj_step(m, d)
+        if i >= n_settle and i % 10 == 0 and d.ncon:   # overlap where it matters: particle against tray
+            dist = d.contact.dist[:d.ncon]
+            on_tray = np.any(m.geom_bodyid[d.contact.geom[:d.ncon]] == 0, axis=1)
+            if on_tray.any():
+                max_pen = max(max_pen, -float(dist[on_tray].min()))
+            if (~on_tray).any():
+                max_pen_pp = max(max_pen_pp, -float(dist[~on_tray].min()))
+        if i % every == 0 or i == steps - 1:
+            zone = assign_zones(d.xpos[roots], design, bounds)
+            counts = np.zeros((len(kinds), len(zone_names)), dtype=np.int32)
+            np.add.at(counts, (kind_idx, zone), 1)
+            rec["t"].append(d.time)
+            rec["tray_d"].append(x[i] * axis)
+            rec["zone_counts"].append(counts)
+            if recording:
+                rec["pos"].append(d.xpos[1:].astype(np.float32))
+                rec["quat"].append(d.xquat[1:].astype(np.float32))
+                if sp is not None:
+                    rec["wet"].append(np.asarray(sp.wet)[1:].astype(np.float32))
+    wall = time.perf_counter() - t0
+
+    final = assign_zones(d.xpos[roots], design, bounds)
+    plist = [{"name": n, "kind": p.kind, "group": p.group, "dims": {k: round(float(val), 3) for k, val in p.dims.items()},
+              "final_zone": zone_names[z], "ideal_zone": design.ideal_zone(p.dims)}
+             for n, p, z in zip(names, particles, final)]
+    zc = np.array(rec["zone_counts"])
+    results = {
+        "config": asdict(cfg), "design": design.name, "design_info": design.info,
+        "zones": zone_names, "kinds": kinds,
+        "counts": {k: {zn: int(zc[-1, ki, zi]) for zi, zn in enumerate(zone_names)} for ki, k in enumerate(kinds)},
+        "recovery": {k: round(float(np.mean([p["final_zone"] == p["ideal_zone"] for p in plist if p["kind"] == k])), 4)
+                     for k in kinds if cfg.mix[k] > 0},
+        "particles": plist,
+        "timeseries": {"t": [round(t, 4) for t in rec["t"]],
+                       "counts": {k: {zn: zc[:, ki, zi].tolist() for zi, zn in enumerate(zone_names)}
+                                  for ki, k in enumerate(kinds)}},
+        "max_penetration_mm": round(max_pen, 5), "max_penetration_particles_mm": round(max_pen_pp, 5), "sim_s": round(d.time, 3), "wall_s": round(wall, 2), "steps": steps,
+    }
+    if cfg.out_dir:
+        write_recording(Path(cfg.out_dir), cfg, design, m, results, rec, kinds, zone_names, particles, names, sp)
+    return results
+
+
+def write_recording(out, cfg, design, m, results, rec, kinds, zone_names, particles, names, sp):
+    out.mkdir(parents=True, exist_ok=True)
+    by_name = dict(zip(names, particles))
+    bodies = []
+    for b in range(1, m.nbody):
+        root = m.body(int(m.body_rootid[b])).name
+        p = by_name[root]
+        bodies.append({"name": m.body(b).name, "particle": root, "kind": p.kind, "group": p.group,
+                       "geoms": body_geoms(m, b)})
+    jets = []
+    if sp is not None:
+        jets = [{"pos_lab": list(map(float, j.pos_lab)), "dir": list(map(float, j.dir)),
+                 "half_angle_deg": j.half_angle_deg, "range_mm": j.range_mm} for j in sp.jets]
+    scene = {"units": "mm", "fps": cfg.record_fps, "dt": cfg.dt, "n_frames": len(rec["t"]),
+             "config": asdict(cfg), "design": design.name,
+             "tray": {"geoms": scene_geoms(design, m)}, "bodies": bodies, "kinds": kinds,
+             "zones": [*design.zones, {"name": "between"}, {"name": "lost"}], "jets": jets,
+             "results": {k: v for k, v in results.items() if k != "timeseries"}}
+    (out / "scene.json").write_text(json.dumps(scene, default=float))
+    arrays = {"t": np.array(rec["t"]), "tray_d": np.array(rec["tray_d"], dtype=np.float32),
+              "zone_counts": np.array(rec["zone_counts"], dtype=np.int32)}
+    if rec["pos"]:
+        arrays["pos"], arrays["quat"] = np.array(rec["pos"]), np.array(rec["quat"])
+    if rec["wet"]:
+        arrays["wet"] = np.array(rec["wet"])
+    np.savez_compressed(out / "traj.npz", **arrays)
+    (out / "results.json").write_text(json.dumps(results, indent=1, default=float))
+
+
+def parse_kv(s):
+    """'rice=30,quinoa=30' -> {'rice': 30, 'quinoa': 30}; numbers become int or float."""
+    out = {}
+    for part in filter(None, s.split(",")):
+        k, _, val = part.partition("=")
+        try:
+            out[k] = int(val)
+        except ValueError:
+            try:
+                out[k] = float(val)
+            except ValueError:
+                out[k] = val
+    return out
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--design", default=RunConfig.design)
+    ap.add_argument("--mix", default="rice=30,quinoa=30,chickpea=8,pasta=8")
+    ap.add_argument("--stroke", default="sine:amp_mm=3,freq_hz=10", help="profile:key=val,...")
+    ap.add_argument("--duration", type=float, default=10.0)
+    ap.add_argument("--settle", type=float, default=1.0)
+    ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--dt", type=float, default=5e-4)
+    ap.add_argument("--friction", type=float, default=0.4)
+    ap.add_argument("--timeconst", type=float, default=0.002, help="contact stiffness time constant, s (>= 2 dt)")
+    ap.add_argument("--spray", choices=["none", "default", "bench"], default="none",
+                    help="default: the design's placeholder jets; bench: bench/jets.csv")
+    ap.add_argument("--fps", type=float, default=30.0)
+    ap.add_argument("--out", default=None, help="run dir for scene.json, traj.npz, results.json")
+    args = ap.parse_args()
+    profile, _, rest = args.stroke.partition(":")
+    cfg = RunConfig(design=args.design, mix=parse_kv(args.mix), stroke={"profile": profile, **parse_kv(rest)},
+                    duration_s=args.duration, settle_s=args.settle, seed=args.seed, dt=args.dt,
+                    contact={"friction": args.friction, "timeconst": args.timeconst, "dampratio": 1.0},
+                    spray=None if args.spray == "none" else {"jets": args.spray},
+                    record_fps=args.fps, out_dir=args.out)
+    r = run(cfg)
+    print(f"{r['design']}: {r['sim_s']} s simulated in {r['wall_s']} s wall, {r['steps']} steps, "
+          f"max overlap {r['max_penetration_mm']} mm on the tray, {r['max_penetration_particles_mm']} mm between particles")
+    for k, c in r["counts"].items():
+        print(f"  {k:16s} recovery {r['recovery'].get(k, 0):.2f}  " + "  ".join(f"{z} {n}" for z, n in c.items() if n))
+    if args.out:
+        print("recorded to", args.out)
+
+
+if __name__ == "__main__":
+    main()

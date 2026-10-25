@@ -2,8 +2,10 @@
 
 Run from sim\\:
   python side_by_side.py --real <phone clip> --sim <sim clip> [-o ../media/demo_side_by_side.mp4]
-      [--real-start S] [--sim-start S] [--duration S] [--height 720]
-The sim clip is record_view.py's MP4 or a .webm from the replay page's Record button. Chrome's
+      [--real-start S] [--sim-start S] [--duration S] [--height 720] [--slow 4 --loops 3 --caption ..]
+--slow stretches the real clip; render the sim half at the matching speed (record_view.py --speed 0.25
+for --slow 4) so both halves show the same span of physical time. The sim clip is record_view.py's MP4
+or a .webm from the replay page's Record button (at 1x, unless it was recorded slowed). Chrome's
 MediaRecorder writes full-range pixels into a WebM tagged limited-range, which decodes with the
 light greys clipped to white; that is detected from a background pixel and undone. Both halves are
 resampled to --fps and the output bitrate is capped so the file stays under --max-mb.
@@ -27,6 +29,16 @@ def probe(path: Path) -> dict:
     dur = j.get("format", {}).get("duration")
     s["duration"] = float(dur) if dur not in (None, "N/A") else None
     return s
+
+
+def display_size(path: Path) -> tuple[int, int]:
+    """Width and height as shown: phone clips store landscape frames plus a +-90 degree display rotation."""
+    out = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries",
+                          "stream=width,height:stream_side_data=rotation", "-of", "json", str(path)],
+                         capture_output=True, text=True, check=True).stdout
+    s = json.loads(out)["streams"][0]
+    rot = next((int(d["rotation"]) for d in s.get("side_data_list", []) if "rotation" in d), 0)
+    return (s["height"], s["width"]) if rot % 180 else (s["width"], s["height"])
 
 
 def duration(path: Path) -> float:
@@ -67,38 +79,58 @@ def main():
     ap.add_argument("--fps", type=float, default=30.0)
     ap.add_argument("--real-label", default="Real BugSorter")
     ap.add_argument("--sim-label", default="MuJoCo sim, uncalibrated")
+    ap.add_argument("--slow", type=float, default=1.0,
+                    help="play the real clip this many times slower; render the sim with record_view.py --speed 1/SLOW")
+    ap.add_argument("--loops", type=int, default=1, help="play the synced pair this many times")
+    ap.add_argument("--caption", help="one line across the bottom, e.g. the playback speed")
     ap.add_argument("--max-mb", type=float, default=19.0)
     args = ap.parse_args()
 
-    span = min(duration(args.real) - args.real_start, duration(args.sim) - args.sim_start)
+    # span: output seconds of one pass; the real clip is cut to span / slow of its own time, then stretched
+    span = min((duration(args.real) - args.real_start) * args.slow, duration(args.sim) - args.sim_start)
     if args.duration:
         span = min(span, args.duration)
     if span <= 0:
         raise SystemExit("side_by_side: nothing to render (check the start times)")
     h = args.height // 2 * 2
+    widths = [round(w * h / hh / 2) * 2 for w, hh in (display_size(args.real), display_size(args.sim))]
     sim_fix = "setparams=range=pc," if mislabeled_full_range(args.sim, args.sim_start) else ""
-    kbps = int(min(8000, args.max_mb * 8e3 * 0.95 / span))      # cap so the file stays under --max-mb
+    total = span * args.loops
+    kbps = int(min(8000, args.max_mb * 8e3 * 0.95 / total))     # cap so the file stays under --max-mb
 
     with tempfile.TemporaryDirectory() as tmp:
-        # labels go through textfile= so commas and colons in them need no filtergraph escaping
-        (Path(tmp) / "real.txt").write_text(args.real_label, encoding="utf-8")
-        (Path(tmp) / "sim.txt").write_text(args.sim_label, encoding="utf-8")
+        # text goes through textfile= so commas and colons in it need no filtergraph escaping
         font = f"fontfile={ff_path(FONT)}:" if FONT.exists() else ""
-        label = (f"drawtext={font}textfile={{}}.txt:fontsize={round(h / 24)}:fontcolor=white:box=1:boxcolor=black@0.6:"
-                 f"boxborderw={round(h / 70)}:x={round(h / 40)}:y={round(h / 40)}")
-        graph = (f"[0:v]fps={args.fps:g},scale=-2:{h}:flags=lanczos,setsar=1,{label.format('real')}[r];"
-                 f"[1:v]{sim_fix}fps={args.fps:g},scale=-2:{h}:flags=lanczos:out_range=tv,setsar=1,{label.format('sim')}[s];"
-                 f"[r][s]hstack=inputs=2,format=yuv420p[v]")
+
+        def text(name, s, width, x, y):
+            (Path(tmp) / f"{name}.txt").write_text(s, encoding="utf-8")
+            size = round(min(h / 24, width / (0.56 * len(s) + 2)))    # fit the half it labels
+            return (f"drawtext={font}textfile={name}.txt:fontsize={size}:fontcolor=white:box=1:boxcolor=black@0.6:"
+                    f"boxborderw={round(size / 3)}:x={x}:y={y}")
+
+        m = round(h / 40)
+        graph = (f"[0:v]setpts={args.slow:g}*PTS,fps={args.fps:g},scale={widths[0]}:{h}:flags=lanczos,setsar=1,"
+                 f"{text('real', args.real_label, widths[0], m, m)}[r];"
+                 f"[1:v]{sim_fix}fps={args.fps:g},scale={widths[1]}:{h}:flags=lanczos:out_range=tv,setsar=1,"
+                 f"{text('sim', args.sim_label, widths[1], m, m)}[s];"
+                 f"[r][s]hstack=inputs=2")
+        if args.caption:                  # in a bar of its own under both halves, clear of the sim clock
+            bar = round(h / 16) // 2 * 2
+            graph += (f",pad=iw:ih+{bar}:0:0:black,"
+                      + text("caption", args.caption, sum(widths), "(w-text_w)/2", f"h-{bar // 2}-text_h/2"))
+        if args.loops > 1:
+            graph += f",loop=loop={args.loops - 1}:size={round(span * args.fps) + 5}:start=0,setpts=N/{args.fps:g}/TB"
+        graph += ",format=yuv420p[v]"
         args.out.parent.mkdir(parents=True, exist_ok=True)
         cmd = ["ffmpeg", "-v", "error", "-y",
-               "-ss", f"{args.real_start}", "-t", f"{span}", "-i", str(args.real.resolve()),
+               "-ss", f"{args.real_start}", "-t", f"{span / args.slow}", "-i", str(args.real.resolve()),
                "-ss", f"{args.sim_start}", "-t", f"{span}", "-i", str(args.sim.resolve()),
                "-filter_complex", graph, "-map", "[v]", "-an", "-c:v", "libx264", "-preset", "slow", "-crf", "21",
                "-maxrate", f"{kbps}k", "-bufsize", f"{2 * kbps}k", "-movflags", "+faststart", str(args.out.resolve())]
         subprocess.run(cmd, check=True, cwd=tmp)
     p = probe(args.out)
-    print(f"side_by_side: wrote {args.out} ({p['width']}x{p['height']}, {p['duration']:.2f} s, "
-          f"{args.out.stat().st_size / 1e6:.1f} MB){' [sim range fixed: full-range WebM]' if sim_fix else ''}")
+    print(f"side_by_side: wrote {args.out} ({p['width']}x{p['height']}, {p['duration']:.2f} s = {args.loops} x "
+          f"{span:.2f} s, {args.out.stat().st_size / 1e6:.1f} MB){' [sim range fixed: full-range WebM]' if sim_fix else ''}")
 
 
 if __name__ == "__main__":

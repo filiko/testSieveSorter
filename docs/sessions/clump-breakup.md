@@ -29,7 +29,14 @@ It uses what the rig already has: the shaker (the up-and-down / angled stroke fr
 ## A. Physics session (`physics-bench`): rocking motion, then clumps and debris. **This unblocks everything**
 0. **Rocking motion first** (user correction 10:30; aim to have it on `main` by ~11:15).
    - Each box is held only at its +X tab and overhangs, so it rocks about the mount instead of translating as a rigid block. See [SYSTEM.md](../SYSTEM.md) §3.
-   - Add a stroke that combines a vertical stroke at the mount with a pitch about the Y axis through the +X tab: `rock_deg`, `phase_deg`, with the existing `amp_mm` / `freq_hz`.
+   - The user says the box is clamped and **flexes up to 20–30° either side, in yaw**: the free end swings side to side about a vertical axis through the +X tab.
+   - Add a stroke that rocks the tray about an axis through the +X tab on top of the existing stroke at the mount:
+     - `rock_deg` (0–30);
+     - `rock_axis` (`z` = yaw, the default; `y` = pitch; or a vector);
+     - `rock_hz` (the flex can be slower than the tool's stroke);
+     - `phase_deg`;
+     - plus the existing `amp_mm` / `freq_hz` / `angle_deg` at the mount.
+   - Sweep the angle and the frequency together, and report the free end's peak acceleration so the combinations stay physical (SYSTEM.md §3).
    - Implement it with exact non-inertial forces per particle (SYSTEM.md §5).
    - Check it: a particle near the free end gets thrown much more than one near the mount. With `rock_deg=0`, results match the old vertical stroke.
    - Rerun the stacked rig under rocking, add it to VERTICAL.md, and open a PR.
@@ -72,7 +79,7 @@ It uses what the rig already has: the shaker (the up-and-down / angled stroke fr
    - then the existing sort score for what gets through.
    - Robust across the bond-strength sets × friction sets × seeds.
 4. **Search space:** breaker parameters + the stroke + spray on/off/flow.
-   - **Stroke:** use physics's **rocking** stroke (`rock_deg`, `phase_deg`, `amp_mm`, `freq_hz`; SYSTEM.md §3) once it lands. Translation-only angles are a simplification.
+   - **Stroke:** use physics's **rocking** stroke once it lands: yaw up to ±30° about the +X tab by default, with `rock_deg`, `rock_axis`, `rock_hz` and `phase_deg` on top of the mount stroke (SYSTEM.md §3). Translation-only angles are a simplification.
    - Also re-score the current demo winners under rocking before the pitch quotes them.
 5. **Leaderboard:**
    - `sim/opt/leaderboard_malaise.md` and `winners_malaise.json`;

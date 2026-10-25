@@ -19,17 +19,17 @@ Details: [docs/sessions/clump-breakup.md](sessions/clump-breakup.md).
   - On BioKEA's bench unit, the boxes hang from rods through their +X tabs in an extrusion frame.
   - On the team's demo, the tray is bolted by its tab onto a handheld DeWalt 20V MAX tool.
   - In both, the rest of the box **overhangs**. That's visible in Forum's photos (IMG_1315 / 1316 / 1318 / 1320, kept locally in `media/`).
-- **So the motion is rocking, not a rigid up-and-down translation:**
-  - The drive moves the tab end.
-  - The overhanging box **pitches about an axis along its width (Y) at the mount**.
-  - The **free −X end swings much more than the mounted end**: its vertical travel ≈ the mount's stroke + overhang length × rocking angle.
-  - Particles near the free end get thrown hardest. Near the mount they barely move.
+- **So the motion is rocking, not a rigid up-and-down translation.** From the user (10:40): the box is **clamped at the tab and flexes**, about **20–30° at most, either side, in yaw**.
+  - The free −X end swings side to side (±Y), rotating about a **vertical axis through the +X tab**, on top of the drive's stroke at the mount.
+  - At 30° and ~130 mm of overhang, the free end sweeps about ±65 mm sideways. Near the mount the box barely moves, so particles near the free end get thrown hardest.
+  - **Yaw is the default.** The sim should also support **pitch** (free end up and down, about Y through the tab) and a mix of the two, in case the flex has both. "Yaw" is the user's word; if the team meant tipping up and down, it's one parameter.
 - **Not known yet (ASSUMED until measured):**
-  - the rocking angle;
+  - the exact rocking angle within 0–30° (sweep it);
   - the stroke at the mount;
   - the phase between the two;
   - the frequency. The DeWalt's real motion is unmeasured; a side-on video of it running would settle it, and `sim/stroke_from_video.py` can track it.
   - Sweep these in the sim; don't fix one guess.
+  - **Keep it physical:** a flex of ±30° can't also run at the tool's tens of Hz. At 20 Hz that's about 100 g at the free end. So sweep the angle and the frequency together, and keep the free end's peak acceleration in a plausible range (report it; about 1–10 g). The big-angle wobble is presumably a slower flex mode, with the tool's fast, small stroke on top.
 - **Pure translation strokes** (the 0° / 45° / 90° `angle_deg` runs, the firmware constant-speed stroke) are **simplifications**. Results from them (VERTICAL.md, the leaderboards made before rocking existed) need re-checking under rocking before the pitch uses them.
 
 ## 4. Liquid
@@ -39,7 +39,7 @@ Samples are in ethanol, and the rig sprays from fixed jets above. `sim/spray.py`
 - **Modelled:** the trays (with their real mount point and rocking), the particles (specimens, grains, clumps, debris), the stroke and the spray.
 - **Not modelled:** the tool, the motor, the frame, the hand. The frame in the replay (`sim/rig.py`) is display only.
 - **Rocking in the sim:** keep the tray-fixed frame and add the full non-inertial forces of a frame that rotates about the mount axis while the mount translates:
-  - per particle: `-m(a_pivot + α × r + ω × (ω × r) + 2 ω × v_rel)`;
+  - per particle: `-m(a_pivot + α × r + ω × (ω × r) + 2 ω × v_rel)`, with ω along Z for yaw, Y for pitch, or any axis through the tab for a mix;
   - plus gravity rotated into the tray frame;
   - applied per body through `xfrc_applied`.
   - The current uniform-gravity trick is exact only for pure translation.

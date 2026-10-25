@@ -9,7 +9,7 @@ Status: first build, 2026-10-24. Nothing here is calibrated yet. Until the bench
 - **Engine.** MuJoCo 3.17 on the CPU. Units are mm, g and s.
 - **Shaking.** The sim runs in the tray's own frame. The shake is applied as an extra force on every particle: gravity minus the tray's acceleration. This is exact for a tray that slides without rotating. Jets stay fixed in the lab while the tray moves under them.
 - **Geometry.** Built from the same parameters as the CAD in `..\cad\`, so the sim follows the CAD when it changes.
-- **Contacts.** A 2 ms contact time constant at a 0.5 ms step. In the worst case, a particle sinks about 0.2 mm into the tray during an impact. The tightest gate leaves 0.3 mm of room (quinoa in a 1.4 mm tunnel). Each run reports its worst overlap, so you can check it against that.
+- **Contacts.** Soft: a pressed grain sinks a little into the tray, and the tightest gates leave only 0.15–0.3 mm of room (quinoa in a 1.4 mm tunnel). `RunConfig`'s default (2 ms contact time constant at a 0.5 ms step) lets grains sink about 0.5 mm, so pass the settings from [PERF.md](PERF.md) explicitly, or let `contact_rule.py` pick them from the design's tightest clearance and the stroke (see [VERTICAL.md](VERTICAL.md), Contact rule). Each run reports its worst overlap, so you can check it against the clearance.
 
 ## Files
 
@@ -26,6 +26,9 @@ Status: first build, 2026-10-24. Nothing here is calibrated yet. Until the bench
 | `side_by_side.py` | Real footage next to a sim clip, scaled, labelled and synced, for the demo |
 | `sweep.py` | Batches of runs in parallel, with a report |
 | `calibrate.py` | Fits contact parameters to bench counts, then checks them on a held-out run |
+| `instab.py` | Stability probe: short runs that stop at the first MuJoCo reset and record the worst overlap, tray-wide and on gates only |
+| `contact_rule.py` | Picks the timestep and contact time constant from a design's tightest gate clearance and the stroke |
+| `verify.py` | Second opinion on the optimizer's winners: fresh seeds, a heavy load, per-design contacts; writes `opt/VERIFY.md` |
 | [BENCH.md](BENCH.md) | What to measure on the bench, and which template each number goes in |
 
 ## Run

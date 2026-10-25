@@ -24,6 +24,10 @@ grains hit after dropping from the layer above. It comes from instab.py on the g
 per design, 2 s of shaking. Keep checking each run's own overlap and unstable_resets afterwards: the rule picks the
 setting, it doesn't replace the flag.
 
+Not covered yet: the stacked rig (inserts:5mm,2mm). Its 2 mm screen takes about twice the overlap of these designs
+under the firmware stroke (verify.py's probe: 0.179 / 0.076 / 0.045 mm), so the rule picks one setting too soft for
+it. Use 0.0625 / 0.125 ms there until the grid is rerun with it (opt/VERIFY.md).
+
     from contact_rule import pick
     dt, tc, why = pick(0.3, {"profile": "sine", "amp_mm": 1.24, "freq_hz": 20, "angle_deg": 90})
     cfg = sweep.make_cfg(base, dt=dt, contact={"timeconst": tc})

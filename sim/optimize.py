@@ -383,6 +383,9 @@ BASELINES = {
          {"g1": 5.0, "b1": 2.4, "h1": 3.0, "g2": 1.4, "b2": 2.0, "h2": 2.6, "amp": 10.0, "speed": 50.0}),
         ("inserts", "printed inserts as in the repo: 5 mm / 2 mm square holes, firmware cap stroke",
          {"a1": 5.0, "bar1": 1.2, "a2": 2.0, "bar2": 1.0, "amp": 10.0, "speed": 50.0}),
+        ("inserts", "DEMO RIG the team built: stacked printed 5 mm / 2 mm trays (inserts:5mm,2mm), shaken up and down "
+                    "(sine 20 Hz, 2 g, 90 deg; assumed tool motion, sim/VERTICAL.md)",
+         {"a1": 5.0, "bar1": 1.2, "a2": 2.0, "bar2": 1.0, "drive": "tool", "freq": 20.0, "accel": 2.0, "angle": 90.0}),
     ],
 }
 BASELINES["smoke"] = BASELINES["demo"]
@@ -401,8 +404,8 @@ CURRENT = {"family": "current", "label": "TODAY on the bench: glued mesh inserts
 # The demo rig the team built (docs/sessions/demo-rig.md): one 5 mm printed insert on a vibrating tool, shaken up and
 # down as in the video. The tool's motion is an assumption (sim/VERTICAL.md: sine 20 Hz, 2 g, 1.24 mm). It has two bins,
 # so rice and quinoa share its catch: it can't do the 3-class task, by design.
-DEMO_RIG = {"family": "demo_rig", "label": "DEMO RIG the team built: one 5 mm printed insert, up and down "
-                                           "(sine 20 Hz, 2 g, 90 deg; assumed tool motion, sim/VERTICAL.md)",
+DEMO_RIG = {"family": "demo_rig", "label": "one level of the demo rig: the 5 mm tray alone over a catch pan, up and down "
+                                           "(sine 20 Hz, 2 g, 90 deg). The full rig is the stacked baseline above",
             "spec": "inserts:5mm", "inject": {},
             "stroke": {"profile": "sine", "amp_mm": 1.24, "freq_hz": 20.0, "angle_deg": 90.0}, "params": {}}
 
@@ -1304,6 +1307,10 @@ def load_state(study):
         return [], {}
     st = json.loads(f.read_text(encoding="utf-8"))
     CE_STATE.update(st.get("ce", {}))
+    labels = {r["id"]: r["label"] for r in refs(study, 0)}       # reference labels follow their current definitions
+    for c in st["cands"]:
+        if c["id"] in labels:
+            c["label"] = labels[c["id"]]
     return st["cands"], st.get("summaries", {})
 
 

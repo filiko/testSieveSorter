@@ -53,6 +53,30 @@ Every part is exactly the size of a 24-well plate (127.76 × 85.47 × 20.27 mm),
 | `pool` + gate strips | One open plane, shaken along the long side, with swappable gates (see **Pool sorter** below). P1S estimate: 58 min, 44 g. |
 | `pool_coupon` | One gate slot of the pool (46 mm long), to check the strip fit and gate behaviour before printing the pool. 29 min. |
 
+### Plinko layers for the frame holder box (`plinko_layers.py`)
+
+![plinko section](cad/out/plinko_section.png)
+
+Drop-in layers that replace the glued-mesh inserts in BioKEA's box (`frame_holder.py`). All three stack inside one box. Load on top, shake along the box's long side (X), and spray from above as usual.
+
+| Layer | Floor | Keeps | Pull tabs |
+|---|---|---|---|
+| `layer_1_rods_5p0` (top) | 16 rods, gap 5.0 mm | Pasta | x = 0 |
+| `layer_2_rods_1p4` | 37 rods, gap 1.4 mm | Long-grain rice (~1.7 mm thick) | x = −35 |
+| `layer_3_catch` (on the ledge) | Solid | Quinoa | x = +35 |
+
+**How it sorts:**
+- Rods run across the box, perpendicular to the shake, so grains hop across them and tip into the gaps.
+- A flat grain that tips into a gap is sorted by its thickness, which is what splits long-grain rice from quinoa.
+- Rods narrow 8° downward, so a grain that gets in falls free instead of wedging.
+
+**Unloading:**
+- Lift the layers out top-down: pasta, then rice, then quinoa.
+- Each layer is a walled tray, so it keeps its catch while you lift it. It can go straight into the water pool, like the current mesh filters.
+- Every layer's tabs stand 6 mm above the box rim. Lower layers' tabs pass through 0.3 mm-clearance slots in the layers above.
+
+**Sizes:** layers are 131.4 × 95.4 mm (the frame holder's guessed 132 × 96 mm pocket, minus 0.6 mm clearance). Measure the real box, then change `WALL` and `LEDGE_T` in `frame_holder.py`; the layers follow. Change gaps and heights in `LAYERS`.
+
 ### Round layer stack (`round_stack.py`)
 
 ![round stack section](cad/out/round_stack_section.png)

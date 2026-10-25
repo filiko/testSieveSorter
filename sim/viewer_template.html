@@ -13,9 +13,11 @@
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; font: 12px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--ink); background: var(--plane); }
 #app { display: flex; height: 100vh; }
-#view { position: relative; flex: 1; min-width: 0; }
+#view { position: relative; flex: 1; min-width: 0; background: #d5d9e0; }
+#stage { position: absolute; inset: 0; }
 #c { display: block; width: 100%; height: 100%; outline: none; }
 #labels { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+#rec-badge { position: absolute; top: 8px; left: 10px; display: none; color: #c62828; font-weight: 600; font-variant-numeric: tabular-nums; pointer-events: none; }
 .zlabel { position: absolute; transform: translate(-50%, 4px); font-size: 11px; color: var(--ink); background: rgba(252, 252, 251, 0.85); padding: 0 5px 0 4px; border-radius: 2px; border-left: 3px solid; white-space: nowrap; }
 #loading { position: absolute; inset: 0; display: grid; place-items: center; color: var(--ink-2); font-size: 13px; background: var(--plane); padding: 20px; text-align: center; }
 #hint { position: absolute; left: 10px; bottom: 8px; color: var(--muted); font-size: 11px; pointer-events: none; }
@@ -56,14 +58,21 @@ td.rec { color: var(--ink-2); border-left: 1px solid var(--hair); }
 #chart { display: block; width: 100%; height: 170px; cursor: crosshair; }
 #tip { position: absolute; display: none; pointer-events: none; background: #fff; border: 1px solid var(--hair); border-radius: 4px; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12); padding: 4px 7px; font-size: 11px; white-space: nowrap; font-variant-numeric: tabular-nums; }
 kbd { font: inherit; font-size: 10.5px; border: 1px solid var(--axis); border-radius: 3px; padding: 0 4px; background: #fff; }
+input[type=number] { font: inherit; width: 54px; color: var(--ink); background: #fff; border: 1px solid var(--axis); border-radius: 4px; padding: 2px 4px; }
+#cam-text { display: block; width: 100%; margin-top: 7px; font: 11px/1.4 ui-monospace, Consolas, monospace; color: var(--ink-2); background: var(--plane); border: 1px solid var(--hair); border-radius: 4px; padding: 3px 6px; }
+#record.on { background: #c62828; border-color: #c62828; color: #fff; }
+#rec-status { color: var(--ink-2); font-variant-numeric: tabular-nums; }
 </style>
 <script type="importmap">__IMPORTMAP__</script>
 </head>
 <body>
 <div id="app">
   <div id="view">
-    <canvas id="c" tabindex="-1"></canvas>
-    <div id="labels"></div>
+    <div id="stage">
+      <canvas id="c" tabindex="-1"></canvas>
+      <div id="labels"></div>
+    </div>
+    <div id="rec-badge"></div>
     <div id="hint">Drag to orbit, right-drag to pan, wheel to zoom. <kbd>Space</kbd> play/pause, <kbd>&larr;</kbd> <kbd>&rarr;</kbd> step.</div>
     <div id="loading">Loading recording...</div>
   </div>
@@ -84,6 +93,21 @@ kbd { font: inherit; font-size: 10.5px; border: 1px solid var(--axis); border-ra
       <label class="chk"><input type="checkbox" id="show-zones" checked> Zones</label>
       <label class="chk"><input type="checkbox" id="show-jets" checked> Jets</label>
       <label class="chk"><input type="checkbox" id="show-walls" checked> Walls</label>
+    </section>
+    <section>
+      <h2>Camera</h2>
+      <div class="row">
+        <button id="copy-cam" title="Copy this page's URL with the current camera in it">Copy camera</button>
+        <label>FOV <input type="number" id="fov" min="5" max="120" step="1"></label>
+        <label>Frame <select id="aspect"></select></label>
+      </div>
+      <input type="text" id="cam-text" readonly spellcheck="false" aria-label="Camera URL parameters">
+      <div class="note" id="cam-note">Open the copied URL to come back to this angle. FOV is vertical, in degrees; changing it dollies the camera so the target keeps its size on screen. Frame sets the view's aspect ratio, to match a photo.</div>
+    </section>
+    <section>
+      <h2>Record</h2>
+      <div class="row"><button id="record">Record</button><span id="rec-status"></span></div>
+      <div class="note">Plays the run once from the start at the selected speed and downloads a .webm of the 3D view, with the zone labels and the sim clock drawn in. Keep this tab in front while it records.</div>
     </section>
     <section>
       <h2>Zone counts <span class="sub" id="counts-sub"></span></h2>
@@ -107,6 +131,14 @@ import { OrbitControls } from 'three/addons/OrbitControls.js';
 const $ = (id) => document.getElementById(id);
 const SCENE = JSON.parse($('scene-json').textContent);
 const META = JSON.parse($('traj-meta').textContent);
+// Page options, from ?query or #hash (the hash wins): cam=x,y,z & target=x,y,z (mm, lab frame), fov (vertical
+// degrees), aspect=16:9, t (s from the start), play, lock, kind. Copy camera writes the first four.
+const params = new URLSearchParams(location.search);
+for (const [k, v] of new URLSearchParams(location.hash.slice(1))) params.set(k, v);
+const vecParam = (k) => {
+  const a = (params.get(k) ?? '').split(',').map(Number);
+  return a.length === 3 && a.every(Number.isFinite) ? new THREE.Vector3(...a) : null;
+};
 
 // Zone colours, in flow order (validated categorical palette); between and lost are greys.
 const ZONE_COLORS = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300', '#6250d6', '#e34948'];
@@ -199,7 +231,8 @@ const renderer = new THREE.WebGLRenderer({ canvas: $('c'), antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
 const world = new THREE.Scene();
 world.background = new THREE.Color('#eef1f5');
-const camera = new THREE.PerspectiveCamera(35, 1, 1, 10000);
+const fovParam = Number(params.get('fov'));
+const camera = new THREE.PerspectiveCamera(params.has('fov') && fovParam >= 5 && fovParam <= 120 ? fovParam : 35, 1, 1, 10000);
 camera.up.set(0, 0, 1);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
@@ -270,7 +303,7 @@ const labels = [];
   el.textContent = z.name;
   el.style.borderLeftColor = zoneColor(i);
   $('labels').appendChild(el);
-  labels.push({ el, anchor: new THREE.Vector3((x0 + x1) / 2, y0, z0) });
+  labels.push({ el, text: z.name, color: zoneColor(i), anchor: new THREE.Vector3((x0 + x1) / 2, y0, z0) });
 });
 
 // jets: translucent cones fixed in the lab frame (not children of the tray)
@@ -428,9 +461,8 @@ function updateInstances(wetFrame) {
 
 // ---------- playback state ----------
 const t0 = T[0], t1 = T[N - 1];
-const hash = new URLSearchParams(location.hash.slice(1));
-let time = hash.has('t') ? Math.min(t1, Math.max(t0, t0 + Number(hash.get('t')))) : t0;
-let playing = hash.has('t') ? hash.has('play') : true;
+let time = params.has('t') ? Math.min(t1, Math.max(t0, t0 + Number(params.get('t')))) : t0;
+let playing = params.has('t') ? params.has('play') : true;
 let speed = 1;
 let dirty = true;
 let shownFrame = -1;
@@ -486,7 +518,7 @@ scrub.addEventListener('input', () => { time = Number(scrub.value); dirty = true
 $('show-zones').onchange = (e) => { zoneGroup.visible = e.target.checked; };
 $('show-jets').onchange = (e) => { jetGroup.visible = e.target.checked; };
 $('show-walls').onchange = (e) => wallMeshes.forEach((m) => (m.visible = e.target.checked));
-if (hash.has('lock')) $('lock').checked = true;
+if (params.has('lock')) $('lock').checked = true;
 // clicked controls give focus back to the page, so Space always means play/pause
 document.addEventListener('click', (e) => { if (e.target.closest('button, input[type=checkbox]')) e.target.blur(); });
 document.addEventListener('change', (e) => { if (e.target.type === 'checkbox') e.target.blur(); });
@@ -557,7 +589,7 @@ buildTable();
 // ---------- counts-over-time chart for one kind ----------
 const chart = $('chart'), tip = $('tip'), chartKind = $('chart-kind');
 kinds.forEach((k, i) => chartKind.add(new Option(k, i)));
-if (hash.has('kind') && kinds.includes(hash.get('kind'))) chartKind.value = kinds.indexOf(hash.get('kind'));
+if (params.has('kind') && kinds.includes(params.get('kind'))) chartKind.value = kinds.indexOf(params.get('kind'));
 chartKind.onchange = () => { chartKind.blur(); drawChart(); };
 let hoverX = null;
 const PAD = { l: 30, r: 64, t: 8, b: 18 };
@@ -663,21 +695,60 @@ chart.addEventListener('pointermove', (e) => { hoverX = e.offsetX; if (e.buttons
 chart.addEventListener('pointerleave', () => { hoverX = null; drawChart(); });
 chart.addEventListener('pointerdown', (e) => { chart.setPointerCapture(e.pointerId); seekFromChart(e); });
 
-// ---------- camera fit, resize, loop ----------
-function fitCamera() {
-  const box = trayBox.isEmpty() ? new THREE.Box3().setFromCenterAndSize(new THREE.Vector3(), new THREE.Vector3(100, 100, 50)) : trayBox;
-  const center = box.getCenter(new THREE.Vector3());
-  const radius = box.getSize(new THREE.Vector3()).length() / 2;
-  const dist = (radius / Math.sin(THREE.MathUtils.degToRad(camera.fov / 2))) * 0.9;
-  camera.position.copy(center).add(new THREE.Vector3(0.25, -1, 0.8).normalize().multiplyScalar(dist));
+// ---------- camera: fit or ?cam=, FOV, frame aspect, copy ----------
+const fitBox = trayBox.isEmpty() ? new THREE.Box3().setFromCenterAndSize(new THREE.Vector3(), new THREE.Vector3(100, 100, 50)) : trayBox;
+const sceneRadius = fitBox.getSize(new THREE.Vector3()).length() / 2;
+function clipPlanes() {             // near/far follow the orbit distance, so zooming or dollying never clips the tray
+  const dist = Math.max(1e-3, camera.position.distanceTo(controls.target));
   camera.near = dist / 200;
-  camera.far = dist * 20;
+  camera.far = (dist + sceneRadius) * 20;
   camera.updateProjectionMatrix();
-  controls.target.copy(center);
+}
+function fitCamera() {
+  const center = fitBox.getCenter(new THREE.Vector3());
+  const cam = vecParam('cam');
+  if (cam) {
+    controls.target.copy(vecParam('target') ?? center);
+    camera.position.copy(cam);
+  } else {
+    const dist = (sceneRadius / Math.sin(THREE.MathUtils.degToRad(camera.fov / 2))) * 0.9;
+    controls.target.copy(center);
+    camera.position.copy(center).add(new THREE.Vector3(0.25, -1, 0.8).normalize().multiplyScalar(dist));
+  }
+  clipPlanes();
   controls.update();
 }
+function setFov(f) {
+  f = Math.min(120, Math.max(5, f));
+  // dolly zoom: dist * tan(fov / 2) stays the same, so the target keeps its size and only the perspective changes
+  const k = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) / Math.tan(THREE.MathUtils.degToRad(f / 2));
+  camera.position.sub(controls.target).multiplyScalar(k).add(controls.target);
+  camera.fov = f;
+  clipPlanes();
+  controls.update();
+  dirty = true;
+}
+
+const ASPECTS = ['fill', '16:9', '9:16', '4:3', '3:4', '1:1'];
+const aspectRatio = (s) => {
+  const m = /^(\d+(?:\.\d+)?):(\d+(?:\.\d+)?)$/.exec(s ?? '');
+  return m && +m[1] > 0 && +m[2] > 0 ? +m[1] / +m[2] : null;
+};
+let aspect = aspectRatio(params.get('aspect')) ? params.get('aspect') : 'fill';
+if (!ASPECTS.includes(aspect)) ASPECTS.push(aspect);      // e.g. ?aspect=1080:1920 from a phone clip
+for (const a of ASPECTS) $('aspect').add(new Option(a, a));
+$('aspect').value = aspect;
+$('aspect').onchange = (e) => { aspect = e.target.value; e.target.blur(); resize(); showCamera(); };
+
+const stage = $('stage');
+let fixedSize = null;                // [w, h] px, set by viewerExport.size() for frame export
 function resize() {
-  const w = view.clientWidth, h = view.clientHeight;
+  const vw = view.clientWidth, vh = view.clientHeight, r = aspectRatio(aspect);
+  let w = vw, h = vh;
+  if (fixedSize) [w, h] = fixedSize;
+  else if (r) { if (vw > vh * r) w = Math.round(vh * r); else h = Math.round(vw / r); }
+  Object.assign(stage.style, { left: `${Math.round((vw - w) / 2)}px`, top: `${Math.round((vh - h) / 2)}px`,
+    right: 'auto', bottom: 'auto', width: `${w}px`, height: `${h}px` });
   renderer.setSize(w, h, false);
   camera.aspect = w / Math.max(1, h);
   camera.updateProjectionMatrix();
@@ -687,30 +758,171 @@ new ResizeObserver(resize).observe(view);
 resize();
 fitCamera();
 
+// With "Lock camera to tray" on, the camera is written relative to the tray's origin and lock is kept, because
+// on load the lock carries the camera along by the tray's displacement.
+const r1 = (x) => String(+x.toFixed(1));
+function cameraQuery() {
+  const off = $('lock').checked ? tray.position : new THREE.Vector3();
+  const p = new URLSearchParams();
+  p.set('cam', camera.position.clone().sub(off).toArray().map(r1).join(','));
+  p.set('target', controls.target.clone().sub(off).toArray().map(r1).join(','));
+  p.set('fov', r1(camera.fov));
+  if (aspect !== 'fill') p.set('aspect', aspect);
+  if ($('lock').checked) p.set('lock', '1');
+  return p.toString().replaceAll('%2C', ',').replaceAll('%3A', ':');
+}
+const camText = $('cam-text'), fovInput = $('fov');
+function showCamera() {
+  camText.value = '?' + cameraQuery();
+  if (document.activeElement !== fovInput) fovInput.value = r1(camera.fov);
+}
+controls.addEventListener('change', () => { clipPlanes(); showCamera(); });
+fovInput.addEventListener('change', () => { if (Number.isFinite(fovInput.valueAsNumber)) setFov(fovInput.valueAsNumber); fovInput.blur(); showCamera(); });
+$('lock').addEventListener('change', showCamera);
+$('copy-cam').onclick = async () => {
+  const url = location.href.split(/[?#]/)[0] + '?' + cameraQuery();
+  try {
+    await navigator.clipboard.writeText(url);
+    $('copy-cam').textContent = 'Copied';
+  } catch {
+    camText.value = url;                // no clipboard access: leave the full URL selected for Ctrl+C
+    camText.select();
+    $('copy-cam').textContent = 'Press Ctrl+C';
+  }
+  setTimeout(() => { $('copy-cam').textContent = 'Copy camera'; }, 1500);
+};
+showCamera();
+
 const proj = new THREE.Vector3();
 function updateLabels() {
-  const w = view.clientWidth, h = view.clientHeight, show = zoneGroup.visible;
+  const w = stage.clientWidth, h = stage.clientHeight, show = zoneGroup.visible;
   for (const L of labels) {
     proj.copy(L.anchor).applyMatrix4(tray.matrixWorld).project(camera);
-    const on = show && proj.z > -1 && proj.z < 1 && Math.abs(proj.x) < 1.05 && Math.abs(proj.y) < 1.05;
-    L.el.style.display = on ? '' : 'none';
-    if (on) { L.el.style.left = `${((proj.x + 1) / 2) * w}px`; L.el.style.top = `${((1 - proj.y) / 2) * h}px`; }
+    L.on = show && proj.z > -1 && proj.z < 1 && Math.abs(proj.x) < 1.05 && Math.abs(proj.y) < 1.05;
+    L.el.style.display = L.on ? '' : 'none';
+    if (L.on) { L.x = ((proj.x + 1) / 2) * w; L.y = ((1 - proj.y) / 2) * h; L.el.style.left = `${L.x}px`; L.el.style.top = `${L.y}px`; }
   }
 }
+
+// ---------- record: play the run once, download a .webm ----------
+// Each rendered frame is copied onto a 2D canvas with the zone labels and the sim clock drawn on top (the
+// labels are HTML on screen, so captureStream of the WebGL canvas alone would lose them). Playback runs in
+// real time at the selected speed, which is what MediaRecorder timestamps against. VP8 comes first: it drops
+// fewer frames than VP9 when encoding live. (captureStream(0) + requestFrame() was worse: it dropped half the
+// frames and squeezed the timestamps.)
+const REC_FPS = 30;
+const recBtn = $('record'), recStatus = $('rec-status'), recBadge = $('rec-badge');
+let rec = null;      // { recorder, canvas, ctx, chunks, speed, state: arming | on | ending, wall0, wall1 }
+const FONT = 'system-ui, -apple-system, "Segoe UI", sans-serif';
+function composite(c, ctx, playSpeed) {
+  ctx.drawImage(renderer.domElement, 0, 0, c.width, c.height);
+  const px = c.width / Math.max(1, stage.clientWidth);     // CSS px -> video px, for positions
+  const s = px * uiScale;                                    // and for sizes
+  ctx.textBaseline = 'top';
+  if (zoneGroup.visible) {
+    ctx.font = `${11 * s}px ${FONT}`;
+    for (const L of labels) {
+      if (!L.on) continue;
+      const w = ctx.measureText(L.text).width + 9 * s, h = 16 * s, x = L.x * px - w / 2, y = L.y * px + 4 * s;
+      ctx.fillStyle = 'rgba(252, 252, 251, 0.85)'; ctx.fillRect(x, y, w, h);
+      ctx.fillStyle = L.color; ctx.fillRect(x, y, 3 * s, h);
+      ctx.fillStyle = '#0b0b0b'; ctx.fillText(L.text, x + 7 * s, y + 2 * s);
+    }
+  }
+  const clock = `t ${fmt(time - t0)} s` + (playSpeed !== 1 ? `  (${playSpeed}x)` : '');
+  ctx.font = `600 ${15 * s}px ${FONT}`;
+  const w = ctx.measureText(clock.replace(/\d/g, '0')).width + 14 * s;
+  ctx.fillStyle = 'rgba(252, 252, 251, 0.85)'; ctx.fillRect(10 * s, c.height - 36 * s, w, 26 * s);
+  ctx.fillStyle = '#0b0b0b'; ctx.fillText(clock, 17 * s, c.height - 31 * s);
+}
+function startRecording() {
+  const mime = ['video/webm;codecs=vp8', 'video/webm;codecs=vp9', 'video/webm'].find((m) => window.MediaRecorder?.isTypeSupported(m));
+  const src = renderer.domElement;
+  if (!mime || !src.captureStream) { recStatus.textContent = 'This browser cannot record WebM.'; return; }
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(2, src.width & ~1);              // even sizes, for the H.264 encode downstream
+  canvas.height = Math.max(2, src.height & ~1);
+  const recorder = new MediaRecorder(canvas.captureStream(REC_FPS), { mimeType: mime, videoBitsPerSecond: 12e6 });
+  rec = { recorder, canvas, ctx: canvas.getContext('2d'), chunks: [], speed, state: 'arming' };
+  recorder.ondataavailable = (e) => { if (e.data.size) rec.chunks.push(e.data); };
+  recorder.onstop = () => saveRecording(rec);
+  time = t0; setPlaying(true); dirty = true;
+  recBtn.textContent = 'Stop'; recBtn.classList.add('on');
+  recStatus.textContent = `${canvas.width} x ${canvas.height}, ${mime.split('=')[1] ?? 'webm'}`;
+}
+function stopRecording() {
+  if (!rec || rec.state === 'ending') return;
+  if (rec.state === 'arming') {                             // stopped before the first frame: nothing to save
+    rec = null;
+    recBtn.textContent = 'Record'; recBtn.classList.remove('on');
+    recStatus.textContent = '';
+    return;
+  }
+  rec.state = 'ending';
+  rec.wall1 = performance.now();
+  setTimeout(() => rec.recorder.stop(), 250);              // hold the last frame so it makes it into the file
+}
+function saveRecording(r) {
+  rec = null;
+  recBtn.textContent = 'Record'; recBtn.classList.remove('on');
+  recBadge.style.display = 'none';
+  const blob = new Blob(r.chunks, { type: 'video/webm' });
+  const name = `${String(SCENE.design ?? 'sorter').replace(/[^A-Za-z0-9.-]+/g, '_')}_sim${r.speed !== 1 ? `_${r.speed}x` : ''}.webm`;
+  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: name });
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+  const wall = (r.wall1 - r.wall0) / 1000, want = (t1 - t0) / r.speed;
+  recStatus.textContent = `Saved ${name}, ${(blob.size / 1e6).toFixed(1)} MB, ${wall.toFixed(1)} s` +
+    (Math.abs(wall - want) > 0.03 * want ? ` (the run is ${want.toFixed(1)} s at ${r.speed}x: stopped early or fell behind real time)` : '');
+}
+function recordFrame(now) {
+  composite(rec.canvas, rec.ctx, rec.speed);
+  if (rec.state === 'arming') { rec.recorder.start(1000); rec.state = 'on'; rec.wall0 = now; }
+  else if (rec.state === 'on' && time >= t1) stopRecording();
+  recBadge.style.display = 'block';
+  recBadge.textContent = `● REC ${fmt(time - t0, 1)} / ${fmt(t1 - t0, 1)} s`;
+}
+recBtn.onclick = () => (rec ? stopRecording() : startRecording());
+
+// Frame-exact export for sim/record_view.py, which drives this page headless: size() fixes the frame in px,
+// frame(ts) renders sim time ts (s from the start) with the labels and clock and returns it as a data: URL.
+let exportCanvas = null, uiScale = 1;     // uiScale: label and clock size in exported frames
+window.viewerExport = {
+  duration: t1 - t0,
+  size(w, h, scale = 1) { fixedSize = [w & ~1, h & ~1]; uiScale = scale; renderer.setPixelRatio(1); resize(); showCamera(); },
+  frame(ts, playSpeed = 1, type = 'image/jpeg', quality = 0.95) {
+    setPlaying(false);
+    time = Math.min(t1, Math.max(t0, t0 + ts));
+    apply();
+    controls.update();
+    renderer.render(world, camera);
+    updateLabels();
+    const src = renderer.domElement;
+    if (!exportCanvas || exportCanvas.width !== src.width || exportCanvas.height !== src.height) {
+      exportCanvas = Object.assign(document.createElement('canvas'), { width: src.width, height: src.height });
+    }
+    composite(exportCanvas, exportCanvas.getContext('2d'), playSpeed);
+    return exportCanvas.toDataURL(type, quality);
+  },
+};
 
 let last = performance.now();
 function tick(now) {
   const dt = Math.min(0.1, (now - last) / 1000);
   last = now;
-  if (playing && N > 1) {
+  if (playing && N > 1 && rec?.state !== 'arming') {
     time += dt * speed;
-    if (time > t1) time = t0 + ((time - t1) % (t1 - t0));   // loop
+    if (time > t1) {
+      if (rec) { time = t1; setPlaying(false); }               // a recording plays the run once
+      else time = t0 + ((time - t1) % (t1 - t0));              // loop
+    }
     dirty = true;
   }
   if (dirty) { apply(); dirty = false; }
   controls.update();
   renderer.render(world, camera);
   updateLabels();
+  if (rec) recordFrame(now);
   requestAnimationFrame(tick);
 }
 loading.remove();

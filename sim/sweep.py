@@ -7,6 +7,9 @@ Run from sim\\ with the venv python:
                                                BioKEA's firmware stroke at 50 and 5 mm/s, 5 seeds x 3 contact
                                                parameter sets, 30 s runs
     python sweep.py stroke [--quick]           firmware constant-speed stroke vs sine (and sawtooth), same amplitude
+    python sweep.py vertical [--quick]         demo tray (inserts:5mm, pasta + rice): stroke along the flow axis (0 deg),
+                                               a 45 deg throw and straight up (90 deg) at equal peak acceleration
+                                               (sine, 2 g and 4 g), 3 contact parameter sets
     python sweep.py <preset> --report-only     rebuild summary.csv and report.html from runs.jsonl
 
 Writes out\\sweeps\\<preset>\\runs.jsonl (one sorter.run() results dict per run, plus a "sweep" key with
@@ -44,9 +47,9 @@ import numpy as np
 HERE = Path(__file__).resolve().parent
 OUT = HERE / "out" / "sweeps"
 CALIBRATION_JSON = HERE / "out" / "calibration" / "calibration.json"
-WORKERS = max(1, (os.cpu_count() or 6) - 4)
+WORKERS = max(1, (os.cpu_count() or 6) - 2)   # PERF.md: 22 on the 24-core laptop matches 24 and leaves 2 free
 
-PRESETS = {"dtcheck": (3, 10.0), "compare": (5, 30.0), "stroke": (3, 20.0)}   # name: (seeds, duration_s)
+PRESETS = {"dtcheck": (3, 10.0), "compare": (5, 30.0), "stroke": (3, 20.0), "vertical": (6, 10.0)}   # (seeds, duration_s)
 QUICK_SEEDS, QUICK_DURATION_S = 2, 2.0
 DT_PAIR = [5e-4, 2.5e-4]
 DT_CONTACT = {"timeconst": 0.002}             # held fixed for both timesteps; MuJoCo needs timeconst >= 2 dt
@@ -66,6 +69,13 @@ STROKE_PROFILES = [                           # same amplitude and cycle rate (s
     ("sine, same amplitude and rate", {"profile": "sine", "amp_mm": 10.0, "speed_mm_s": 50.0}),
     ("sawtooth, same amplitude and rate", {**FIRMWARE, "profile": "sawtooth", "forward_fraction": 0.7}),
 ]
+# The demo rig (Forum's photos): one 5 mm printed insert on a handheld DeWalt tool, pasta + rice, shaken up and
+# down. The tool is not modelled, only the stroke; frequency and accelerations are assumptions (sim/VERTICAL.md).
+VERTICAL_DESIGN = "inserts:5mm"
+VERTICAL_MIX = {"pasta": 15, "rice": 40}
+VERTICAL_FREQ_HZ = 20.0
+VERTICAL_PEAK_G = [2.0, 4.0]                  # peak acceleration / g; amp_mm = peak * g / (2 pi f)^2
+VERTICAL_ANGLES = [(0, "along the flow axis"), (45, "45 deg throw"), (90, "straight up")]
 CLEARANCE_MM = 0.3                            # quinoa (1.1 mm thick) in the 1.4 mm tunnel
 PEN_MARGINAL = 0.5                            # tray penetration above this fraction of the clearance is marginal
 SPECIAL_ZONES = ("between", "lost")
@@ -152,7 +162,7 @@ def run_jobs(jobs, jsonl_path, workers=WORKERS):
             f.flush()
             tg = res["sweep"]
             what = "ERROR " + res["error"].strip().splitlines()[-1] if "error" in res else \
-                "recovery " + " ".join(f"{k} {v:.2f}" for k, v in res.get("recovery", {}).items())
+                "recovery " + " ".join(f"{k} {v:.2f}" for k, v in res.get("recovery", {}).items()) +                 (f" UNSTABLE ({len(res['unstable_resets'])} resets)" if res.get("unstable_resets") else "")
             label = " | ".join(str(x) for x in (tg.get("block"), tg["group"], tg.get("variant")) if x)
             print(f"[{done}/{len(jobs)} {time.time() - t0:5.0f} s] {label} | seed {tg['seed']}: {what}", flush=True)
     return results
@@ -232,6 +242,20 @@ def build_jobs(preset, quick, with_plinko, base_over=None, seeds=None, duration=
                 for label, contact in sets:
                     over = {"design": spec, "contact": contact, **({"stroke": stroke} if stroke else {})}
                     plan.append((block, f"{role}: {spec}", label, over))
+    elif preset == "vertical":
+        sets, meta["param_source"] = param_sets()
+        meta["param_sets"] = dict(sets)
+        mix = (base_over or {}).get("mix") or VERTICAL_MIX
+        meta["notes"].append(f"Design {VERTICAL_DESIGN}, mix {mix}. Sine at {VERTICAL_FREQ_HZ:g} Hz; within a block every "
+                             "direction has the same peak acceleration, so a difference is the direction.")
+        for peak in VERTICAL_PEAK_G:
+            amp = peak * 9810.0 / (2 * math.pi * VERTICAL_FREQ_HZ) ** 2
+            block = f"peak acceleration {peak:g} g ({amp:.2f} mm amplitude at {VERTICAL_FREQ_HZ:g} Hz)"
+            for ang, name in VERTICAL_ANGLES:
+                stroke = {"profile": "sine", "amp_mm": round(amp, 4), "freq_hz": VERTICAL_FREQ_HZ, "angle_deg": ang}
+                for label, contact in sets:
+                    plan.append((block, f"{ang} deg: {name}", label,
+                                 {"design": VERTICAL_DESIGN, "mix": mix, "stroke": stroke, "contact": contact}))
     elif preset == "stroke":
         spec = next((s for s in STROKE_DESIGNS if try_build(s) is None), base["design"])
         meta["notes"].append(f"Design {spec}. Every profile has a 10 mm amplitude and the same cycle rate "
@@ -772,6 +796,7 @@ def main():
     ap.add_argument("--seeds", type=int, help="seeds per setting (overrides the preset)")
     ap.add_argument("--duration", type=float, help="shake seconds per run (overrides the preset)")
     ap.add_argument("--name", help="output folder under out\\sweeps (default: the preset)")
+    ap.add_argument("--workers", type=int, default=WORKERS, help=f"parallel runs (default {WORKERS})")
     args = ap.parse_args()
     import sorter
     base_over = {}
@@ -792,7 +817,8 @@ def main():
         jobs, meta = build_jobs(args.preset, args.quick, args.with_plinko, base_over, args.seeds, args.duration)
         for n in meta["notes"]:
             print("note:", n)
-        runs = run_jobs(jobs, jsonl)
+        meta["workers"] = max(1, min(args.workers, len(jobs)))
+        runs = run_jobs(jobs, jsonl, args.workers)
     write_outputs(out_dir, runs, meta)
 
 

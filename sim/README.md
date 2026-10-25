@@ -47,15 +47,16 @@ Outputs go in `sim\out\`, which is not committed.
 The replay page reads its camera from the URL: `view.html?cam=x,y,z&target=x,y,z&fov=35&aspect=16:9` (mm, lab frame; FOV is vertical). Set the angle by eye against a photo (the **Frame** menu sets the aspect ratio, **FOV** dollies so the tray keeps its size), then **Copy camera** copies the URL. **Record** plays the run once in real time and downloads a `.webm` with the zone labels and the sim clock drawn in; its frame rate depends on the machine. For the demo clip, render frame-exact instead and put it next to Forum's photo of the bench prototype (demo-rig.md part D):
 
 ```
-wsl: python sorter.py --design inserts:5mm --mix pasta=15,rice=40 --stroke sine:amp_mm=1.24,freq_hz=20,angle_deg=90 --duration 10 --dt 0.00025 --timeconst 0.0005 --fps 240 --out out/runs/demo_vertical
-python viewer.py out/runs/demo_vertical
-python record_view.py out/runs/demo_vertical --view "?cam=116.5,-209.7,180.4&target=5,0,32&fov=45&aspect=3:4" --speed 0.2 --start 0 --duration 2.2 --height 960 -o out/runs/demo_vertical/sim_demo_0p2x.mp4
-python side_by_side.py --real ../../testSieveSorter/media/forum-2026-10-24/IMG_1316.JPG --sim out/runs/demo_vertical/sim_demo_0p2x.mp4 --height 960 --real-label "Bench prototype" --sim-label "MuJoCo sim, uncalibrated" --caption "Sim at 1/5 speed. Grains are poured in; from t 1 s the tray shakes up and down (20 Hz, ±1.24 mm, assumed).\nRice falls through the 5 mm grid into the catch; the pasta stays on top."
+wsl: python sorter.py --design inserts:5mm,2mm --mix pasta=15,rice=40,quinoa=40 --stroke sine:amp_mm=1.24,freq_hz=20,angle_deg=90 --duration 10 --dt 0.00025 --timeconst 0.0005 --fps 240 --out out/runs/demo_stack
+python viewer.py out/runs/demo_stack
+python record_view.py out/runs/demo_stack --view "?cam=108.1,-188.3,130.2&target=8,0,44&fov=45&aspect=4:3" --speed 0.2 --start 0 --duration 2.4 --height 960 -o out/runs/demo_stack/sim_stack_0p2x.mp4
+python side_by_side.py --real ../../testSieveSorter/media/forum-2026-10-24/IMG_1316.JPG --sim out/runs/demo_stack/sim_stack_0p2x.mp4 --height 960 --real-label "Bench prototype" --sim-label "MuJoCo sim, uncalibrated" --caption "Sim at 1/5 speed. The photo shows one tray; the sim shows the stack: 5 mm tray over 2 mm tray over the catch pan.\nGrains are poured in; from t 1 s the whole stack shakes up and down (20 Hz, ±1.24 mm, assumed).\nPasta stays on 5 mm, rice mostly on 2 mm, quinoa falls to the catch. Shaken longer, rice leaks through end-first: 7 of 40 stay after 10 s."
 ```
 
-- **The run** is VERTICAL.md's viewer run, recorded at 240 fps. At the default 30 fps a 20 Hz shake aliases into a slow wobble that isn't there.
-- **The camera** is matched by eye to `IMG_1316.JPG`, the side view on the tool: the long wall faces the camera, the mounting-tab end is on the right, and the frame is 3:4 portrait. The camera sits higher (32°) than the photo so the grid and the catch show.
-- **The clip** shows sim t = 0–2.2 s at 1/5 speed (11 s). The pour runs to t = 1 s, with no shaking. From there the shake clears the rest of the rice by t = 2.0, and nothing changes after that. At 1/5 speed the 20 Hz shake plays as a visible 4 Hz bounce.
+- **The run** is the demo rig as it really is: separate trays stacked one above the other (demo-rig.md, 06:20 correction), 5 mm over 2 mm over the catch pan, shaken up and down, recorded at 240 fps. At the default 30 fps a 20 Hz shake aliases into a slow wobble that isn't there. It takes about 20 s to run.
+- **What it shows** (VERTICAL.md, Result: the stacked rig): by t = 2.0 s all 15 pasta are on 5 mm, 31 of 40 rice are on 2 mm, and 32 of 40 quinoa are in the catch. Shaken straight up, rice stands on end and keeps leaking through the 2 mm holes: 21 stay at t = 4 s, 7 at t = 11 s. Shaking along the trays keeps 86-90% of it.
+- **The camera** looks at the long wall with the mounting-tab end on the right, as in `IMG_1316.JPG`. It is 4:3 landscape, not the photo's 3:4: in portrait the stack only fits small, and the rice and quinoa on the lower levels disappear.
+- **The clip** shows sim t = 0–2.4 s at 1/5 speed (12 s). The pour runs to t = 1 s, with no shaking. At 1/5 speed the 20 Hz shake plays as a visible 4 Hz bounce.
 - **Forum's photos and the clip stay local:** `media/` is gitignored. Copy the clip into the main checkout's `media/`.
 
 `side_by_side.py` writes `..\media\demo_side_by_side.mp4`, capped under 19 MB. A photo as `--real` is held for the whole sim clip. A video works too (`--slow`, `--loops`). It also takes a Record-button `.webm` and fixes Chrome's colour-range tagging (light greys would otherwise clip to white).

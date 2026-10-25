@@ -4,8 +4,10 @@ Run in the WSL venv from this folder:  ~/venvs/sieve/bin/python build_winners.py
 winners.py runs it from Windows and then slices every part. The prefix is win<rank>_ for the demo study
 and <study>_win<rank>_ for the others (winners_<study>.json).
 
-Each winner's "cad" block (sim/optimize.py) names the script and the numbers, in nominal (CAD) sizes:
-    gated    gated_container.py: "constants" (module constants) and "STRIPS", top level first
+Each winner's "cad" block (sim/optimize.py) names the script ("file", which picks the builder) and the
+numbers, in nominal (CAD) sizes:
+    gated    gated_container.py: "constants" (module constants) and "STRIPS", top level first; a
+             "mid_slot_PROPOSAL" (L<n>_GATE_X, L<n>_slot_mm, flip_levels) builds one container per level
     plinko   plinko_layers.py: "LAYERS" rows, top first
     inserts  sieve_insert.py: "INSERTS", coarse first
 The script is imported fresh for each winner, those tables are replaced, and the script's own builders
@@ -37,17 +39,28 @@ def gated(cad):
         setattr(gc, k, v)
     gc.STRIPS = {n: (kind, float(size)) for n, (kind, size) in cad["STRIPS"].items()}
     levels = list(gc.STRIPS)
-    parts = {"gated_container": gc.container, **{n: (lambda n=n: gc.strip(n)) for n in levels}}
-    previews = {"tower": lambda: gc.tower(levels)}
+    # mid-slot towers give each level its own gate position and slot, so each level gets its own container
+    mid = cad.get("mid_slot_PROPOSAL") or {}
+    gxs = [mid.get(f"L{i + 1}_GATE_X") for i in range(len(levels))]
+    slots = [mid.get(f"L{i + 1}_slot_mm") for i in range(len(levels))]
+    flip = mid.get("flip_levels", True)
+    if any(g is not None for g in gxs):
+        parts = {f"gated_container_L{i + 1}": (lambda g=g, s=s: gc.container(g, s))
+                 for i, (g, s) in enumerate(zip(gxs, slots))}
+    else:
+        parts = {"gated_container": gc.container}
+    parts.update({n: (lambda n=n: gc.strip(n)) for n in levels})
+    previews = {"tower": lambda: gc.tower(levels, gxs, slots, flip)}
     flags = []
     if gc.TOOTH < LINES:
         flags.append(f"teeth between openings are {gc.TOOTH:g} mm: under two 0.4 mm lines, fragile")
     for n, (kind, size) in gc.STRIPS.items():
         if size < LINES:
             flags.append(f"{n}: {size:g} mm opening may close up on the first layer")
-    slot = gc.OPEN_X - (gc.GATE_X + gc.STRIP_T / 2)
-    if slot < 3.0:
-        flags.append(f"drop slot is {slot:g} mm long: under 3 mm, check that the gate rails still fit")
+    for i, (g, s) in enumerate(zip(gxs, slots)):
+        slot = s if s is not None else gc.OPEN_X - ((gc.GATE_X if g is None else g) + gc.STRIP_T / 2)
+        if slot < 3.0:
+            flags.append(f"L{i + 1} drop slot is {slot:g} mm long: under 3 mm, check that the gate rails still fit")
     return parts, previews, flags
 
 
@@ -95,7 +108,7 @@ def insert_tower(si, names):
     return half(stack), {"preview_only": True, "levels_top_first": names}
 
 
-FAMILIES = {"gated": gated, "plinko": plinko, "inserts": inserts}
+BUILDERS = {"gated_container.py": gated, "plinko_layers.py": plinko, "sieve_insert.py": inserts}   # by cad.file
 
 
 def main():
@@ -105,14 +118,16 @@ def main():
     built = {"source": str(src), "study": study, "built": f"{datetime.now():%Y-%m-%d %H:%M}",
              "caveat": data.get("caveat"), "undersize_mm_assumed": data.get("undersize_mm_assumed"), "winners": []}
     for w in data["winners"]:
-        fam = w["family"]
-        if fam not in FAMILIES:
-            print(f"build_winners: rank {w['rank']}: no CAD builder for family {fam!r}, skipped")
+        script = Path((w.get("cad") or {}).get("file", "")).name     # the family name can be a variant (gated_mid)
+        if script not in BUILDERS:
+            print(f"build_winners: rank {w['rank']}: no CAD builder for {script or 'a winner without cad.file'} "
+                  f"({w['family']}), skipped")
             continue
         prefix = f"win{w['rank']}_" if study == "demo" else f"{study}_win{w['rank']}_"
-        parts, previews, flags = FAMILIES[fam](w["cad"])
-        entry = {k: w.get(k) for k in ("rank", "id", "family", "sim_spec", "stroke", "score", "params_nominal")}
-        entry.update({"flags": flags, "parts": []})
+        parts, previews, flags = BUILDERS[script](w["cad"])
+        entry = {k: w.get(k) for k in ("rank", "id", "family", "sim_spec", "stroke", "stroke_human", "score",
+                                       "params_nominal")}
+        entry.update({"assembly": w["cad"].get("tower"), "flags": flags, "parts": []})
         for name, make in [*parts.items(), *previews.items()]:
             part, info = make()
             out = prefix + name

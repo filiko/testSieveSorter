@@ -43,6 +43,10 @@ Samples are in ethanol, and the rig sprays from fixed jets above. `sim/spray.py`
   - plus gravity rotated into the tray frame;
   - applied per body through `xfrc_applied`.
   - The current uniform-gravity trick is exact only for pure translation.
+- **One pivot or one per box?** (bambu's question in PR #10) For **yaw**, the boxes' +X tabs line up vertically, so a single vertical axis through the tabs fits the whole stack: **one pivot, one tray frame.** Per-box pivots (one frame per level) would only matter for pitch, or if boxes flex out of phase. Leave that for later.
+- **Recording, so the replay shows rocking** (PR #10's viewer reads these):
+  - `tray_q`: frames × 4, w x y z, the tray frame's orientation in the lab;
+  - `scene["tray"]["pivot"]`: mm in the tray frame.
 - **The sim ranks designs; it does not predict real percentages until it's calibrated against bench counts.**
 
 ## Who owns what

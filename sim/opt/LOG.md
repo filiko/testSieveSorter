@@ -797,3 +797,100 @@ This overrides my 10:10 reading ("x matches attached at the mid points"). So rou
 - peak force p90, mN: top half 181.80, bottom half 106.13
 - rank correlation with the robust score (+ helps): vib_mm +0.84, ss_period +0.56, bar +0.43, ss_deg +0.31, tip=round +0.20, tip=flat -0.20
 
+
+## malaise round 1 (EXPLORATORY, 2026-10-25 13:07, auto)
+
+**Tried:** 8 candidates (ce), 24 runs, 4 min wall.
+
+**Leader:** B-87f42099: grid 8.9 mm (bars 1.2), pins 2 x 7.6 mm flat every ~11.8 mm; seesaw +/-8 deg, 3.5 s + 0.35 mm buzz at 40 Hz. Robust 0.683 (mean 0.756); free 100%, gentle 31%, sort 90%, largest cluster 1.0.
+
+- reference NO BREAKER: robust 0.217; free 31%, gentle 76%, sort 17%
+- reference cad/breaker_layer.py default (open 8, pins 2.5 x 12 every 10, round) on the default seesaw: robust 0.287; free 65%, gentle 46%, sort 22%
+- reference the CAD default breaker, default seesaw + 0.3 mm buzz at 40 Hz (1.9 g, the tool's): robust 0.479; free 85%, gentle 35%, sort 75%
+
+**Why the losers lost:**
+
+- free at the end: top half 0.90, bottom half 0.74
+- gentleness: top half 0.32, bottom half 0.38
+- in the ideal zone: top half 0.78, bottom half 0.46
+- largest cluster left: top half 5.83, bottom half 14.13
+- peak force p90, mN: top half 204.95, bottom half 136.25
+- rank correlation with the robust score (+ helps): vib_mm +0.68, bar +0.48, pin_h -0.34, ss_period +0.31, open +0.23, pin_d +0.13
+
+
+## malaise round 2 (EXPLORATORY, 2026-10-25 13:11, auto)
+
+**Tried:** 8 candidates (ce), 24 runs, 4 min wall.
+
+**Leader:** B-31c4ea6d: grid 12 mm (bars 1.9), pins 2.8 x 6 mm round every ~9 mm; seesaw +/-10.5 deg, 3.6 s + 0.3 mm buzz at 40 Hz. Robust 0.700 (mean 0.759); free 100%, gentle 30%, sort 90%, largest cluster 1.0.
+
+- reference NO BREAKER: robust 0.217; free 31%, gentle 76%, sort 17%
+- reference cad/breaker_layer.py default (open 8, pins 2.5 x 12 every 10, round) on the default seesaw: robust 0.287; free 65%, gentle 46%, sort 22%
+- reference the CAD default breaker, default seesaw + 0.3 mm buzz at 40 Hz (1.9 g, the tool's): robust 0.479; free 85%, gentle 35%, sort 75%
+
+**Why the losers lost:**
+
+- free at the end: top half 0.93, bottom half 0.76
+- gentleness: top half 0.32, bottom half 0.36
+- in the ideal zone: top half 0.83, bottom half 0.52
+- largest cluster left: top half 4.02, bottom half 12.81
+- peak force p90, mN: top half 228.96, bottom half 150.38
+- rank correlation with the robust score (+ helps): vib_mm +0.50, open +0.43, bar +0.37, pin_h -0.33, pin_d +0.27, tip=round +0.25
+
+## seesaw round 0 (2026-10-25 13:21, auto)
+
+**Tried:** plinko: 14 (baseline, lhs); inserts: 9 (baseline, lhs); current: 1 (current). 126 runs, 27 min wall.
+
+**Leader so far:** I-c7efd18f (inserts, round 0) square holes 5 (bar 1.2) / 2 (bar 1), stroke seesaw +/-10 deg (ends tip, neighbours alternate), 2 s per cycle, constant speed: robust 0.364 (mean 0.382 +/- 0.018); big (pasta, chickpea) 49% pure / 100% recovered, rice 79% pure / 74% recovered, quinoa 89% pure / 44% recovered; PEN 6/6 (clr 0.01, pen 0.283).
+
+**Screen results this round (10 s, progress score), best per family:**
+
+- plinko: best P-fd614143 screen robust 0.779; median 0.641; failures in 0 of 14 candidates
+- inserts: best I-c7efd18f screen robust 0.636; median 0.528; failures in 0 of 9 candidates
+- current: best C-4a07a203 screen robust 0.561; median 0.561; failures in 0 of 1 candidates
+
+**Why the losers failed** (particles per run, over this round's screened candidates in the bottom half of each family; the most common modes):
+
+- plinko: quinoa: held upstream -> layer_1_rods (10.2 in 7 cands); quinoa: held upstream -> layer_2_rods (8.0 in 7 cands); rice: held upstream -> layer_1_rods (7.2 in 7 cands); rice: leaked downstream -> layer_3_catch (9.4 in 5 cands); rice: between -> in the floor of layer_1_rods (0.3 in 1 cands)
+- inserts: rice: held upstream -> on_h2p55b0p95 (26.7 in 1 cands); rice: held upstream -> on_h2p75b1p05 (26.0 in 1 cands); rice: held upstream -> on_h3p75b1p85 (18.7 in 1 cands); quinoa: held upstream -> on_h1p25b1p45 (18.7 in 1 cands); quinoa: held upstream -> on_h3p75b1p85 (17.7 in 1 cands); rice: held upstream -> on_h3p35b2p15 (16.0 in 1 cands)
+- current: rice: leaked downstream -> catch (4.7 in 1 cands); quinoa: between -> in the floor of on_mesh5 (4.0 in 1 cands); rice: between -> in the floor of on_mesh5 (3.7 in 1 cands); rice: held upstream -> on_mesh5 (1.3 in 1 cands); rice: lost -> z -181439 mm (0.3 in 1 cands); quinoa: held upstream -> on_mesh2 (0.3 in 1 cands)
+
+**Leaders' remaining losses** (full runs, top 3):
+
+- I-c7efd18f: quinoa: held upstream -> on_h4p85b1p35 10.7; quinoa: held upstream -> on_h1p85b1p15 6.2; rice: held upstream -> on_h4p85b1p35 6.0; rice: leaked downstream -> catch 1.7
+- P-8e00372e: quinoa: held upstream -> layer_1_rods 9.5; quinoa: held upstream -> layer_2_rods 7.0; rice: held upstream -> layer_1_rods 2.8
+- P-19e01862: quinoa: held upstream -> layer_1_rods 11.8; quinoa: held upstream -> layer_2_rods 5.0; rice: held upstream -> layer_1_rods 3.0
+
+**Parameters at a bound among each family's elite** (the range may be too narrow):
+
+- plinko: ss_shape constant_speed 0.50/sine 0.50
+- inserts: ss_shape constant_speed 0.38/sine 0.62
+
+**Next hypothesis (auto):** 1.7 particles per run leak through a gate they should not pass: tighten that gate or cap the gap height (window gate); the leader's near-size results are flagged (overlap vs clearance): check it at a smaller dt or stiffer contacts before trusting it
+
+
+
+## Seesaw round 0 and the malaise verification (notes, 2026-10-25 13:25)
+
+**Seesaw round 0 (full runs at 16 s, 2 seeds x 3 friction sets):** no design reaches the 0.5 winner bar on a +/-5-15 deg seesaw alone, so `winners_seesaw.json` has no winners yet.
+- Best: today's glued mesh 0.406 (it jams 6 grains per run), the demo rig 0.364, plinko 4.7 / 1.6 at the default seesaw 0.345.
+- Every design keeps the big grains and most of the rice. Quinoa recovery stays at 33-45%: it rides the solid parts of the upper tray.
+- That matches VERIFY_SEESAW.md (the physics session) and the 11:20 renders. Round 1, running now, adds the 40 Hz buzz (`vib_mm`), the demo rig + 0.3 mm, and bambu's ribs-across inserts.
+
+**Malaise, verified on fresh clumps (seeds 1, 2 x the 3 bond sets; each seed packs a different clump):**
+
+| id | design | robust, seed 0 | robust, seeds 1-2 | robust, all seeds | freed, seeds 1-2 |
+|---|---|---|---|---|---|
+| B-164f355a | grid 11.3 (bars 1.6), round pins 3.1 x 8 every 12.9; +/-7 deg, 1.1 s + 0.35 mm buzz | 0.672 | 0.612 | **0.630** | 94% |
+| B-87f42099 | grid 8.9 (bars 1.2), flat pins 2 x 7.6 every 10.1; +/-8 deg, 3.5 s + 0.35 mm buzz | 0.683 | 0.575 | 0.605 | 94% |
+| B-31c4ea6d | grid 12 (bars 1.9), round pins 2.8 x 6 every 13.9; +/-10.5 deg, 3.6 s + 0.3 mm buzz | 0.700 | 0.336 | 0.422 | 76% |
+| CAD default + 0.3 mm buzz | grid 8, round pins 2.5 x 12 every 9.6; +/-10 deg, 2 s | 0.479 | 0.440 | 0.452 | 84% |
+| CAD default | (same, no buzz) | 0.287 | 0.188 | 0.216 | 34% |
+| no breaker | the demo rig's trays alone, +/-10 deg, 2 s | 0.217 | 0.235 | 0.229 | 48% |
+
+- Round 2's leader was lucky on seed 0. Its clumps on seeds 1-2 kept a large cluster.
+- **From now on the malaise winners are verified designs, ranked by the lower of the seed-0 robust and the all-seed robust** (a design can only lose by being checked). The verify run covers the top 6.
+- **What holds:** a breaker with short pins (6-8 mm, not the CAD's 12) plus a 0.3-0.35 mm buzz frees 94% of the clump on fresh seeds, against 48% with no breaker. The CAD default alone (34%) is no better than no breaker. With the buzz it reaches 84%.
+- **The cost:** grains are hit harder. The peak-force p90 is about 250 mN against 34 mN with no breaker, where the clump just sits whole.
+
+**Correction (13:27):** the malaise round entries above give the pin spacing as "every ~X mm", which is the `pitch` key (a target). The CAD stands pins on grid nodes, every k-th with k = round(pitch / (open + bar)), so the real spacing is k x (open + bar). For every leader so far k = 1, so it's the grid step: 12.9 mm for B-164f355a, 10.1 for B-87f42099 and 13.9 for B-31c4ea6d. The leaderboard now shows the real spacing.

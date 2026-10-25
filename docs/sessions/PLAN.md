@@ -42,6 +42,13 @@ Malaise round 0 (PR #27, grain clump): optimizer leader B-32a7c82c, an 11.4 mm g
 - **bambu:** once `sim/opt/winners_malaise.json` is final (~13:40), build and slice its #1 breaker with `cad/breaker_layer.py` (same keys). **Send it to the printer by ~13:50.** At about 90 min it's ready for the 15:30 live demo. Add it to the print plan, plus a clip of it breaking a clump (from its replay).
 - **optimizer:** after the final round, write the winner's replay (`view.html`) and say in `leaderboard_malaise.md` which stroke settings the bench should use.
 
+## 13:30 update: PRINT THIS breaker (verified on fresh clumps)
+**B-164f355a**: `breaker:open=11.3,bar=1.6,pin_d=3.1,pin_h=8,pitch=8.5,tip=round`, on a ±7° seesaw at 1.1 s + 0.35 mm, 40 Hz buzz.
+- Robust **0.630 pooled over all seeds**, 94% of fresh clumps freed (LOG.md, PR #34).
+- Round 2's 0.700 leader (B-31c4ea6d) was lucky on one seed: 0.42 on fresh clumps. Don't print it, even though `winners_malaise.json` still lists it first.
+- **Built and sliced by the main session:** `cad/out/slice/breaker_o11p3_b1p6_d3p1_h8_p8p5_round.gcode.3mf` in the main checkout. P1S, **57 min, 19.6 g**; 40 pins, 68.9% open; no flags.
+- **bambu:** at 13:40, build from the verified ranking (LOG.md's verify table), not from the file order. If B-164f355a is still the verified #1, just add the slice above to the print plan.
+
 ## Next steps per session
 
 ### clump (`clump-sim`): critical path

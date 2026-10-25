@@ -77,20 +77,46 @@ The clump breaker for the top of the stack (`docs/sessions/clump-breakup.md`): `
 Checks: valid single solid, watertight mesh, fits the bed. A tower needs one holder box per level plus the catch pan; the holder (`frame_holder`) isn't repeated here.
 
 <!-- hand-written from here on: winners.py keeps it -->
-## Print queue (12:50, Oct 25)
+## Print queue (13:35, Oct 25)
 
 One P1S. **What's on the printer now isn't known to this session.** It's on the main session's list of questions for the user (PLAN.md, decision 2). Update this table when someone says.
 
 | Order | Part | Time | Status | Why |
 |---|---|---|---|---|
-| 1 | `breaker_o8_b1p6_d2p5_h12_p10_round` | 89 min | ready to print, sliced | the clump demo: break-up is the point of the system |
+| 1 | `breaker_o11p3_b1p6_d3p1_h8_p8p5_round` | 57 min, 19.6 g | sliced; **send by 13:50** (PLAN.md, 13:30) | the optimizer's **verified** malaise #1, B-164f355a (robust 0.630 over all seeds, 94% of fresh clumps freed) |
 | 2 | `sieve_insert_5mm_across` | 47 min | ready to print, sliced | the fix for quinoa and chia stuck on the 5 mm tray; drops into today's holder boxes |
-| 3 | `sieve_insert_2mm_across` | 65 min | ready to print, sliced | the same fix on 2 mm |
-| 4 | `seesaw_holder`, one per level | 60 min each | ready to print, sliced | centre pivot pins, no tab: levels hang about 55 mm apart at ±10° instead of 85–110 |
-| 5 | `seesaw_catch_pan` | 125 min | ready to print, sliced | deeper pan with an inward lip: grains bounced out over the ends |
-| - | winner plates 1–3 (above) | 124–152 min | sliced | translation-stroke winners from before the seesaw; superseded unless the optimizer's seesaw study picks them again |
+| 3 | `breaker_o8_b1p6_d2p5_h12_p10_round` | 89 min | ready to print, sliced | the CAD default breaker: 34% freed without the buzz, 84% with it |
+| 4 | `sieve_insert_2mm_across` | 65 min | ready to print, sliced | the same fix on 2 mm |
+| 5 | `seesaw_holder`, one per level | 60 min each | ready to print, sliced | centre pivot pins, no tab: levels hang about 55 mm apart at ±10° instead of 85–110 |
+| 6 | `seesaw_catch_pan` | 125 min | ready to print, sliced | deeper pan with an inward lip: grains bounced out over the ends |
+| - | winner plates 1–3 (above) | 124–152 min | sliced | translation-stroke winners from before the seesaw; superseded |
 
-Started at 13:00, items 1 and 2 finish by about 15:20, before the live demos (15:30). Items 3–5 come after the demo.
+**Don't print** B-31c4ea6d (`breaker_o12_b1p9_d2p8_h6_p9_round`). It led round 2 on one lucky seed and scores 0.42 on fresh clumps. B-32a7c82c (`breaker_o11p4_...`, built at 13:10) was the round-0 leader and is superseded too.
+
+Item 1 sent at 13:50 is done by about 14:50. Item 2 right after it finishes by about 15:40, after the live demos start (15:30). Items 3–6 come after the demo.
+
+## Optimizer's breaker (malaise study, EXPLORATORY): B-164f355a
+
+The verified #1 in `sim/opt/LOG.md` (13:30): `breaker:open=11.3,bar=1.6,pin_d=3.1,pin_h=8,pitch=8.5,tip=round`, built by `cad/breaker_layer.py` with the same keys. The sim ranks designs; it isn't calibrated against bench counts, and the bond strengths and insect bodies are assumed.
+
+| Part | Time | Filament | Checks |
+|---|---|---|---|
+| `breaker_o11p3_b1p6_d3p1_h8_p8p5_round` | 57 min | 19.6 g | ok |
+
+- 40 round pins, 3.1 mm across and 8 mm tall; 11.3 mm openings, 68.9% open. No printability flags.
+- **Stroke to set on the bench:** seesaw ±7°, 1.1 s per cycle, constant angular speed, with a 0.35 mm, 40 Hz buzz on top.
+- **Why this one** (LOG.md verify table, robust score over all seeds):
+
+  | Design | Robust score | Freed on fresh clumps |
+  |---|---|---|
+  | B-164f355a (this breaker) | 0.630 | 94% |
+  | CAD default with the buzz | 0.452 | 84% |
+  | no breaker | 0.229 | 48% |
+
+  The cost is harder hits: peak-force p90 is about 250 mN against 34 mN with no breaker.
+- **Sliced files** (local, not committed). Open either one in Bambu Studio and send it to the P1S from there:
+  - `cad/out/slice/breaker_o11p3_b1p6_d3p1_h8_p8p5_round.gcode.3mf` in the main checkout;
+  - the same part in this worktree as `cad/out/slice/malaise_win3_plate.gcode.3mf`.
 
 ## Seesaw parts (cad/seesaw_holder.py, cad/sieve_insert.py)
 

@@ -106,12 +106,12 @@ def refs(rnd):
                  "the CAD default breaker, default seesaw + 0.3 mm buzz at 40 Hz (1.9 g, the tool's)")]
 
 
-def jobs_for(c, base):
+def jobs_for(c, base, seed=0):
     out = []
     for bond in BONDS:
-        cfg = sweep.make_cfg(base, design=c["spec"], stroke=c["stroke"], duration_s=DURATION_S, seed=0,
+        cfg = sweep.make_cfg(base, design=c["spec"], stroke=c["stroke"], duration_s=DURATION_S, seed=seed,
                              contact={"friction": FRICTION}, clump={**CLUMP, "bond": bond}, mix={})
-        job = {"cfg": cfg, "inject": {}, "tags": {"cand": c["id"], "fid": "full", "set": bond, "seed": 0}}
+        job = {"cfg": cfg, "inject": {}, "tags": {"cand": c["id"], "fid": "full", "set": bond, "seed": seed}}
         job["key"] = hashlib.sha1(json.dumps([cfg], sort_keys=True, default=sweep.jsonable).encode()).hexdigest()[:20]
         out.append(job)
     return out
@@ -226,8 +226,9 @@ def show(c):
     st = f"seesaw +/-{p['ss_deg']:g} deg, {p['ss_period']:g} s" + (f" + {p['vib_mm']:g} mm buzz at 40 Hz" if p.get("vib_mm") else "")
     if p.get("breaker") is False:
         return f"no breaker; {st}"
+    g = p["open"] + p["bar"]                     # pins stand on grid nodes: every k-th, k = round(pitch / step)
     return (f"grid {p['open']:g} mm (bars {p['bar']:g}), pins {p['pin_d']:g} x {p['pin_h']:g} mm {p['tip']} every "
-            f"~{p['pitch']:g} mm; {st}")
+            f"{max(1, round(p['pitch'] / g)) * g:.1f} mm; {st}")
 
 
 def f2(v, fmt="{:.2f}"):
@@ -266,6 +267,18 @@ def by_bond(c, summ):
 def ranking(cands, summ, refs_too=False):
     return sorted((c for c in cands if c["id"] in summ and (refs_too or c["origin"] != "baseline")),
                   key=lambda c: -summ[c["id"]]["robust"])
+
+
+def win_key(s):
+    """A verified design's winner score: the lower of its seed-0 robust and its robust over every seed (checking a
+    design can only lower it). None if not verified."""
+    v = s.get("verify")
+    return None if not v else min(s["robust"], v["robust_all_seeds"])
+
+
+def winners(cands, summ):
+    return sorted((c for c in ranking(cands, summ) if win_key(summ[c["id"]]) is not None),
+                  key=lambda c: -win_key(summ[c["id"]]))
 
 
 def why(cands, summ):
@@ -318,7 +331,32 @@ def write(cands, summ, meta):
           f"(rocking.py).",
           f"- **Score per run:** {W_BREAK:g} x break-up (0.75 x free share + 0.25 x speed from t90) + {W_GENTLE:g} x "
           f"gentleness (half: share never over 5 mN while still in the clump; half: the peak-force p90 on a log scale, "
-          f"1 at 5 mN, 0 at 500 mN) + {W_SORT:g} x sort (specimens in their ideal zone). A failed run scores -1.", "", "## Top 10", "", table(rk[:10], summ), "", "## References", "", table(refs_, summ), ""]
+          f"1 at 5 mN, 0 at 500 mN) + {W_SORT:g} x sort (specimens in their ideal zone). A failed run scores -1.",
+          "- **Winners** are verified designs only (rerun on freshly packed clumps, seeds 1-2), ranked by the lower of "
+          "the seed-0 robust and the robust over every seed. The top-10 table is seed 0 only.", ""]
+    wn = winners(cands, summ)
+    if wn:
+        md += ["## Winners (verified on fresh clumps)", "",
+               "| # | id | design and stroke | winner score | robust, all seeds | free, fresh seeds | breaker for the CAD |",
+               "|---|---|---|---|---|---|---|"]
+        import designs
+        for i, c in enumerate(wn[:3], 1):
+            s, v = summ[c["id"]], summ[c["id"]]["verify"]
+            md.append(f"| {i} | {c['id']} | {show(c)} | **{win_key(s):.3f}** | {v['robust_all_seeds']:.3f} | {pct(v['free'])} | "
+                      f"`{designs.build(c['spec']).info['breaker']['cad_spec']}` |")
+        md.append("")
+    md += ["## Top 10 (seed 0)", "", table(rk[:10], summ), "", "## References", "", table(refs_, summ), ""]
+    ver = [c for c in rk[:10] + refs_ if summ[c["id"]].get("verify")]
+    if ver:
+        md += ["## Verified on fresh clumps", "", "Each seed packs a different clump. The same 3 bond sets per seed; robust "
+               "(all seeds) pools seed 0 with the fresh ones.", "",
+               "| id | design and stroke | robust, seed 0 | robust, fresh seeds | robust, all seeds | free, fresh seeds | fails |",
+               "|---|---|---|---|---|---|---|"]
+        for c in ver:
+            v = summ[c["id"]]["verify"]
+            md.append(f"| {c['id']} | {c.get('label') or show(c)} | {summ[c['id']]['robust']:.3f} | {v['robust']:.3f} "
+                      f"(seeds {', '.join(map(str, v['seeds']))}) | **{v['robust_all_seeds']:.3f}** | {pct(v['free'])} | {v['fails']} |")
+        md.append("")
     md += ["## Per bond set, top 3 and the no-breaker reference", ""]
     for c in rk[:3] + [r for r in refs_ if r["params"].get("breaker") is False]:
         md += [by_bond(c, summ), ""]
@@ -326,17 +364,20 @@ def write(cands, summ, meta):
     (o.OPT / "leaderboard_malaise.md").write_text("\n".join(md), encoding="utf-8")
     import designs
     win = []
-    for c in rk[:3]:
+    for c in winners(cands, summ)[:3]:
         d = designs.build(c["spec"])
-        win.append({"id": c["id"], "robust": round(summ[c["id"]]["robust"], 4), "mean": round(summ[c["id"]]["mean"], 4),
+        win.append({"id": c["id"], "winner_score": round(win_key(summ[c["id"]]), 4),
+                    "robust": round(summ[c["id"]]["robust"], 4), "mean": round(summ[c["id"]]["mean"], 4),
                     "design": show(c), "cad": {"file": "cad/breaker_layer.py", "spec": d.info["breaker"]["cad_spec"],
                                                "facts": {k: v for k, v in d.info["breaker"].items() if k not in ("params", "cad_spec")}},
                     "sim_spec": c["spec"], "stroke": c["stroke"], "params": c["params"],
                     "metrics": {k: summ[c["id"]][k] for k in ("free", "break", "gentle", "sort", "largest", "p90_mN", "over")},
-                    "by_bond": summ[c["id"]]["by_bond"]})
+                    "by_bond": summ[c["id"]]["by_bond"], "verify": summ[c["id"]].get("verify")})
     (o.OPT / "winners_malaise.json").write_text(json.dumps(
         {"study": "malaise", "exploratory": True, "note": "EXPLORATORY: the sim ranks designs; it isn't calibrated against "
-         "bench counts. Bond strengths, insect bodies and the 5 mN damage line are assumed.", "updated": f"{datetime.now():%Y-%m-%d %H:%M}",
+         "bench counts. The clump is the grain surrogate (insect clumps don't pack yet); bond strengths and the 5 mN "
+         "damage line are assumed. Winners are verified on fresh clumps, ranked by winner_score = min(robust seed 0, "
+         "robust over all seeds).", "updated": f"{datetime.now():%Y-%m-%d %H:%M}",
          "clump": CLUMP, "tower": {"under": UNDER, "pitch_mm": TOWER}, "winners": win}, indent=1, default=float), encoding="utf-8")
 
 
@@ -381,6 +422,29 @@ def run(args):
         print(f"malaise round {rnd} done in {meta['round_min']:.1f} min", flush=True)
 
 
+def verify(args):
+    """Rerun the top designs (and the references) on fresh clump seeds: each seed packs a different clump."""
+    base = base_cfg()
+    cands, summ = load()
+    seeds = [int(x) for x in args.seeds.split(",")]
+    pick = ranking(cands, summ)[:args.top] + [c for c in cands if c["origin"] == "baseline"]
+    jobs = [j for c in pick for sd in seeds for j in jobs_for(c, base, sd)]
+    recs = o.run_all(jobs, STUDY, args.workers)
+    for c in pick:
+        rows = [recs[j["key"]] for sd in seeds for j in jobs_for(c, base, sd)]
+        scores = [(-1.0 if run_score(r) is None else run_score(r)["score"]) for r in rows]
+        allsc = scores + [(-1.0 if v is None else v["score"]) for v in summ[c["id"]]["by_bond"].values()]
+        free = [run_score(r)["free"] for r in rows if run_score(r)]
+        summ[c["id"]]["verify"] = {"seeds": seeds, "robust": float(np.mean(scores) - np.std(scores)),
+                                   "robust_all_seeds": float(np.mean(allsc) - np.std(allsc)),
+                                   "free": float(np.mean(free)) if free else None, "fails": scores.count(-1.0),
+                                   "by_seed_bond": {f"{r['tags']['seed']}/{r['tags']['set']}": run_score(r) and round(run_score(r)["score"], 3)
+                                                    for r in rows}}
+        print(c["id"], show(c), json.dumps({k: v for k, v in summ[c["id"]]["verify"].items() if k != "by_seed_bond"}), flush=True)
+    save(cands, summ)
+    write(cands, summ, {"n_cands": len(cands), "n_runs": len(list((OUT / "runs").glob("*.json")))})
+
+
 def replay(args):
     """Record the top winners (and --ids) on the medium bond set, seed 0, and build each view.html (bambu's hero clip)."""
     import sorter
@@ -406,7 +470,8 @@ def report(args):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("cmd", choices=["run", "report", "replay"])
+    ap.add_argument("cmd", choices=["run", "report", "replay", "verify"])
+    ap.add_argument("--seeds", default="1,2", help="verify: fresh clump seeds")
     ap.add_argument("--top", type=int, default=1)
     ap.add_argument("--ids", help="replay: extra candidate ids, comma separated")
     ap.add_argument("--rounds", type=int, default=1)
@@ -416,7 +481,7 @@ def main():
     args = ap.parse_args()
     global DURATION_S
     DURATION_S = args.duration or DURATION_S
-    {"run": run, "report": report, "replay": replay}[args.cmd](args)
+    {"run": run, "report": report, "replay": replay, "verify": verify}[args.cmd](args)
 
 
 if __name__ == "__main__":

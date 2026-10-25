@@ -881,10 +881,10 @@ This overrides my 10:10 reading ("x matches attached at the mid points"). So rou
 
 | id | design | robust, seed 0 | robust, seeds 1-2 | robust, all seeds | freed, seeds 1-2 |
 |---|---|---|---|---|---|
-| B-164f355a | grid 11.3 (bars 1.6), round pins 3.1 x 8 every 8.5; +/-7 deg, 1.1 s + 0.35 mm buzz | 0.672 | 0.612 | **0.630** | 94% |
-| B-87f42099 | grid 8.9 (bars 1.2), flat pins 2 x 7.6 every 11.8; +/-8 deg, 3.5 s + 0.35 mm buzz | 0.683 | 0.575 | 0.605 | 94% |
-| B-31c4ea6d | grid 12 (bars 1.9), round pins 2.8 x 6 every 9; +/-10.5 deg, 3.6 s + 0.3 mm buzz | 0.700 | 0.336 | 0.422 | 76% |
-| CAD default + 0.3 mm buzz | grid 8, round pins 2.5 x 12 every 10; +/-10 deg, 2 s | 0.479 | 0.440 | 0.452 | 84% |
+| B-164f355a | grid 11.3 (bars 1.6), round pins 3.1 x 8 every 12.9; +/-7 deg, 1.1 s + 0.35 mm buzz | 0.672 | 0.612 | **0.630** | 94% |
+| B-87f42099 | grid 8.9 (bars 1.2), flat pins 2 x 7.6 every 10.1; +/-8 deg, 3.5 s + 0.35 mm buzz | 0.683 | 0.575 | 0.605 | 94% |
+| B-31c4ea6d | grid 12 (bars 1.9), round pins 2.8 x 6 every 13.9; +/-10.5 deg, 3.6 s + 0.3 mm buzz | 0.700 | 0.336 | 0.422 | 76% |
+| CAD default + 0.3 mm buzz | grid 8, round pins 2.5 x 12 every 9.6; +/-10 deg, 2 s | 0.479 | 0.440 | 0.452 | 84% |
 | CAD default | (same, no buzz) | 0.287 | 0.188 | 0.216 | 34% |
 | no breaker | the demo rig's trays alone, +/-10 deg, 2 s | 0.217 | 0.235 | 0.229 | 48% |
 
@@ -892,3 +892,5 @@ This overrides my 10:10 reading ("x matches attached at the mid points"). So rou
 - **From now on the malaise winners are verified designs, ranked by the lower of the seed-0 robust and the all-seed robust** (a design can only lose by being checked). The verify run covers the top 6.
 - **What holds:** a breaker with short pins (6-8 mm, not the CAD's 12) plus a 0.3-0.35 mm buzz frees 94% of the clump on fresh seeds, against 48% with no breaker. The CAD default alone (34%) is no better than no breaker. With the buzz it reaches 84%.
 - **The cost:** grains are hit harder. The peak-force p90 is about 250 mN against 34 mN with no breaker, where the clump just sits whole.
+
+**Correction (13:27):** the malaise round entries above give the pin spacing as "every ~X mm", which is the `pitch` key (a target). The CAD stands pins on grid nodes, every k-th with k = round(pitch / (open + bar)), so the real spacing is k x (open + bar). For every leader so far k = 1, so it's the grid step: 12.9 mm for B-164f355a, 10.1 for B-87f42099 and 13.9 for B-31c4ea6d. The leaderboard now shows the real spacing.

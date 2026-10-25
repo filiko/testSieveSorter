@@ -16,6 +16,7 @@ Status: first build, 2026-10-24. Nothing here is calibrated yet. Until the bench
 | File | What it is |
 |---|---|
 | `sorter.py` | Core: builds the scene, shakes it, records it, and counts where everything ends up |
+| `rocking.py` | The seesaw: each box of a tower on its own hinge across its middle, neighbours in opposite phase, driven in the lab frame; also checks that neighbouring boxes never touch ([SEESAW.md](SEESAW.md)) |
 | `designs.py` | Pool sorter, plus the registry for every design spec |
 | `designs_holder.py` | BioKEA's holder tower with sieve inserts (glued mesh or printed), and the plinko layers |
 | `grains.py` | Rice, quinoa, chickpeas, pasta |

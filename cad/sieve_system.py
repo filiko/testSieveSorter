@@ -69,6 +69,25 @@ POST_R = 1.5
 TAIL = 4.0           # posts taper downstream, so each channel widens after the throat
 GATES = {"gate_coupon_2p3": 2.3, "gate_coupon_5p0": 5.0}
 
+# --- concentric gate sorter ----------------------------------------------------
+# Load the centre and shake (an orbital plate shaker suits it): grains spread outward.
+# Each ring is a wall full of gates; whatever passes drops RING_STEP into the next
+# zone and can't climb back. Zones, centre outward: stopped by ring 1 / passed ring 1
+# but not ring 2 / passed everything. Prints flat and upright: gates are gaps in
+# vertical walls, so there's nothing to support.
+# Gate height matters: a gate taller than a grain's middle dimension lets it through
+# edge-on, so it sorts by thickness. Make the height about equal to the gap to sort by width.
+RING_T = 2.4           # ring wall thickness
+RING_STEP = 3.0        # each zone's floor is this much lower than the zone inside it
+RING_OPEN = 0.45       # share of each ring's circumference that is gate
+GATE_RELIEF_DEG = 8.0  # gates widen outward so near-size grains don't wedge
+MIN_POST = 1.5         # narrowest wall left between two gates
+RINGS = {
+    # name: [(ring inner radius, gate gap, gate height), ...] centre outward
+    "rings_5p0_1p3": [(20.0, 5.0, 10.0), (31.0, 1.3, 6.0)],  # pasta | long-grain rice | quinoa
+    "rings_5p0_2p3": [(20.0, 5.0, 10.0), (31.0, 2.3, 6.0)],  # pasta | short-grain rice | quinoa
+}
+
 IN_L, IN_W = L - 2 * WALL, W - 2 * WALL
 LIP_L, LIP_W = IN_L - FIT, IN_W - FIT
 LIP_R = INNER_R - FIT / 2
@@ -209,9 +228,45 @@ def gate_coupon(name):
                   "deck_mm": round(fence_x - x0, 1), "pocket_mm": round(IN_L - (fence_x - x0) - 2 * POST_R, 1)}
 
 
+def concentric(name):
+    rings = RINGS[name]
+    n = len(rings)
+    body = rounded_box(L, W, H, CORNER_R).cut(rounded_box(IN_L, IN_W, H, INNER_R, z0=FLOOR_T))
+
+    def floor_z(k):  # top of zone k's floor; the centre (k = 0) is highest
+        return FLOOR_T + (n - k) * RING_STEP
+
+    base = cq.Workplane("XY").workplane(offset=FLOOR_T - 0.1)
+    for k, (r, _, _) in enumerate(rings):
+        body = body.union(base.circle(r + RING_T).extrude(floor_z(k) - FLOOR_T + 0.1))
+        body = body.union(base.circle(r + RING_T).circle(r).extrude(H - FLOOR_T + 0.1))
+    ring_info = []
+    for k, (r, gap, gate_h) in enumerate(rings):
+        circ = 2 * math.pi * r
+        count = max(int(circ * RING_OPEN / gap), 1)
+        while count > 1 and circ / count - gap < MIN_POST:
+            count -= 1
+        widen = (RING_T + 0.4) * math.tan(math.radians(GATE_RELIEF_DEG))
+        x_in, x_out = r - 0.2, r + RING_T + 0.2
+        pts = [(x_in, -gap / 2), (x_out, -gap / 2 - widen), (x_out, gap / 2 + widen), (x_in, gap / 2)]
+        cutter = None
+        for j in range(count):
+            c = (cq.Workplane("XY").workplane(offset=floor_z(k)).polyline(pts).close().extrude(gate_h)
+                 .rotate((0, 0, 0), (0, 0, 1), 360 * j / count))
+            cutter = c if cutter is None else cutter.union(c)
+        body = body.cut(cutter)
+        ring_info.append({"ring_inner_radius_mm": r, "gate_gap_mm": gap, "gate_height_mm": gate_h,
+                          "gates": count, "post_mm": round(circ / count - gap, 2),
+                          "floor_inside_mm": round(floor_z(k), 2), "floor_outside_mm": round(floor_z(k + 1), 2)})
+    body = label(body, "C" + "-".join(f"{g:g}" for _, g, _ in rings))
+    return body, {"rings": ring_info, "centre_diameter_mm": 2 * rings[0][0],
+                  "outer_zone": "everything outside the last ring, to the plate walls"}
+
+
 PARTS = {**{n: (lambda n=n: sieve_tray(n)) for n in SCREENS},
          "tray_open": tray_open, "clamp_ring": clamp_ring, "collector": collector, "lid": lid,
-         **{n: (lambda n=n: gate_coupon(n)) for n in GATES}}
+         **{n: (lambda n=n: gate_coupon(n)) for n in GATES},
+         **{n: (lambda n=n: concentric(n)) for n in RINGS}}
 
 
 if __name__ == "__main__":

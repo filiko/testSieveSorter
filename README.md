@@ -48,6 +48,7 @@ Every part is exactly the size of a 24-well plate (127.76 × 85.47 × 20.27 mm),
 | Part | What it does |
 |---|---|
 | `tray_open` + `clamp_ring` | Frame for a 121.2 × 78.9 mm piece cut from the kit's metal sheets. Clip the corners, drop it on the ledge, press the ring on top. |
+| `rings_5p0_1p3`, `rings_5p0_2p3` | Concentric gate sorter, one part. Load the 40 mm centre and shake, ideally on an orbital plate shaker. Ring 1 has 11 gates 5 mm wide; ring 2 has 67 gates 1.3 mm wide (or 38 at 2.3 mm). Each zone's floor is 3 mm lower than the zone inside it, so grains can't climb back. Zones, centre outward: pasta, rice, quinoa. Prints flat and upright with no supports. |
 | `gate_coupon_2p3`, `gate_coupon_5p0` | The gates idea, to run beside a perforated tray. Grains start on a raised deck, pass between tapered posts, and drop 5 mm into a pocket. Shake along the long side. |
 
 **Design notes:**

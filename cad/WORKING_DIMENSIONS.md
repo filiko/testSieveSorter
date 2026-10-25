@@ -20,6 +20,18 @@ Adopted 2026-10-24 as the team's working numbers. All values are in mm.
 | Mounting tab (+X end) | 22 long × 4.5 thick × 25 tall |
 | Mounting hole | 6 diameter, centre 6.5 from the tab's end, at mid-height |
 
+### Level spacing for the seesaw (`seesaw_tower.py`)
+
+Each box tips about its own pivot across its middle (ASSUMED at the body's centre, mid-height), and neighbours tip opposite ways (docs/SYSTEM.md §3). The minimum pitch (pivot to pivot) that leaves 3 mm between neighbours at full tilt, from the real solids over both half-cycles:
+
+| Tilt | With the +X tab | Tab cut off |
+|---|---|---|
+| ±20° | 89.5 | 74.4 |
+| ±25° | 103.6 | 84.9 |
+| ±30° | 116.7 | 94.7 |
+
+The tab ends decide it: they sit 92 from the pivot, against 70 for the far end. A middle pivot doesn't need the tab. Cut it off, and ±25° fits in about 85; keep it, and allow about 105. Preview: `out/seesaw_tower.png` (±25° at 105).
+
 ## Sieve inserts (`sieve_insert.py`)
 
 | What | Value |

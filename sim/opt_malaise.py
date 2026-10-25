@@ -27,6 +27,7 @@ Round 0: a Latin hypercube; later rounds: cross-entropy around the top quarter.
 Run from sim\\ in WSL (<= 12 workers):
     python opt_malaise.py run --rounds 1 --workers 12
     python opt_malaise.py report
+    python opt_malaise.py replay --top 1 --ids <no-breaker id>      # view.html under out/opt/malaise/replay/
 Writes opt/leaderboard_malaise.md, opt/winners_malaise.json and a round entry in opt/LOG.md; runs are cached under
 out/opt/malaise/.
 """
@@ -275,7 +276,7 @@ def why(cands, summ):
         return []
     top, bot = rk[:len(rk) // 2], rk[len(rk) // 2:]
     lines = []
-    for k, name in (("free", "free at the end"), ("gentle", "share under 5 mN"), ("sort", "in the ideal zone"),
+    for k, name in (("free", "free at the end"), ("gentle", "gentleness"), ("sort", "in the ideal zone"),
                     ("largest", "largest cluster left"), ("p90_mN", "peak force p90, mN")):
         a = [summ[c["id"]][k] for c in top if summ[c["id"]][k] is not None]
         b = [summ[c["id"]][k] for c in bot if summ[c["id"]][k] is not None]
@@ -380,6 +381,24 @@ def run(args):
         print(f"malaise round {rnd} done in {meta['round_min']:.1f} min", flush=True)
 
 
+def replay(args):
+    """Record the top winners (and --ids) on the medium bond set, seed 0, and build each view.html (bambu's hero clip)."""
+    import sorter
+    import viewer
+    cands, summ = load()
+    by_id = {c["id"]: c for c in cands}
+    ids = [c["id"] for c in ranking(cands, summ)[:args.top]] + (args.ids.split(",") if args.ids else [])
+    o.one_box_seesaw()
+    for cid in ids:
+        c = by_id[cid]
+        out = OUT / "replay" / cid
+        cfg = sweep.make_cfg(base_cfg(), design=c["spec"], stroke=c["stroke"], duration_s=args.duration or DURATION_S,
+                             seed=0, contact={"friction": FRICTION}, clump={**CLUMP, "bond": "medium"}, mix={})
+        cfg["record_fps"], cfg["out_dir"] = 30.0, str(out)
+        r = sorter.run(sorter.RunConfig(**cfg))
+        print(cid, show(c), f"free {r['clumps']['free_frac']:.0%}", "->", viewer.build(out, rig="bugsorter"), flush=True)
+
+
 def report(args):
     cands, summ = load()
     write(cands, summ, {"n_cands": len(cands), "n_runs": len(list((OUT / "runs").glob("*.json")))})
@@ -387,7 +406,9 @@ def report(args):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("cmd", choices=["run", "report"])
+    ap.add_argument("cmd", choices=["run", "report", "replay"])
+    ap.add_argument("--top", type=int, default=1)
+    ap.add_argument("--ids", help="replay: extra candidate ids, comma separated")
     ap.add_argument("--rounds", type=int, default=1)
     ap.add_argument("--workers", type=int, default=12)
     ap.add_argument("--seed", type=int, default=0)
@@ -395,7 +416,7 @@ def main():
     args = ap.parse_args()
     global DURATION_S
     DURATION_S = args.duration or DURATION_S
-    {"run": run, "report": report}[args.cmd](args)
+    {"run": run, "report": report, "replay": replay}[args.cmd](args)
 
 
 if __name__ == "__main__":

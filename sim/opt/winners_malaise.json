@@ -1,0 +1,487 @@
+{
+ "study": "malaise",
+ "exploratory": true,
+ "note": "EXPLORATORY: the sim ranks designs; it isn't calibrated against bench counts. Bond strengths, insect bodies and the 5 mN damage line are assumed.",
+ "updated": "2026-10-25 13:03",
+ "clump": {
+  "kinds": {
+   "rice": 30,
+   "quinoa": 20,
+   "pasta": 4,
+   "leaf": 1,
+   "twig": 2,
+   "dirt": 6
+  }
+ },
+ "tower": {
+  "under": "5mm+2mm",
+  "pitch_mm": 85.0
+ },
+ "winners": [
+  {
+   "id": "B-32a7c82c",
+   "robust": 0.6375,
+   "mean": 0.7256,
+   "design": "grid 11.4 mm (bars 2.3), pins 1.4 x 6.8 mm round every ~8 mm; seesaw +/-12 deg, 2.5 s + 0.35 mm buzz at 40 Hz",
+   "cad": {
+    "file": "cad/breaker_layer.py",
+    "spec": "breaker:open=11.4,bar=2.3,pin_d=1.4,pin_h=6.8,pitch=8,tip=round",
+    "facts": {
+     "cad_file": "cad/breaker_layer.py",
+     "grid_top_z_mm": 260.4,
+     "pin_top_z_mm": 267.2,
+     "grid_step_mm": 13.7,
+     "openings": [
+      8,
+      5
+     ],
+     "pins": 28,
+     "pin_every_nodes": 1,
+     "pin_pitch_mm": 13.7,
+     "open_area_mm2": 5198.4
+    }
+   },
+   "sim_spec": "breaker:open=11.4,bar=2.3,pin_d=1.4,pin_h=6.8,pitch=8,tip=round,under=5mm+2mm,tower=85",
+   "stroke": {
+    "profile": "seesaw",
+    "deg": 12.0,
+    "period_s": 2.5,
+    "shape": "constant_speed",
+    "vib_mm": 0.35,
+    "vib_hz": 40.0
+   },
+   "params": {
+    "open": 11.4,
+    "bar": 2.3,
+    "pin_d": 1.4,
+    "pin_h": 6.8,
+    "pitch": 8.0,
+    "tip": "round",
+    "ss_deg": 12.0,
+    "ss_period": 2.5,
+    "vib_mm": 0.35
+   },
+   "metrics": {
+    "free": 0.9691333333333333,
+    "break": 0.9368208333333333,
+    "gentle": 0.29346813738133365,
+    "sort": 0.8456790123456791,
+    "largest": 1.6666666666666667,
+    "p90_mN": 236.97706666666667,
+    "over": 1.0
+   },
+   "by_bond": {
+    "weak": {
+     "score": 0.836776477417819,
+     "break": 0.998375,
+     "free": 1.0,
+     "gentle": 0.5450496778124834,
+     "sort": 0.8703703703703703,
+     "t50": 0.024,
+     "t90": 0.026,
+     "largest": 1,
+     "p90_mN": 153.2397,
+     "over": 1.0,
+     "bonded_over": 0.1667,
+     "blind": {
+      "on_breaker": 0.0,
+      "on_5mm": 0.0267,
+      "on_2mm": 0.0
+     },
+     "debris": {
+      "leaf": {
+       "on_5mm": 1
+      },
+      "twig": {
+       "on_5mm": 2
+      },
+      "dirt": {
+       "catch": 6
+      }
+     },
+     "lost": 0,
+     "between": 2,
+     "wall": 56.5
+    },
+    "medium": {
+     "score": 0.7185136192525682,
+     "break": 0.989425,
+     "free": 1.0,
+     "gentle": 0.19043582960732597,
+     "sort": 0.8333518518518519,
+     "t50": 0.0477,
+     "t90": 0.1692,
+     "largest": 1,
+     "p90_mN": 401.6305,
+     "over": 1.0,
+     "bonded_over": 0.6667,
+     "blind": {
+      "on_breaker": 0.0,
+      "on_5mm": 0.0,
+      "on_2mm": 0.0
+     },
+     "debris": {
+      "leaf": {
+       "on_5mm": 1
+      },
+      "twig": {
+       "on_5mm": 1,
+       "on_2mm": 1
+      },
+      "dirt": {
+       "catch": 6
+      }
+     },
+     "lost": 2,
+     "between": 1,
+     "wall": 51.74
+    },
+    "strong": {
+     "score": 0.6214698843802204,
+     "break": 0.8226625,
+     "free": 0.9074,
+     "gentle": 0.1449189047241915,
+     "sort": 0.8333148148148148,
+     "t50": 0.4153,
+     "t90": 1.7262,
+     "largest": 3,
+     "p90_mN": 156.061,
+     "over": 1.0,
+     "bonded_over": 0.963,
+     "blind": {
+      "on_breaker": 0.025,
+      "on_5mm": 0.0,
+      "on_2mm": 0.0
+     },
+     "debris": {
+      "leaf": {
+       "on_breaker": 1
+      },
+      "twig": {
+       "on_breaker": 1,
+       "on_2mm": 1
+      },
+      "dirt": {
+       "catch": 5,
+       "on_2mm": 1
+      }
+     },
+     "lost": 1,
+     "between": 0,
+     "wall": 52.29
+    }
+   }
+  },
+  {
+   "id": "B-9759b7ac",
+   "robust": 0.5155,
+   "mean": 0.695,
+   "design": "grid 5.3 mm (bars 2.1), pins 3.8 x 4.8 mm round every ~9.9 mm; seesaw +/-6.5 deg, 5.1 s + 0.35 mm buzz at 40 Hz",
+   "cad": {
+    "file": "cad/breaker_layer.py",
+    "spec": "breaker:open=5.3,bar=2.1,pin_d=3.8,pin_h=4.8,pitch=9.9,tip=round",
+    "facts": {
+     "cad_file": "cad/breaker_layer.py",
+     "grid_top_z_mm": 260.4,
+     "pin_top_z_mm": 265.2,
+     "grid_step_mm": 7.4,
+     "openings": [
+      15,
+      10
+     ],
+     "pins": 126,
+     "pin_every_nodes": 1,
+     "pin_pitch_mm": 7.4,
+     "open_area_mm2": 4213.5
+    }
+   },
+   "sim_spec": "breaker:open=5.3,bar=2.1,pin_d=3.8,pin_h=4.8,pitch=9.9,tip=round,under=5mm+2mm,tower=85",
+   "stroke": {
+    "profile": "seesaw",
+    "deg": 6.5,
+    "period_s": 5.1,
+    "shape": "constant_speed",
+    "vib_mm": 0.35,
+    "vib_hz": 40.0
+   },
+   "params": {
+    "open": 5.3,
+    "bar": 2.1,
+    "pin_d": 3.8,
+    "pin_h": 4.8,
+    "pitch": 9.9,
+    "tip": "round",
+    "ss_deg": 6.5,
+    "ss_period": 5.1,
+    "vib_mm": 0.35
+   },
+   "metrics": {
+    "free": 0.8703666666666666,
+    "break": 0.843953125,
+    "gentle": 0.3709304355409722,
+    "sort": 0.8086296296296296,
+    "largest": 7.666666666666667,
+    "p90_mN": 160.84146666666666,
+    "over": 0.9938333333333333
+   },
+   "by_bond": {
+    "weak": {
+     "score": 0.8566294692947294,
+     "break": 0.99639375,
+     "free": 1.0,
+     "gentle": 0.6145284007355178,
+     "sort": 0.8703703703703703,
+     "t50": 0.0227,
+     "t90": 0.0577,
+     "largest": 1,
+     "p90_mN": 104.3894,
+     "over": 1.0,
+     "bonded_over": 0.1111,
+     "blind": {
+      "on_breaker": 0.0,
+      "on_5mm": 0.0,
+      "on_2mm": 0.0
+     },
+     "debris": {
+      "leaf": {
+       "on_breaker": 1
+      },
+      "twig": {
+       "on_breaker": 2
+      },
+      "dirt": {
+       "catch": 5,
+       "lost": 1
+      }
+     },
+     "lost": 1,
+     "between": 2,
+     "wall": 76.06
+    },
+    "medium": {
+     "score": 0.7836186174530771,
+     "break": 0.9754375,
+     "free": 1.0,
+     "gentle": 0.3443699285472943,
+     "sort": 0.9629444444444445,
+     "t50": 0.0487,
+     "t90": 0.393,
+     "largest": 1,
+     "p90_mN": 192.5264,
+     "over": 1.0,
+     "bonded_over": 0.5185,
+     "blind": {
+      "on_breaker": 0.0,
+      "on_5mm": 0.0,
+      "on_2mm": 0.0
+     },
+     "debris": {
+      "leaf": {
+       "on_breaker": 1
+      },
+      "twig": {
+       "on_breaker": 1,
+       "on_5mm": 1
+      },
+      "dirt": {
+       "catch": 5,
+       "lost": 1
+      }
+     },
+     "lost": 1,
+     "between": 1,
+     "wall": 67.64
+    },
+    "strong": {
+     "score": 0.44469677051684614,
+     "break": 0.560028125,
+     "free": 0.6111,
+     "gentle": 0.1538929773401046,
+     "sort": 0.592574074074074,
+     "t50": 0.7455,
+     "t90": null,
+     "largest": 21,
+     "p90_mN": 185.6086,
+     "over": 0.9815,
+     "bonded_over": 0.9074,
+     "blind": {
+      "on_breaker": 0.0,
+      "on_5mm": 0.0,
+      "on_2mm": 0.0
+     },
+     "debris": {
+      "leaf": {
+       "on_breaker": 1
+      },
+      "twig": {
+       "on_breaker": 1,
+       "on_5mm": 1
+      },
+      "dirt": {
+       "catch": 1,
+       "on_breaker": 5
+      }
+     },
+     "lost": 0,
+     "between": 0,
+     "wall": 78.34
+    }
+   }
+  },
+  {
+   "id": "B-50e62e6e",
+   "robust": 0.4573,
+   "mean": 0.6483,
+   "design": "grid 5.2 mm (bars 1.9), pins 1.6 x 5 mm flat every ~14.3 mm; seesaw +/-9.5 deg, 5.3 s + 0.3 mm buzz at 40 Hz",
+   "cad": {
+    "file": "cad/breaker_layer.py",
+    "spec": "breaker:open=5.2,bar=1.9,pin_d=1.6,pin_h=5,pitch=14.3,tip=flat",
+    "facts": {
+     "cad_file": "cad/breaker_layer.py",
+     "grid_top_z_mm": 260.4,
+     "pin_top_z_mm": 265.4,
+     "grid_step_mm": 7.1,
+     "openings": [
+      16,
+      11
+     ],
+     "pins": 40,
+     "pin_every_nodes": 2,
+     "pin_pitch_mm": 14.2,
+     "open_area_mm2": 4759.0
+    }
+   },
+   "sim_spec": "breaker:open=5.2,bar=1.9,pin_d=1.6,pin_h=5,pitch=14.3,tip=flat,under=5mm+2mm,tower=85",
+   "stroke": {
+    "profile": "seesaw",
+    "deg": 9.5,
+    "period_s": 5.3,
+    "shape": "constant_speed",
+    "vib_mm": 0.3,
+    "vib_hz": 40.0
+   },
+   "params": {
+    "open": 5.2,
+    "bar": 1.9,
+    "pin_d": 1.6,
+    "pin_h": 5.0,
+    "pitch": 14.3,
+    "tip": "flat",
+    "ss_deg": 9.5,
+    "ss_period": 5.3,
+    "vib_mm": 0.3
+   },
+   "metrics": {
+    "free": 0.8210000000000001,
+    "break": 0.7964510416666667,
+    "gentle": 0.33565257239183527,
+    "sort": 0.7469012345679013,
+    "largest": 9.333333333333334,
+    "p90_mN": 148.42326666666668,
+    "over": 1.0
+   },
+   "by_bond": {
+    "weak": {
+     "score": 0.8324990834967704,
+     "break": 0.99675,
+     "free": 1.0,
+     "gentle": 0.5458580561003459,
+     "sort": 0.8518333333333332,
+     "t50": 0.0217,
+     "t90": 0.052,
+     "largest": 1,
+     "p90_mN": 152.103,
+     "over": 1.0,
+     "bonded_over": 0.1667,
+     "blind": {
+      "on_breaker": 0.0227,
+      "on_5mm": 0.0,
+      "on_2mm": 0.0
+     },
+     "debris": {
+      "leaf": {
+       "on_breaker": 1
+      },
+      "twig": {
+       "on_breaker": 2
+      },
+      "dirt": {
+       "catch": 5,
+       "on_2mm": 1
+      }
+     },
+     "lost": 0,
+     "between": 0,
+     "wall": 53.86
+    },
+    "medium": {
+     "score": 0.7272260369812644,
+     "break": 0.89939375,
+     "free": 0.9074,
+     "gentle": 0.3325169596906346,
+     "sort": 0.8888703703703704,
+     "t50": 0.0542,
+     "t90": 0.4985,
+     "largest": 3,
+     "p90_mN": 140.1852,
+     "over": 1.0,
+     "bonded_over": 0.6111,
+     "blind": {
+      "on_breaker": 0.0,
+      "on_5mm": 0.0,
+      "on_2mm": 0.0
+     },
+     "debris": {
+      "leaf": {
+       "on_breaker": 1
+      },
+      "twig": {
+       "on_breaker": 2
+      },
+      "dirt": {
+       "catch": 4,
+       "on_breaker": 1,
+       "on_2mm": 1
+      }
+     },
+     "lost": 0,
+     "between": 0,
+     "wall": 57.41
+    },
+    "strong": {
+     "score": 0.38517949791535755,
+     "break": 0.49320937499999995,
+     "free": 0.5556,
+     "gentle": 0.12858270138452532,
+     "sort": 0.5,
+     "t50": 1.5517,
+     "t90": null,
+     "largest": 24,
+     "p90_mN": 152.9816,
+     "over": 1.0,
+     "bonded_over": 1.0,
+     "blind": {
+      "on_breaker": 0.0284,
+      "on_5mm": 0.0,
+      "on_2mm": 0.0
+     },
+     "debris": {
+      "leaf": {
+       "on_breaker": 1
+      },
+      "twig": {
+       "on_breaker": 1,
+       "on_5mm": 1
+      },
+      "dirt": {
+       "on_breaker": 6
+      }
+     },
+     "lost": 0,
+     "between": 3,
+     "wall": 77.37
+    }
+   }
+  }
+ ]
+}

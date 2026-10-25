@@ -297,7 +297,7 @@ The best on BioKEA's firmware stroke is P-ba5dd6b3, plinko 5.6 / 1.6 at 9.5 mm a
 The insects are the generated specimens of `sim/insects.py`, with textbook sizes and none measured. The classes are BugPicker's body lengths: > 6 mm (L1), 2-6 mm (L2), < 2 mm (catch).
 
 **Result: no design sorts these classes well, and the reason is structural.**
-- The best is P-8d6849ce, plinko 3.1 / 1.3 on a sine at 32 Hz and 4 g, 75 deg up: robust 0.351. Recovery is 57% for > 6 mm, 78% for 2-6 mm and 92% for < 2 mm. gatecalc predicted about the same (10 / 45 / 98% with its gates, `/tmp`-free note in Setup). Gates cut width and thickness, and body length overlaps between the classes in both.
+- The best is P-8d6849ce, plinko 3.1 / 1.3 on a sine at 32 Hz and 4 g, 75 deg up: robust 0.351. Recovery is 57% for > 6 mm, 78% for 2-6 mm and 92% for < 2 mm. gatecalc predicted about the same (10 / 45 / 98% recovery with its gates t2.9 / w1.2, from `gatecalc.py plan` on the malaise template with these length classes, run at 06:00). Gates cut width and thickness, and body length overlaps between the classes in both.
 - No candidate reaches the 0.5 working-sorter floor, so `winners_insects.json` lists none.
 - **Today's glued mesh jams 17 specimens per run** (legs caught in the mesh; it scores 0.168). That matches the warning in `docs/gates-verdict.md` about woven mesh as a fence.
 

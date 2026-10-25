@@ -5,7 +5,7 @@ The page's Record button records in real time, so its frame rate depends on the 
 instead steps the page (run_dir/view.html, from viewer.py) to t = k * speed / fps for every frame k,
 takes each frame from the page's viewerExport hook (zone labels and sim clock included) and pipes the
 JPEGs into ffmpeg. --view takes what the page's Copy camera button copies (the whole URL or just the
-query). Needs Chrome or Edge, ffmpeg on PATH, and the websockets package (in requirements.txt's venv).
+query). Needs Chrome or Edge, ffmpeg on PATH, and websockets (the venv has it: mujoco depends on it).
 """
 import argparse
 import base64

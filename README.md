@@ -53,6 +53,14 @@ Every part is exactly the size of a 24-well plate (127.76 × 85.47 × 20.27 mm),
 | `pool` + gate strips | One open plane, shaken along the long side, with swappable gates (see **Pool sorter** below). P1S estimate: 58 min, 44 g. |
 | `pool_coupon` | One gate slot of the pool (46 mm long), to check the strip fit and gate behaviour before printing the pool. 29 min. |
 
+### Working dimensions
+
+The holder box and sieve inserts are the current working design. The numbers are listed in [cad/WORKING_DIMENSIONS.md](cad/WORKING_DIMENSIONS.md).
+
+**Opening in Bambu Studio:** every STL is a separate part, centred on the same origin.
+- If Bambu Studio asks whether to load several files as a single object, click **No**, then press **A** (Arrange) to lay them out.
+- Clicking **Yes** stacks the parts on top of each other in one spot.
+
 ### Sieve inserts for the holder box (`sieve_insert.py`)
 
 ![2 mm insert](cad/out/sieve_insert_2mm.png)

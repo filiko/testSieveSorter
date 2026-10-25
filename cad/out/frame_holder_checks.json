@@ -21,7 +21,7 @@
     "short_ends": 5.0,
     "long_sides": 7.0
   },
-  "guessed": [
+  "working_values": [
     "WALL",
     "LEDGE_T"
   ]

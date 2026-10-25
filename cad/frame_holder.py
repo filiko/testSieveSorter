@@ -6,8 +6,9 @@ From the drawing: body 140 x 104 x 25 mm, open centre 122 x 82 mm through the bo
 a U-shaped finger notch in the middle of each long wall, a 22 mm mounting tab on one
 short end with a 6 mm hole. Measured off the drawing (about 0.37 mm per pixel): notch
 about 34 mm wide and 21.5 mm deep, tab about 4.5 mm thick, hole centre about 6.5 mm in
-from the tab's end at mid-height. WALL and LEDGE_T are not readable from the drawing
-and are guesses: measure the real part and change them.
+from the tab's end at mid-height. WALL and LEDGE_T can't be read from the drawing; the
+values below were adopted as the working dimensions on 2026-10-24 (see
+WORKING_DIMENSIONS.md). Change them here if a measured part disagrees; the inserts follow.
 
 Prints with the flat base on the bed, no supports.
 
@@ -19,8 +20,8 @@ from cadkit import export_all
 
 L, W, H = 140.0, 104.0, 25.0      # frame body, excluding the tab
 OPEN_L, OPEN_W = 122.0, 82.0      # open centre through the bottom
-WALL = 4.0                        # guess: side wall thickness
-LEDGE_T = 3.0                     # guess: thickness of the inner ledge at the bottom
+WALL = 4.0                        # working value: side wall thickness
+LEDGE_T = 3.0                     # working value: thickness of the inner ledge at the bottom
 NOTCH_W, NOTCH_D = 34.0, 21.5     # finger notch width and depth from the top edge
 TAB_L, TAB_T = 22.0, 4.5          # mounting tab length (out from the +X end) and thickness
 HOLE_D, HOLE_FROM_END = 6.0, 6.5  # mounting hole
@@ -48,4 +49,4 @@ if __name__ == "__main__":
     print(json.dumps(export_all(frame(), "frame_holder", {
         "cavity_mm": [L - 2 * WALL, W - 2 * WALL], "open_centre_mm": [OPEN_L, OPEN_W],
         "ledge_mm": {"short_ends": (L - 2 * WALL - OPEN_L) / 2, "long_sides": (W - 2 * WALL - OPEN_W) / 2},
-        "guessed": ["WALL", "LEDGE_T"]}), indent=2))
+        "working_values": ["WALL", "LEDGE_T"]}), indent=2))

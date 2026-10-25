@@ -7,8 +7,8 @@ printed in as square holes instead of glued on.
 
 Read from the photos: the insert's proportions match the holder pocket, a border about
 10 mm wide, ribs about 3 mm making six windows (about 35 x 36 mm), and two upright pull
-tabs in the middle of the long edges. Measure one of your existing inserts with calipers
-and correct the numbers below; the size defaults to the frame_holder.py pocket guess.
+tabs in the middle of the long edges. These are the working dimensions as of 2026-10-24
+(see WORKING_DIMENSIONS.md); the outside size follows the frame_holder.py pocket.
 
 The square-hole screen sits at the bottom of each window, on the print bed, so it prints
 cleanly with no bridging. The border and ribs stand FRAME_T - SCREEN_T above it. Holes
@@ -24,7 +24,7 @@ from cadkit import export_all
 import frame_holder as box
 
 FIT = 0.6                         # total clearance in the holder pocket
-L = box.L - 2 * box.WALL - FIT    # 131.4 with the frame_holder guesses
+L = box.L - 2 * box.WALL - FIT    # 131.4 with the working frame_holder values
 W = box.W - 2 * box.WALL - FIT    # 95.4
 FRAME_T = 3.0                     # border and rib height
 BORDER = 10.0

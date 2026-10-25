@@ -9,7 +9,7 @@
 - Physics has uncommitted edits to `sim/sweep.py`. **Import from `sweep.py`; don't edit it.**
 - Cap the optimizer at **16 parallel workers**, so the physics benchmarks keep some cores.
 
-> **Update (05:50):** also search over **stroke angle** (0° horizontal to 90° vertical), and include the demo rig (`inserts:5mm`) as a baseline row. See [demo-rig.md](demo-rig.md), part C.
+> **Update (05:50):** also search over **stroke angle** (0° horizontal to 90° vertical), and include the demo rig as a baseline row. **The rig is separate trays stacked one above the other** (06:20 correction): the baseline is the stacked printed inserts `inserts:5mm,2mm` (already in `BASELINES`), not the single `inserts:5mm`. See [demo-rig.md](demo-rig.md), part C.
 >
 > **Update (06:05):** `angle_deg` has been on `main` since 05:57 (PR #2), with `sorter.py` and the stroke dicts as `{"profile": "sine", "amp_mm": .., "freq_hz": .., "angle_deg": 45}`. `git merge origin/main` and add the angle as a stroke parameter. Treat older candidates that have no angle as 0°.
 

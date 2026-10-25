@@ -134,3 +134,53 @@ References, never tuned: the README design with the existing strips (w5.0 / t1.4
 2. Rounds 1-2 (cross-entropy) refine plinko's rods and stroke. Expect the stroke amplitude to matter: the top 3 use 7.5-14 mm.
 3. The gated tower stays in the search for completeness, but no gate geometry will fix its transport (see the two structural tests above).
 
+## demo round 1 (2026-10-25 06:49, auto)
+
+**Tried:** gated: 16 (ce); plinko: 8 (ce); inserts: 3 (ce). 306 runs, 14 min wall.
+
+**Leader so far:** P-63092ca9 (plinko, round 1) rods L1 gap 5.6 (rod 2.1 wide, 2.6 tall) / L2 gap 1.6 (rod 1.6, 3.4), stroke 10 mm at 50 mm/s: robust 0.915 (mean 0.953 +/- 0.038); big (pasta, chickpea) 99% pure / 100% recovered, rice 96% pure / 100% recovered, quinoa 100% pure / 96% recovered; ok.
+
+**Screen results this round (8 s, progress score), best per family:**
+
+- gated: best G-331e7311 screen robust 0.429; median 0.335; failures in 0 of 16 candidates
+- plinko: best P-63092ca9 screen robust 0.943; median 0.882; failures in 0 of 8 candidates
+- inserts: best I-08d1890b screen robust 0.756; median 0.662; failures in 0 of 3 candidates
+
+**Why the losers failed** (particles per run, over this round's screened candidates in the bottom half of each family; the most common modes):
+
+- gated: quinoa: held upstream -> L1 on the floor (28.8 in 8 cands); rice: held upstream -> L1 on the floor (26.6 in 8 cands); rice: held upstream -> L1 at the gate (within 10 mm) (2.8 in 8 cands); quinoa: held upstream -> L1 at the gate (within 10 mm) (0.8 in 6 cands); quinoa: held upstream -> L2 on the floor (0.4 in 6 cands); rice: between -> L1 in the strip (0.5 in 3 cands)
+- plinko: rice: leaked downstream -> layer_3_catch (4.4 in 4 cands); quinoa: held upstream -> layer_2_rods (3.0 in 4 cands); quinoa: held upstream -> layer_1_rods (1.8 in 4 cands); rice: held upstream -> layer_1_rods (0.5 in 4 cands)
+- inserts: quinoa: held upstream -> on_h1p45b1p05 (26.3 in 1 cands); quinoa: held upstream -> on_h1p65b1p25 (15.4 in 1 cands); quinoa: held upstream -> on_h4p85b1p55 (6.3 in 1 cands); rice: held upstream -> on_h4p85b1p55 (4.6 in 1 cands); quinoa: held upstream -> on_h5p15b1p25 (2.8 in 1 cands); rice: held upstream -> on_h5p15b1p25 (0.3 in 1 cands)
+
+**Leaders' remaining losses** (full runs, top 3):
+
+- P-63092ca9: quinoa: held upstream -> layer_2_rods 1.2; quinoa: held upstream -> layer_1_rods 0.1
+- P-cbe7dbec: quinoa: held upstream -> layer_2_rods 1.1; rice: leaked downstream -> layer_3_catch 0.9; quinoa: held upstream -> layer_1_rods 0.2
+- P-7e49fbec: quinoa: held upstream -> layer_2_rods 2.3; quinoa: held upstream -> layer_1_rods 0.3
+
+**Parameters at a bound among each family's elite** (the range may be too narrow):
+
+- gated: k1 w 0.15/t 0.85
+- plinko: none
+- inserts: none
+
+**Next hypothesis (auto):** the leader sorts cleanly; refine for robustness and throughput.
+
+
+## demo round 1: reading, and the stroke-angle update (notes, 2026-10-25 06:55)
+
+**What changed in the leader.** Cross-entropy moved plinko's layer-2 gap from 1.7 to 1.6 nominal (1.45 as printed). The new leader, P-63092ca9 (rods 5.6 / 1.6, robust 0.915), leaks no rice to the catch (round 0's leaders leaked 0.9 per run). It pays with about 1.2 quinoa per run left on layer 2. That is the right trade: rice now has 0.25 mm of margin over the gap and quinoa 0.35 mm under it, both above the 0.14 mm of the round 0 leaders. A wider margin also survives print tolerance better (the stress test will tell). It runs on **the firmware's own cap stroke**, 10 mm at 50 mm/s, so BioKEA's machine needs no new motion for it.
+
+**Gated:** the best is now 0.071 (3.2 deg floor, tunnels 5.4 / 1.7, quinoa 34% recovered at 30 s). Still the same failure: 27-29 grains per run on L1's floor.
+
+**Brief update (main, 05:50 and 06:05): stroke angle and the demo rig.** I merged `origin/main` (physics' `angle_deg`, `unstable_resets`, PERF.md: production solver dt 0.25 ms / timeconst 0.5 ms, the same as this optimizer already uses). Changes from round 2 on:
+- **Two drives in the search.**
+  - *firmware*: BioKEA's stage, constant speed 15-50 mm/s, 5-15 mm amplitude.
+  - *tool*: a vibrating tool like the demo rig's, a sine at 10-50 Hz with 1-5 g peak acceleration.
+  - Both take a stroke angle of 0-90 deg (0 = along the tray, 90 = straight up). Old candidates count as firmware at 0 deg, so their results stand.
+  - Families that gained these parameters get an extra Latin hypercube batch to explore them, besides the cross-entropy proposals.
+- **Demo-rig reference row:** `inserts:5mm`, shaken up and down as in the video (sine 20 Hz, 2 g, 90 deg, the motion physics assumed in `sim/VERTICAL.md`). It has two bins, so rice and quinoa share its catch, and the 3-class score shows exactly that.
+- `sorter.py`'s own reset detection now also fails a run, besides the BADQACC counter.
+
+**Structural hypothesis, revived by the angle: the unflipped mid-slot tower (`gated_mid`).** An angled throw is how a vibratory conveyor moves material in one direction, and it could cure the gated tower's transport problem. But the throw conveys toward the same end of every level, while today's tower flips every other level, so L2's grains would be conveyed away from L2's gate. The mid-slot layout tested at 06:30 keeps every gate at +X (L1's gate at mid-length with its drop slot, L2 unflipped at the end). It was useless under the firmware stroke, but it is the layout a directional throw needs. Round 2 adds it as the family `gated_mid` (Latin hypercube, 16 candidates): L1 gate x 14-38 mm (the strip has to clear the pull tabs) with a 6-14 mm slot ending at least 7 mm upstream of L2's strip, plus the whole stroke space.
+

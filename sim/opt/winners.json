@@ -2,13 +2,168 @@
  "study": "demo",
  "title": "Demo set: surrogate grains (pasta + chickpea / rice / quinoa)",
  "exploratory": false,
- "generated": "2026-10-25 06:36",
+ "generated": "2026-10-25 06:49",
  "rule": "top 3 by robust full-run score (mean - 1 sd over 3 friction sets x 3 seeds, 30 s) among working sorters (robust >= 0.5, no failed run) with no penetration-flagged run; if fewer than 3 qualify, the rest are the best working flagged ones, marked flagged (see opt/LOG.md for how this rule came about)",
  "caveat": "sim ranking only; uncalibrated; openings simulated at nominal - 0.15 mm (ASSUMED undersize)",
  "undersize_mm_assumed": 0.15,
  "winners": [
   {
    "rank": 1,
+   "id": "P-63092ca9",
+   "family": "plinko",
+   "sim_spec": "plinko",
+   "sim_inject": {
+    "plinko_layers.LAYERS": [
+     [
+      "layer_1_rods",
+      "rods",
+      5.45,
+      2.25,
+      2.6,
+      12.0,
+      0.0
+     ],
+     [
+      "layer_2_rods",
+      "rods",
+      1.45,
+      1.75,
+      3.4,
+      8.0,
+      -35.0
+     ],
+     [
+      "layer_3_catch",
+      "solid",
+      null,
+      null,
+      2.0,
+      6.0,
+      35.0
+     ]
+    ]
+   },
+   "stroke": {
+    "profile": "constant_speed",
+    "amp_mm": 10.0,
+    "speed_mm_s": 50.0,
+    "ramp_s": 0.01
+   },
+   "stroke_human": "firmware 10 mm at 50 mm/s, along the tray",
+   "params_nominal": {
+    "g1": 5.6,
+    "b1": 2.1,
+    "h1": 2.6,
+    "g2": 1.6,
+    "b2": 1.6,
+    "h2": 3.4,
+    "amp": 10.0,
+    "speed": 50.0
+   },
+   "cad": {
+    "file": "cad/plinko_layers.py",
+    "LAYERS": [
+     [
+      "layer_1_rods_5p6",
+      "rods",
+      5.6,
+      2.1,
+      2.6,
+      12.0,
+      0.0
+     ],
+     [
+      "layer_2_rods_1p6",
+      "rods",
+      1.6,
+      1.6,
+      3.4,
+      8.0,
+      -35.0
+     ],
+     [
+      "layer_3_catch",
+      "solid",
+      null,
+      null,
+      2.0,
+      6.0,
+      35.0
+     ]
+    ],
+    "note": "rows are (name, floor, gap, rod top width, rod height, wall height, tab x); walls and tabs unchanged"
+   },
+   "score": {
+    "robust": 0.9149,
+    "mean": 0.9527,
+    "sd": 0.0378,
+    "worst_friction_set": 0.9182
+   },
+   "per_class": [
+    {
+     "class": "big (pasta, chickpea)",
+     "purity": 0.9934640522875817,
+     "recovery": 1.0
+    },
+    {
+     "class": "rice",
+     "purity": 0.9618971977842945,
+     "recovery": 1.0
+    },
+    {
+     "class": "quinoa",
+     "purity": 1.0,
+     "recovery": 0.9555555555555555
+    }
+   ],
+   "count_matrix": {
+    "rows": [
+     "big (pasta, chickpea)",
+     "rice",
+     "quinoa"
+    ],
+    "cols": [
+     "layer_1_rods",
+     "layer_2_rods",
+     "layer_3_catch",
+     "between",
+     "lost"
+    ],
+    "counts_over_9_runs": [
+     [
+      144,
+      0,
+      0,
+      0,
+      0
+     ],
+     [
+      0,
+      270,
+      0,
+      0,
+      0
+     ],
+     [
+      1,
+      11,
+      258,
+      0,
+      0
+     ]
+    ]
+   },
+   "jammed_per_run": 0.0,
+   "lost_per_run": 0.0,
+   "t90_s": 1.7002666666666668,
+   "flagged": false,
+   "flagged_runs": 0,
+   "gate_clearance_mm": 0.24,
+   "max_gate_overlap_mm": 0.07712,
+   "replay": "sim/out/opt/demo/replay/P-63092ca9/view.html"
+  },
+  {
+   "rank": 2,
    "id": "P-cbe7dbec",
    "family": "plinko",
    "sim_spec": "plinko",
@@ -49,6 +204,7 @@
     "speed_mm_s": 41.0,
     "ramp_s": 0.01
    },
+   "stroke_human": "firmware 14 mm at 41 mm/s, along the tray",
    "params_nominal": {
     "g1": 5.1,
     "b1": 1.4,
@@ -162,162 +318,8 @@
    "replay": "sim/out/opt/demo/replay/P-cbe7dbec/view.html"
   },
   {
-   "rank": 2,
-   "id": "P-2aaaaec0",
-   "family": "plinko",
-   "sim_spec": "plinko",
-   "sim_inject": {
-    "plinko_layers.LAYERS": [
-     [
-      "layer_1_rods",
-      "rods",
-      3.55,
-      2.15,
-      1.8,
-      12.0,
-      0.0
-     ],
-     [
-      "layer_2_rods",
-      "rods",
-      1.55,
-      1.65,
-      2.4,
-      8.0,
-      -35.0
-     ],
-     [
-      "layer_3_catch",
-      "solid",
-      null,
-      null,
-      2.0,
-      6.0,
-      35.0
-     ]
-    ]
-   },
-   "stroke": {
-    "profile": "constant_speed",
-    "amp_mm": 7.5,
-    "speed_mm_s": 41.0,
-    "ramp_s": 0.01
-   },
-   "params_nominal": {
-    "g1": 3.7,
-    "b1": 2.0,
-    "h1": 1.8,
-    "g2": 1.7,
-    "b2": 1.5,
-    "h2": 2.4,
-    "amp": 7.5,
-    "speed": 41.0
-   },
-   "cad": {
-    "file": "cad/plinko_layers.py",
-    "LAYERS": [
-     [
-      "layer_1_rods_3p7",
-      "rods",
-      3.7,
-      2.0,
-      1.8,
-      12.0,
-      0.0
-     ],
-     [
-      "layer_2_rods_1p7",
-      "rods",
-      1.7,
-      1.5,
-      2.4,
-      8.0,
-      -35.0
-     ],
-     [
-      "layer_3_catch",
-      "solid",
-      null,
-      null,
-      2.0,
-      6.0,
-      35.0
-     ]
-    ],
-    "note": "rows are (name, floor, gap, rod top width, rod height, wall height, tab x); walls and tabs unchanged"
-   },
-   "score": {
-    "robust": 0.8495,
-    "mean": 0.9072,
-    "sd": 0.0576,
-    "worst_friction_set": 0.8681
-   },
-   "per_class": [
-    {
-     "class": "big (pasta, chickpea)",
-     "purity": 0.9745824255628178,
-     "recovery": 1.0
-    },
-    {
-     "class": "rice",
-     "purity": 0.9494348277788212,
-     "recovery": 0.9666666666666666
-    },
-    {
-     "class": "quinoa",
-     "purity": 0.9700761133770032,
-     "recovery": 0.9333333333333333
-    }
-   ],
-   "count_matrix": {
-    "rows": [
-     "big (pasta, chickpea)",
-     "rice",
-     "quinoa"
-    ],
-    "cols": [
-     "layer_1_rods",
-     "layer_2_rods",
-     "layer_3_catch",
-     "between",
-     "lost"
-    ],
-    "counts_over_9_runs": [
-     [
-      144,
-      0,
-      0,
-      0,
-      0
-     ],
-     [
-      1,
-      261,
-      8,
-      0,
-      0
-     ],
-     [
-      3,
-      15,
-      252,
-      0,
-      0
-     ]
-    ]
-   },
-   "jammed_per_run": 0.0,
-   "lost_per_run": 0.0,
-   "t90_s": 4.378044444444445,
-   "flagged": true,
-   "flagged_runs": 1,
-   "gate_clearance_mm": 0.14,
-   "max_gate_overlap_mm": 0.09431,
-   "replay": "sim/out/opt/demo/replay/P-2aaaaec0/view.html"
-  },
-  {
    "rank": 3,
-   "id": "P-e4035f89",
+   "id": "P-7e49fbec",
    "family": "plinko",
    "sim_spec": "plinko",
    "sim_inject": {
@@ -325,18 +327,18 @@
      [
       "layer_1_rods",
       "rods",
-      2.95,
-      2.05,
-      2.8,
+      4.25,
+      1.65,
+      3.2,
       12.0,
       0.0
      ],
      [
       "layer_2_rods",
       "rods",
-      1.55,
-      2.4499999999999997,
-      2.6,
+      1.45,
+      1.95,
+      3.0,
       8.0,
       -35.0
      ],
@@ -353,38 +355,39 @@
    },
    "stroke": {
     "profile": "constant_speed",
-    "amp_mm": 10.0,
-    "speed_mm_s": 38.0,
+    "amp_mm": 8.5,
+    "speed_mm_s": 42.0,
     "ramp_s": 0.01
    },
+   "stroke_human": "firmware 8.5 mm at 42 mm/s, along the tray",
    "params_nominal": {
-    "g1": 3.1,
-    "b1": 1.9,
-    "h1": 2.8,
-    "g2": 1.7,
-    "b2": 2.3,
-    "h2": 2.6,
-    "amp": 10.0,
-    "speed": 38.0
+    "g1": 4.4,
+    "b1": 1.5,
+    "h1": 3.2,
+    "g2": 1.6,
+    "b2": 1.8,
+    "h2": 3.0,
+    "amp": 8.5,
+    "speed": 42.0
    },
    "cad": {
     "file": "cad/plinko_layers.py",
     "LAYERS": [
      [
-      "layer_1_rods_3p1",
+      "layer_1_rods_4p4",
       "rods",
-      3.1,
-      1.9,
-      2.8,
+      4.4,
+      1.5,
+      3.2,
       12.0,
       0.0
      ],
      [
-      "layer_2_rods_1p7",
+      "layer_2_rods_1p6",
       "rods",
-      1.7,
-      2.3,
-      2.6,
+      1.6,
+      1.8,
+      3.0,
       8.0,
       -35.0
      ],
@@ -401,26 +404,26 @@
     "note": "rows are (name, floor, gap, rod top width, rod height, wall height, tab x); walls and tabs unchanged"
    },
    "score": {
-    "robust": 0.8397,
-    "mean": 0.9024,
-    "sd": 0.0627,
-    "worst_friction_set": 0.846
+    "robust": 0.8603,
+    "mean": 0.9056,
+    "sd": 0.0453,
+    "worst_friction_set": 0.8857
    },
    "per_class": [
     {
      "class": "big (pasta, chickpea)",
-     "purity": 0.9680464778503993,
+     "purity": 0.9811183732752361,
      "recovery": 1.0
     },
     {
      "class": "rice",
-     "purity": 0.9290349733898121,
-     "recovery": 0.9629629629629629
+     "purity": 0.9294063910999396,
+     "recovery": 1.0
     },
     {
      "class": "quinoa",
-     "purity": 0.9688451012588943,
-     "recovery": 0.9148148148148147
+     "purity": 1.0,
+     "recovery": 0.9111111111111112
     }
    ],
    "count_matrix": {
@@ -445,16 +448,16 @@
       0
      ],
      [
-      2,
-      260,
-      8,
+      0,
+      270,
+      0,
       0,
       0
      ],
      [
       3,
-      20,
-      247,
+      21,
+      246,
       0,
       0
      ]
@@ -462,12 +465,12 @@
    },
    "jammed_per_run": 0.0,
    "lost_per_run": 0.0,
-   "t90_s": 7.44471111111111,
-   "flagged": true,
-   "flagged_runs": 2,
-   "gate_clearance_mm": 0.14,
-   "max_gate_overlap_mm": 0.09779,
-   "replay": "sim/out/opt/demo/replay/P-e4035f89/view.html"
+   "t90_s": 2.5669111111111116,
+   "flagged": false,
+   "flagged_runs": 0,
+   "gate_clearance_mm": 0.24,
+   "max_gate_overlap_mm": 0.08277,
+   "replay": "sim/out/opt/demo/replay/P-7e49fbec/view.html"
   }
  ]
 }

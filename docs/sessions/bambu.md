@@ -21,3 +21,9 @@ Bambu Studio is installed, `slice.py hole_gauge` prints an estimate, the gated-c
 - **Clump finding (drops of ~100 mm hit hardest):** without the tab, the levels clear at ~54 mm pitch at ±10°, so the drop is about halved. The 45° ramps and ridges make landings glancing, and TPU inserts would be the soft option (not sliced).
 - **Print queue:** `sim/opt/print_plan.md`, top of the hand-written part. What's on the printer is a question for the user.
 - **Next:** the tower preview, then an A/B sim of the old vs the new parts, then the hero visuals at ~13:45 (local `media/`, never committed).
+
+## Hero visuals, 13:00 (local in the main checkout's `media/`, never committed)
+- `media/hero_forum_vs_sim.mp4`: Forum's IMG_1315 (pasta and rice on the bench tray) beside the sim at real speed. The sim is the new parts (`inserts:5mm_across,2mm_across,pitch=55,holder=seesaw`), ±10°, all 10 grain kinds, labelled "MuJoCo sim, uncalibrated", with the counts in the caption (one seed). 11 s, 4.1 MB.
+- `media/hero_seesaw_tower_rig.mp4`: the same run with the BugSorter rig drawn round it (`--rig bugsorter`), so you see the pivot axles and the levels tipping opposite ways. 11 s, 3.0 MB.
+- A clump on the breaker layer: `sim/out/runs/hero_breaker_clump` (grain-surrogate clump, medium bonds, leaf, twigs and dirt, ±10°, spray on). It's running; the clip follows. If the clump session records a better one (an insect clump), it replaces this.
+- Re-render the first two from the seesaw session's final all-grain run once it's on `main`, if the team prefers the current 5 / 2 mm parts in the pitch.

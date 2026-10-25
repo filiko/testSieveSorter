@@ -1612,6 +1612,7 @@ def replay(args):
         mujoco._orig_mj_step = mujoco.mj_step
         if c["stroke"].get("rock"):
             mujoco.mj_step = rocking(mujoco._orig_mj_step, c["stroke"]["rock"], cfg, {})
+        one_box_seesaw()
         r = sorter.run(sorter.RunConfig(**cfg))
         page = viewer.build(out)
         print(cid, c["spec"], {k: v for k, v in r["recovery"].items()}, "->", page)

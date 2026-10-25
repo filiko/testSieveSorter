@@ -17,7 +17,15 @@ Details: [docs/sessions/clump-breakup.md](sessions/clump-breakup.md).
 ## 3. The motion: each tray seesaws, neighbours alternate (confirmed by the user, 10:50)
 - **Seesaw, ends tip.** Each tray rocks about **its own pivot across its middle**: a horizontal axis along the tray's width (Y), through its centre. The two short ends (−X and +X) go up and down in turn, **about 20–30° either side**. Grains slide end to end across the sieve, as in a gold pan; rice on plastic starts sliding at about 22°.
 - **Each level has its own pivot, and neighbours alternate:** opposite phase, so when one tray tips its −X end down, the trays above and below tip it up. The user chose this so material doesn't fly off. Whatever drops from a level lands on a tray tilted the other way.
-- **Consequence for the hardware:** when neighbours tilt opposite ways, their facing ends close in by about L·sin θ (L ≈ 140 mm: 48 mm at 20°, 59 mm at 25°, 70 mm at 30°). So the level pitch has to be at least the box height (25 mm) + L·sin θ + clearance: **about 80–100 mm**, more than the 65 mm the replay assumed. The sim should check for trays touching. Bambu's CAD and rig need this spacing.
+- **Consequence for the hardware:** when neighbours tilt opposite ways, their facing ends close in by about L·sin θ (L ≈ 140 mm: 48 mm at 20°, 59 mm at 25°, 70 mm at 30°). Measured on the real holder solid (`cad/seesaw_tower.py`, PR #14, 3 mm clearance, pivot assumed at the box centre). The **+X mounting tab** decides the spacing:
+
+  | Tilt | Pitch with the tab | Tab cut off |
+  |---|---|---|
+  | ±20° | 89.5 mm | 74.4 mm |
+  | ±25° | 103.6 mm | 84.9 mm |
+  | ±30° | 116.7 mm | 94.7 mm |
+
+  A middle pivot doesn't need the tab, so cut it off for the seesaw: about 85 mm at ±25°. Otherwise allow about 105 mm. The sim should use a `pitch=` in this range and check that trays never touch at either end.
 - **Not known yet (ASSUMED; sweep them):**
   - the exact angle (20–30°, search 10–30°);
   - the period (the optimizer's seesaw uses 0.4–6 s per cycle);

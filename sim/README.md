@@ -9,7 +9,7 @@ Status: first build, 2026-10-24. Nothing here is calibrated yet. Until the bench
 - **Engine.** MuJoCo 3.17 on the CPU. Units are mm, g and s.
 - **Shaking.** The sim runs in the tray's own frame. The shake is applied as an extra force on every particle: gravity minus the tray's acceleration. This is exact for a tray that slides without rotating. Jets stay fixed in the lab while the tray moves under them.
 - **Geometry.** Built from the same parameters as the CAD in `..\cad\`, so the sim follows the CAD when it changes.
-- **Contacts.** A 2 ms contact time constant at a 0.5 ms step. In the worst case, a particle sinks about 0.2 mm into the tray during an impact. The tightest gate leaves 0.3 mm of room (quinoa in a 1.4 mm tunnel). Each run reports its worst overlap, so you can check it against that.
+- **Contacts.** Soft: a pressed grain sinks a little into the tray, and the tightest gates leave only 0.15–0.3 mm of room (quinoa in a 1.4 mm tunnel). `RunConfig`'s default (2 ms contact time constant at a 0.5 ms step) lets grains sink about 0.5 mm, so pass the settings from [PERF.md](PERF.md) explicitly, or let `contact_rule.py` pick them from the design's tightest clearance and the stroke (see [VERTICAL.md](VERTICAL.md), Contact rule). Each run reports its worst overlap, so you can check it against the clearance.
 
 ## Files
 
@@ -26,6 +26,9 @@ Status: first build, 2026-10-24. Nothing here is calibrated yet. Until the bench
 | `side_by_side.py` | Real footage next to a sim clip, scaled, labelled and synced, for the demo |
 | `sweep.py` | Batches of runs in parallel, with a report |
 | `calibrate.py` | Fits contact parameters to bench counts, then checks them on a held-out run |
+| `instab.py` | Stability probe: short runs that stop at the first MuJoCo reset and record the worst overlap, tray-wide and on gates only |
+| `contact_rule.py` | Picks the timestep and contact time constant from a design's tightest gate clearance and the stroke |
+| `verify.py` | Second opinion on the optimizer's winners: fresh seeds, a heavy load, per-design contacts; writes `opt/VERIFY.md` |
 | [BENCH.md](BENCH.md) | What to measure on the bench, and which template each number goes in |
 
 ## Run
@@ -41,13 +44,32 @@ Outputs go in `sim\out\`, which is not committed.
 
 ### Camera, recording and the real-vs-sim clip
 
-The replay page reads its camera from the URL: `view.html?cam=x,y,z&target=x,y,z&fov=35&aspect=16:9` (mm, lab frame; FOV is vertical). Set the angle by eye against a photo (the **Frame** menu sets the aspect ratio, **FOV** dollies so the tray keeps its size), then **Copy camera** copies the URL. **Record** plays the run once in real time and downloads a `.webm` with the zone labels and the sim clock drawn in; its frame rate depends on the machine. For a clip to commit, render it frame-exact instead and put it next to the real footage:
+> **Neither clip below shows the real motion.** Both runs slide the trays straight up and down as one block. The real boxes are held only at their +X tab and rock about it ([docs/SYSTEM.md](../docs/SYSTEM.md) §3). Both clips carry that warning in their captions, and both get re-rendered once physics's rocking stroke is on `main`. The replay page is ready for it: a run that records `tray_q` (the tray frame's orientation per frame, w x y z) and `scene["tray"]["pivot"]` (the point it turns about, mm in the tray frame) is drawn rocking (see `viewer.py`).
+
+The replay page reads its camera from the URL: `view.html?cam=x,y,z&target=x,y,z&fov=35&aspect=16:9` (mm, lab frame; FOV is vertical). Set the angle by eye against a photo (the **Frame** menu sets the aspect ratio, **FOV** dollies so the tray keeps its size), then **Copy camera** copies the URL. **Record** plays the run once in real time and downloads a `.webm` with the zone labels and the sim clock drawn in; its frame rate depends on the machine. For the demo clip, render frame-exact instead and put it next to Forum's photo of the bench prototype (demo-rig.md part D):
 
 ```
-python record_view.py out/runs/current_mesh --view "?cam=92.7,-78.3,240.3&target=15,5,58&fov=66&aspect=9:16" --speed 0.25 --start 2.0 --duration 1.1 -o out/runs/current_mesh/sim_forum_q.mp4
-python side_by_side.py --real ../../testSieveSorter/media/forum-2026-10-24/IMG_1319.MOV --sim out/runs/current_mesh/sim_forum_q.mp4 --slow 4 --loops 3 --height 1080 --caption "Both at 1/4 speed: the same 1.1 s of shaking, looped. Sim stroke not yet fitted to this video."
+wsl: python sorter.py --design inserts:5mm,2mm --mix pasta=15,rice=40,quinoa=40 --stroke sine:amp_mm=1.24,freq_hz=20,angle_deg=90 --duration 10 --dt 0.00025 --timeconst 0.0005 --fps 240 --out out/runs/demo_stack
+python viewer.py out/runs/demo_stack
+python record_view.py out/runs/demo_stack --view "?cam=108.1,-188.3,130.2&target=8,0,44&fov=45&aspect=4:3" --speed 0.2 --start 0 --duration 2.4 --height 960 -o out/runs/demo_stack/sim_stack_0p2x.mp4
+python side_by_side.py --real ../../testSieveSorter/media/forum-2026-10-24/IMG_1316.JPG --sim out/runs/demo_stack/sim_stack_0p2x.mp4 --height 960 --real-label "Bench prototype" --sim-label "MuJoCo sim, uncalibrated" --caption "Sim at 1/5 speed. The photo shows one tray; the sim shows the stack: 5 mm tray over 2 mm tray over the catch pan.\nGrains are poured in; from t 1 s the whole stack shakes up and down (20 Hz, ±1.24 mm, assumed).\nPasta stays on 5 mm, rice mostly on 2 mm, quinoa falls to the catch. Shaken longer, rice leaks through end-first: 7 of 40 stay after 10 s."
 ```
 
-These two lines made `media/demo_side_by_side.mp4`. Forum's clip (`IMG_1319.MOV`) is a 1.1 s Live Photo, so both halves are slowed 4x over the same 1.1 s of physical time, and the pair is looped. The camera was matched by eye to that clip. Sim t = 2.0 s was chosen because the sort there is in the same state as the video: pasta on the top mesh, small grains already through. For a run with the fitted stroke, change the run dir and keep the rest.
+- **The run** is the demo rig as it really is: separate trays stacked one above the other (demo-rig.md, 06:20 correction), 5 mm over 2 mm over the catch pan, shaken up and down, recorded at 240 fps. At the default 30 fps a 20 Hz shake aliases into a slow wobble that isn't there. It takes about 20 s to run.
+- **What it shows** (VERTICAL.md, Result: the stacked rig): by t = 2.0 s all 15 pasta are on 5 mm, 31 of 40 rice are on 2 mm, and 32 of 40 quinoa are in the catch. Shaken straight up, rice stands on end and keeps leaking through the 2 mm holes: 21 stay at t = 4 s, 7 at t = 11 s. Shaking along the trays keeps 86-90% of it.
+- **The camera** looks at the long wall with the mounting-tab end on the right, as in `IMG_1316.JPG`. It is 4:3 landscape, not the photo's 3:4: in portrait the stack only fits small, and the rice and quinoa on the lower levels disappear.
+- **The clip** shows sim t = 0–2.4 s at 1/5 speed (12 s). The pour runs to t = 1 s, with no shaking. At 1/5 speed the 20 Hz shake plays as a visible 4 Hz bounce.
+- **Forum's photos and the clip stay local:** `media/` is gitignored. Copy the clip into the main checkout's `media/`.
 
-`side_by_side.py` writes `..\media\demo_side_by_side.mp4`, capped under 19 MB. It also takes a Record-button `.webm` and fixes Chrome's colour-range tagging (light greys would otherwise clip to white).
+**The bench tower.** BioKEA's BugSorter hangs its holder boxes one above the other in an extrusion frame, with open air between them, a rod and knob through each box's tab, a spray plate above and a water tub below. `pitch=` on an `inserts:` design spaces the boxes like that; the default is still rim on rim. `viewer.py --rig bugsorter` draws the frame, rods, knobs, spray plate, controller, tub and acrylic around the run. The tower is display only (`rig.py`), so it never touches the physics, and its sizes are estimated from the team's photo until someone measures the unit. A grain that bounces out through a gap lands on an invisible tub floor and counts as lost. The drop between boxes needs the stiffer contacts: 0.42 mm overlap at the production settings, 0.14 mm at these.
+
+```
+wsl: python sorter.py --design inserts:5mm,2mm,pitch=65 --mix pasta=15,rice=40,quinoa=40 --stroke sine:amp_mm=1.24,freq_hz=20,angle_deg=90 --duration 10 --dt 0.000125 --timeconst 0.00025 --fps 240 --out out/runs/demo_tower_stiff
+python viewer.py out/runs/demo_tower_stiff --rig bugsorter
+python record_view.py out/runs/demo_tower_stiff --view "?cam=-139.2,382.5,354.4&target=0,0,100&fov=45&aspect=7:8" --speed 0.2 --start 0 --duration 2.6 --height 960 -o out/runs/demo_tower_stiff/sim_tower_0p2x.mp4
+python side_by_side.py --real <photo of the tower> --sim out/runs/demo_tower_stiff/sim_tower_0p2x.mp4 -o ../../testSieveSorter/media/tower_side_by_side.mp4 --height 960 --real-label "BugSorter tower (bench)" --caption "..."
+```
+
+On the replay page, the **Bench tower** checkbox hides the tower; in the URL, `rig=0` hides it and `jets=1` shows the jet cones, which are hidden by default when the tower is drawn and the spray is off.
+
+`side_by_side.py` writes `..\media\demo_side_by_side.mp4`, capped under 19 MB. A photo as `--real` is held for the whole sim clip. A video works too (`--slow`, `--loops`). It also takes a Record-button `.webm` and fixes Chrome's colour-range tagging (light greys would otherwise clip to white).

@@ -31,12 +31,10 @@ def flat(kind, name):
     return {**flat(kind, parent), **data} if parent else data
 
 
-def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("name", help="part name in out/, e.g. hole_gauge")
-    ap.add_argument("--printer", default="P1S", choices=PRINTERS)
-    a = ap.parse_args()
-    machine = flat("machine", PRINTERS[a.printer])
+def slice_stls(names, out_name, printer="P1S"):
+    """Slice out/<name>.stl for every name onto one plate (arranged when there are several);
+    returns minutes, grams and the .gcode.3mf path."""
+    machine = flat("machine", PRINTERS[printer])
     work = OUT / "slice"
     work.mkdir(parents=True, exist_ok=True)
     presets = {}
@@ -45,18 +43,42 @@ def main():
                        ("filament", flat("filament", machine["default_filament_profile"][0]))):
         presets[kind] = work / f"{kind}.json"
         presets[kind].write_text(json.dumps(data), encoding="utf-8")
+    (work / "result.json").unlink(missing_ok=True)
     subprocess.run([str(STUDIO / "bambu-studio.exe"),
                     "--load-settings", f"{presets['machine']};{presets['process']}",
                     "--load-filaments", str(presets["filament"]),
+                    *(["--arrange", "1"] if len(names) > 1 else []),
                     "--slice", "0", "--outputdir", str(work),
-                    "--export-3mf", f"{a.name}.gcode.3mf", str(OUT / f"{a.name}.stl")])
+                    "--export-3mf", f"{out_name}.gcode.3mf", *(str(OUT / f"{n}.stl") for n in names)],
+                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     result = json.loads((work / "result.json").read_text())
-    if result["return_code"] != 0:
-        raise SystemExit(f"slice failed: {result['error_string']}")
+    if result["return_code"] != 0 or len(result["sliced_plates"]) != 1:
+        raise RuntimeError(f"slice {out_name} failed: {result['error_string']} "
+                           f"({len(result.get('sliced_plates', []))} plates)")
+    plate = result["sliced_plates"][0]
     head = (work / "plate_1.gcode").read_text(errors="replace")[:20000]
-    minutes = result["sliced_plates"][0]["total_predication"] / 60
-    grams = float(re.search(r"total filament weight \[g\] : ([\d.]+)", head).group(1))
-    print(f"{a.name} on {a.printer}: {minutes:.0f} min, {grams:.1f} g PLA -> {work / (a.name + '.gcode.3mf')}")
+    return {"minutes": plate["total_predication"] / 60,
+            "grams": float(re.search(r"total filament weight \[g\] : ([\d.]+)", head).group(1)),
+            "path": work / f"{out_name}.gcode.3mf"}
+
+
+def slice_part(name, printer="P1S"):
+    """Slice out/<name>.stl on its own: the per-part estimate."""
+    return slice_stls([name], name, printer)
+
+
+def slice_plate(names, out_name, printer="P1S"):
+    """Arrange several parts on one plate and slice it: the file to send to the printer."""
+    return slice_stls(names, out_name, printer)
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("name", help="part name in out/, e.g. hole_gauge")
+    ap.add_argument("--printer", default="P1S", choices=PRINTERS)
+    a = ap.parse_args()
+    r = slice_part(a.name, a.printer)
+    print(f"{a.name} on {a.printer}: {r['minutes']:.0f} min, {r['grams']:.1f} g PLA -> {r['path']}")
 
 
 if __name__ == "__main__":

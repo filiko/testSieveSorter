@@ -1,5 +1,7 @@
 # Handoff: physics session (prompting mode) to a bypass-permissions session
 
+> **Read [docs/SYSTEM.md](../SYSTEM.md) first** (added 10:30). It's the one description of the system: the input is a clump; the rig is separate trays one above the other, each held at its +X tab and overhanging, so they **rock**. It overrides this brief where they differ.
+
 Written 2026-10-25 06:15 PT by the main session. The first physics session ran in prompting mode and kept stopping for approvals. After its write-up landed, it was closed, and a session in bypass mode took over the same worktree (`testSieveSorter-physics`, branch `physics-bench`). Briefs: [physics.md](physics.md), [demo-rig.md](demo-rig.md) parts A and B (both done).
 
 ## Done and on `main`
@@ -39,3 +41,16 @@ Written 2026-10-25 06:15 PT by the main session. The first physics session ran i
 - Don't touch Smart App Control (it's one-way). Ask the user first.
 - The sim models the stacked trays, the grains and the shaking, not the DeWalt tool.
 - Push to `physics-bench` and open PRs; the main session merges them.
+
+## Status (physics session, 2026-10-25 10:15)
+- **Steps 1, 2 and 4 are done** (PR #6): the stacked-rig result is in VERTICAL.md, and the contact rule is `sim/contact_rule.py`.
+- **Step 3 is done for the 07:14 winners**, in [`sim/opt/VERIFY.md`](../../sim/opt/VERIFY.md).
+  - At the study load the ranking changes, but within noise on the mean: the gated tower comes first on robust, because it varies less.
+  - Under the heavy load the optimizer's order holds.
+  - The firmware plinko's score leans on soft contacts.
+  - `contact_rule.py` picks too soft a setting for the stacked rig.
+- **The run was stopped at 200 of 234** because the laptop ran low on memory (2.3 of 31 GB free). The winners are complete; 34 demo-rig runs are missing.
+- **Not verified yet: the 09:39 winners** (P-ae394887, P-b192da7c, G-a1ecf9bb). When memory allows, and somebody asks for it:
+  - `python verify.py --study demo --top 3 --seeds 6 --heavy 2 --workers 8`: about 2 h at 8 workers; the cached demo-rig runs are reused.
+  - Or add `--variants normal`: about 40 min.
+- **Also open:** rerun the contact-rule grid with `inserts:5mm,2mm` added.

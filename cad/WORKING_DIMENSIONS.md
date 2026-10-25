@@ -37,7 +37,7 @@ Adopted 2026-10-24 as the team's working numbers. All values are in mm.
 | `sieve_insert_5mm` | 5.0 | 1.2 | 1.6 | 150 |
 | `sieve_insert_2mm` | 2.0 | 1.0 | 1.4 | 726 |
 
-The plinko layers (`plinko_layers.py`) use the same 131.4 × 95.4 outside size.
+The plinko layers (`plinko_layers.py`) use the same 131.4 × 95.4 outside size. Under each pull tab, a foot at rod height reaches out to the nearest rod centres, so a tab face never lands on a rod's edge (that line contact leaves the mesh open).
 
 ## Gated container (`gated_container.py`), the final design
 
@@ -46,11 +46,12 @@ Same footprint as the sieve inserts, shaken longways (X).
 | What | Value |
 |---|---|
 | Outside | 131.4 × 95.4; walls 2 thick, 16 tall |
-| Pull tabs | 20 × 6, top at 25 (3 above the box rim) |
+| Pull tabs | 20 × 6, top at 21 above the container's bottom: 1 below the box rim, so boxes stack rim on rim; grip them through the box's finger notches |
 | Floor | solid, 2 thick at the gate end; slopes 2° up away from the gate (rises 4.06 over the length) |
 | Gate strip position | centre at x = 53, held by two rails per side with a 2.3 groove |
 | Drop slot | x 54 to 61 (7 long), y ±40, over the box's open bottom; 45° ramp from 61 to the end wall |
 | Tower | flip the container 180° on every other level |
+| Mid-slot variant | `container(gate_x, slot)`: the strip anywhere with \|x\| ≥ 13.15 (rails clear the tabs), the drop slot `slot` long from the strip's downstream face, then a 30° wedge back into the slot from a 0.4 lip, capped 14 tall (2 under the wall top). Optimizer winner 3's L1: x 22.2, slot 8.1; its tower isn't flipped |
 
 | Gate strip | Openings | Count |
 |---|---|---|

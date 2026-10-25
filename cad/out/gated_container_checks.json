@@ -5,10 +5,10 @@
   "bbox_mm": [
     131.4,
     95.4,
-    25.0
+    21.0
   ],
   "fits_bed": true,
-  "volume_cm3": 61.98,
+  "volume_cm3": 61.02,
   "outside_mm": [
     131.4,
     95.4,
@@ -20,5 +20,6 @@
     80.0
   ],
   "gate_x_mm": 53.0,
+  "beyond_slot": "45 deg ramp",
   "gate_end": "+X; flip 180 deg on alternate tower levels"
 }

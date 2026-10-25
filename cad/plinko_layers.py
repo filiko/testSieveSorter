@@ -79,7 +79,14 @@ def rods(gap, b_top, h):
         grate = grate.union(cq.Workplane("XY").box(IN_L / 2 + 0.5 - end, IN_W + 1, h, centered=False)
                             .translate((end, -IN_W / 2 - 0.5, 0)))
     rib = cq.Workplane("XY").box(IN_L + 1, RIB_W, h, centered=(True, True, False))
-    return grate.union(rib), len(xs), pitch
+    return grate.union(rib), xs, pitch
+
+
+def span_to_rods(x0, x1, xs):
+    """[x0, x1] widened out to the nearest rod centre lines. A block whose end face lands exactly on a rod's top
+    edge touches the rod along a line, which leaves the exported mesh open; through a rod's middle it doesn't."""
+    left, right = [x for x in xs if x <= x0], [x for x in xs if x >= x1]
+    return max(left) if left else -IN_L / 2 - 0.5, min(right) if right else IN_L / 2 + 0.5
 
 
 def tab_block(x, z0, z1, extra=0.0):
@@ -103,9 +110,14 @@ def layer(name):
     info = {"z_in_box_mm": round(z_bottom, 2), "outside_mm": [round(OUT_L, 2), round(OUT_W, 2), wall_h],
             "tab_x_mm": tab_x}
     if floor == "rods":
-        grate, count, pitch = rods(gap, b_top, h)
+        grate, xs, pitch = rods(gap, b_top, h)
         body = body.union(grate)
-        info.update({"gap_mm": gap, "rods": count, "pitch_mm": round(pitch, 2),
+        # a foot under each tab at rod height, so the tab's side faces stand on solid instead of on a rod edge
+        x0, x1 = span_to_rods(tab_x - TAB_W / 2, tab_x + TAB_W / 2, xs)
+        for sy in (1, -1):
+            body = body.union(cq.Workplane("XY").box(x1 - x0, TAB_T + 0.5, h, centered=False)
+                              .translate((x0, IN_W / 2 - TAB_T if sy > 0 else -IN_W / 2 - 0.5, 0)))
+        info.update({"gap_mm": gap, "rods": len(xs), "pitch_mm": round(pitch, 2),
                      "open_area_pct": round(100 * gap / pitch, 1)})
     else:
         body = body.union(cq.Workplane("XY").box(IN_L + 1, IN_W + 1, FLOOR_T, centered=(True, True, False)))
@@ -114,10 +126,11 @@ def layer(name):
         # slot for a lower layer's tab, plus a bar that ties the cut rod ends back together
         body = body.cut(tab_block(lower_tab_x, -1, wall_h + 1, extra=SLOT_FIT))
         if floor == "rods":
+            x0, x1 = span_to_rods(lower_tab_x - TAB_W / 2 - 3, lower_tab_x + TAB_W / 2 + 3, xs)
             for sy in (1, -1):
                 y_in = IN_W / 2 - TAB_T - 2 * SLOT_FIT
-                bar = cq.Workplane("XY").box(TAB_W + 6, 2.0, h, centered=False).translate(
-                    (lower_tab_x - TAB_W / 2 - 3, y_in - 2.0 if sy > 0 else -y_in, 0))
+                bar = cq.Workplane("XY").box(x1 - x0, 2.0, h, centered=False).translate(
+                    (x0, y_in - 2.0 if sy > 0 else -y_in, 0))
                 body = body.union(bar)
     return body, info
 

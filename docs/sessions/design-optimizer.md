@@ -1,5 +1,7 @@
 # Task: a design optimizer that uses the sim to pick the best sieve design
 
+> **Read [docs/SYSTEM.md](../SYSTEM.md) first** (added 10:30). It's the one description of the system: the input is a clump; the rig is separate trays one above the other, each held at its +X tab and overhanging, so they **rock**. It overrides this brief where they differ.
+
 **Goal:** a loop that proposes design variants, runs them in the MuJoCo sim, scores them, and keeps improving. Its output is a ranked shortlist of designs with parameters the CAD can build directly. This is the main deliverable for the rest of the hack. Submission is Sun Oct 25 at 2:30 PM PT.
 
 **Owner:** a dedicated **optimizer session**: worktree `Documents\Github\testSieveSorter-opt`, branch `design-opt`. The bambu session builds and slices whatever wins. The physics session (`physics-bench`) keeps working on benchmarking and the stroke and stays available as an extra hand.

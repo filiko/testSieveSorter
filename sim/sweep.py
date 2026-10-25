@@ -7,7 +7,8 @@ Run from sim\\ with the venv python:
                                                BioKEA's firmware stroke at 50 and 5 mm/s, 5 seeds x 3 contact
                                                parameter sets, 30 s runs
     python sweep.py stroke [--quick]           firmware constant-speed stroke vs sine (and sawtooth), same amplitude
-    python sweep.py vertical [--quick]         demo tray (inserts:5mm, pasta + rice): stroke along the flow axis (0 deg),
+    python sweep.py vertical [--quick] [--design inserts:5mm,2mm --mix pasta=15,rice=40,quinoa=40]
+                                               demo tray (inserts:5mm, pasta + rice): stroke along the flow axis (0 deg),
                                                a 45 deg throw and straight up (90 deg) at equal peak acceleration
                                                (sine, 2 g and 4 g), 3 contact parameter sets
     python sweep.py <preset> --report-only     rebuild summary.csv and report.html from runs.jsonl
@@ -246,7 +247,8 @@ def build_jobs(preset, quick, with_plinko, base_over=None, seeds=None, duration=
         sets, meta["param_source"] = param_sets()
         meta["param_sets"] = dict(sets)
         mix = (base_over or {}).get("mix") or VERTICAL_MIX
-        meta["notes"].append(f"Design {VERTICAL_DESIGN}, mix {mix}. Sine at {VERTICAL_FREQ_HZ:g} Hz; within a block every "
+        design = (base_over or {}).get("design") or VERTICAL_DESIGN
+        meta["notes"].append(f"Design {design}, mix {mix}. Sine at {VERTICAL_FREQ_HZ:g} Hz; within a block every "
                              "direction has the same peak acceleration, so a difference is the direction.")
         for peak in VERTICAL_PEAK_G:
             amp = peak * 9810.0 / (2 * math.pi * VERTICAL_FREQ_HZ) ** 2
@@ -255,7 +257,7 @@ def build_jobs(preset, quick, with_plinko, base_over=None, seeds=None, duration=
                 stroke = {"profile": "sine", "amp_mm": round(amp, 4), "freq_hz": VERTICAL_FREQ_HZ, "angle_deg": ang}
                 for label, contact in sets:
                     plan.append((block, f"{ang} deg: {name}", label,
-                                 {"design": VERTICAL_DESIGN, "mix": mix, "stroke": stroke, "contact": contact}))
+                                 {"design": design, "mix": mix, "stroke": stroke, "contact": contact}))
     elif preset == "stroke":
         spec = next((s for s in STROKE_DESIGNS if try_build(s) is None), base["design"])
         meta["notes"].append(f"Design {spec}. Every profile has a 10 mm amplitude and the same cycle rate "
@@ -790,6 +792,7 @@ def main():
     ap.add_argument("--with-plinko", action="store_true", help="compare: add plinko as a third design")
     ap.add_argument("--report-only", action="store_true", help="rebuild summary.csv and report.html from runs.jsonl")
     ap.add_argument("--mix", help="particle mix, e.g. rice=30,quinoa=30,insect_elongate=10")
+    ap.add_argument("--design", help="design spec (vertical: instead of the demo tray, e.g. inserts:5mm,2mm)")
     ap.add_argument("--spray", choices=["default", "bench"], help="jets on: each design's placeholders, or bench/jets.csv")
     ap.add_argument("--dt", type=float, help="timestep, s")
     ap.add_argument("--timeconst", type=float, help="contact time constant, s (>= 2 dt)")
@@ -802,6 +805,8 @@ def main():
     base_over = {}
     if args.mix:
         base_over["mix"] = sorter.parse_kv(args.mix)
+    if args.design:
+        base_over["design"] = args.design
     if args.spray:
         base_over["spray"] = {"jets": args.spray}
     if args.dt:

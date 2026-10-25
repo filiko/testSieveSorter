@@ -2,7 +2,7 @@
  "study": "malaise",
  "exploratory": true,
  "note": "EXPLORATORY: the sim ranks designs; it isn't calibrated against bench counts. Bond strengths, insect bodies and the 5 mN damage line are assumed.",
- "updated": "2026-10-25 13:11",
+ "updated": "2026-10-25 13:19",
  "clump": {
   "kinds": {
    "rice": 30,
@@ -172,6 +172,24 @@
      "between": 2,
      "wall": 69.35
     }
+   },
+   "verify": {
+    "seeds": [
+     1,
+     2
+    ],
+    "robust": 0.33553542851198487,
+    "robust_all_seeds": 0.4220953556342977,
+    "free": 0.76235,
+    "fails": 0,
+    "by_seed_bond": {
+     "1/weak": 0.823,
+     "1/medium": 0.736,
+     "1/strong": 0.11,
+     "2/weak": 0.817,
+     "2/medium": 0.755,
+     "2/strong": 0.377
+    }
    }
   },
   {
@@ -326,6 +344,24 @@
      "between": 0,
      "wall": 61.64
     }
+   },
+   "verify": {
+    "seeds": [
+     1,
+     2
+    ],
+    "robust": 0.5748992916191827,
+    "robust_all_seeds": 0.6051995605762039,
+    "free": 0.9444333333333333,
+    "fails": 0,
+    "by_seed_bond": {
+     "1/weak": 0.831,
+     "1/medium": 0.772,
+     "1/strong": 0.487,
+     "2/weak": 0.837,
+     "2/medium": 0.752,
+     "2/strong": 0.569
+    }
    }
   },
   {
@@ -479,6 +515,24 @@
      "lost": 1,
      "between": 2,
      "wall": 57.54
+    }
+   },
+   "verify": {
+    "seeds": [
+     1,
+     2
+    ],
+    "robust": 0.6121763518942488,
+    "robust_all_seeds": 0.6298243896523493,
+    "free": 0.9351999999999999,
+    "fails": 0,
+    "by_seed_bond": {
+     "1/weak": 0.843,
+     "1/medium": 0.773,
+     "1/strong": 0.542,
+     "2/weak": 0.845,
+     "2/medium": 0.782,
+     "2/strong": 0.597
     }
    }
   }

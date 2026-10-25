@@ -44,7 +44,7 @@ import numpy as np
 HERE = Path(__file__).resolve().parent
 OUT = HERE / "out" / "sweeps"
 CALIBRATION_JSON = HERE / "out" / "calibration" / "calibration.json"
-WORKERS = max(1, (os.cpu_count() or 6) - 4)
+WORKERS = max(1, (os.cpu_count() or 6) - 2)   # PERF.md: 22 on the 24-core laptop matches 24 and leaves 2 free
 
 PRESETS = {"dtcheck": (3, 10.0), "compare": (5, 30.0), "stroke": (3, 20.0)}   # name: (seeds, duration_s)
 QUICK_SEEDS, QUICK_DURATION_S = 2, 2.0
@@ -152,7 +152,7 @@ def run_jobs(jobs, jsonl_path, workers=WORKERS):
             f.flush()
             tg = res["sweep"]
             what = "ERROR " + res["error"].strip().splitlines()[-1] if "error" in res else \
-                "recovery " + " ".join(f"{k} {v:.2f}" for k, v in res.get("recovery", {}).items())
+                "recovery " + " ".join(f"{k} {v:.2f}" for k, v in res.get("recovery", {}).items()) +                 (f" UNSTABLE ({len(res['unstable_resets'])} resets)" if res.get("unstable_resets") else "")
             label = " | ".join(str(x) for x in (tg.get("block"), tg["group"], tg.get("variant")) if x)
             print(f"[{done}/{len(jobs)} {time.time() - t0:5.0f} s] {label} | seed {tg['seed']}: {what}", flush=True)
     return results
@@ -772,6 +772,7 @@ def main():
     ap.add_argument("--seeds", type=int, help="seeds per setting (overrides the preset)")
     ap.add_argument("--duration", type=float, help="shake seconds per run (overrides the preset)")
     ap.add_argument("--name", help="output folder under out\\sweeps (default: the preset)")
+    ap.add_argument("--workers", type=int, default=WORKERS, help=f"parallel runs (default {WORKERS})")
     args = ap.parse_args()
     import sorter
     base_over = {}
@@ -792,7 +793,8 @@ def main():
         jobs, meta = build_jobs(args.preset, args.quick, args.with_plinko, base_over, args.seeds, args.duration)
         for n in meta["notes"]:
             print("note:", n)
-        runs = run_jobs(jobs, jsonl)
+        meta["workers"] = max(1, min(args.workers, len(jobs)))
+        runs = run_jobs(jobs, jsonl, args.workers)
     write_outputs(out_dir, runs, meta)
 
 

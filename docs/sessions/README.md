@@ -27,3 +27,16 @@ Options; the user decides which one:
 3. Conda-forge builds. Probably also unsigned, so they'd likely be blocked too. Only worth a quick check.
 
 Whichever option is chosen, record it here so the other session doesn't redo the work.
+
+### Chosen: option 1, WSL2 (2026-10-25, physics session)
+
+Smart App Control is still **on**; nothing in the Windows policy was changed.
+
+- Distro: `Ubuntu` (26.04 LTS, WSL2), already installed. It sees all 24 cores but only about 15 GB RAM (the WSL default is half the host's). Raise it in `%UserProfile%\.wslconfig` (`[wsl2]` `memory=24GB`) if a sweep needs more.
+- Venv: **`~/venvs/sieve`** inside WSL, built with uv on **Python 3.12.15** (uv-managed cpython, not Ubuntu's system 3.14). It has mujoco 3.17.0, cadquery 2.8.0 (OCP 7.9.3), vtk 9.6.2, numpy 2.5.4 and trimesh 5.2.0; `import mujoco` and `import cadquery` both work.
+- Install packages with `uv pip install --python ~/venvs/sieve/bin/python ...` (there's no pip in the venv), and say so in the PR because the venv is shared.
+- The repo stays on the Windows side. Run from the worktree's folder, for example:
+  `wsl -d Ubuntu -- bash -lc "cd /mnt/c/Users/ajfil/Documents/Github/testSieveSorter-physics/sim && ~/venvs/sieve/bin/python sorter.py ..."`
+  From Git Bash, set `MSYS_NO_PATHCONV=1` first, or it rewrites `/mnt/c/...` paths.
+- Speed: the reference `inserts:mesh5,mesh2` run takes 45 s wall in WSL, against 517 s on the old machine. See `sim/PERF.md`.
+- Incident: at 05:22 the physics session ran `python3 -m venv ~/venvs/sieve` on top of the uv venv while it was being built (most likely by the bambu session). That rewrote `pyvenv.cfg`. It has been repaired (uv-format `pyvenv.cfg`, stray `lib/python3.14` and `bin/pip*` removed), and the packages were not affected. Don't recreate this venv; add packages to it instead.

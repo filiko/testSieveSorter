@@ -264,6 +264,10 @@ def run(cfg: RunConfig) -> dict:
     max_pen = max_pen_pp = 0.0
     t0 = time.perf_counter()
     settle_keep = np.exp(-SETTLE_DAMPING * cfg.dt)
+    # MuJoCo answers a NaN/Inf/huge QPOS, QVEL or QACC by resetting mjData and carrying on, so an unstable
+    # run would still finish with plausible-looking results. Record each reset (step time) instead of hiding it.
+    # The reset also clears the warning counters, so it is detected by d.time going backwards.
+    resets = []
     for i in range(steps):
         m.opt.gravity[:] = -a[i] * axis
         m.opt.gravity[2] -= G
@@ -272,7 +276,10 @@ def run(cfg: RunConfig) -> dict:
         if sp is not None:
             d.xfrc_applied[:] = 0.0
             sp.step(m, d, d.time, x[i] * axis, v[i] * axis)
+        t_before = d.time
         mujoco.mj_step(m, d)
+        if d.time < t_before:
+            resets.append(round((i + 1) * cfg.dt, 5))
         if i >= n_settle and i % 10 == 0 and d.ncon:   # overlap where it matters: particle against tray
             dist = d.contact.dist[:d.ncon]
             on_tray = np.any(m.geom_bodyid[d.contact.geom[:d.ncon]] == 0, axis=1)
@@ -310,6 +317,7 @@ def run(cfg: RunConfig) -> dict:
                        "counts": {k: {zn: zc[:, ki, zi].tolist() for zi, zn in enumerate(zone_names)}
                                   for ki, k in enumerate(kinds)}},
         "max_penetration_mm": round(max_pen, 5), "max_penetration_particles_mm": round(max_pen_pp, 5), "sim_s": round(d.time, 3), "wall_s": round(wall, 2), "steps": steps,
+        "unstable_resets": resets,
     }
     if cfg.out_dir:
         write_recording(Path(cfg.out_dir), cfg, design, m, results, rec, kinds, zone_names, particles, names, sp)
@@ -385,6 +393,9 @@ def main():
     r = run(cfg)
     print(f"{r['design']}: {r['sim_s']} s simulated in {r['wall_s']} s wall, {r['steps']} steps, "
           f"max overlap {r['max_penetration_mm']} mm on the tray, {r['max_penetration_particles_mm']} mm between particles")
+    if r["unstable_resets"]:
+        print(f"UNSTABLE: MuJoCo reset the state {len(r['unstable_resets'])} times (at {r['unstable_resets'][:5]} s); "
+              "the results are not valid")
     for k, c in r["counts"].items():
         print(f"  {k:16s} recovery {r['recovery'].get(k, 0):.2f}  " + "  ".join(f"{z} {n}" for z, n in c.items() if n))
     if args.out:

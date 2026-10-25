@@ -2,7 +2,7 @@
  "study": "demo",
  "title": "Demo set: surrogate grains (pasta + chickpea / rice / quinoa)",
  "exploratory": false,
- "generated": "2026-10-25 09:56",
+ "generated": "2026-10-25 10:02",
  "rule": "ranked by the worst robust score over every check run on the design (full runs; stiff-contact rerun; printer undersize 0.05 / 0.25 mm; stroke reversal 0.005 / 0.02 s for the firmware stroke); stress_tested says whether the stress checks were run. A flagged design that `verify` reran with stiffer contacts (dt 0.125 ms, timeconst 0.25 ms) with no failed or flagged run counts as clean. Otherwise: top 3 by robust full-run score (mean - 1 sd over 3 friction sets x 3 seeds, 30 s) among working sorters (robust >= 0.5, no failed run, meeting today's print constraints) with no penetration-flagged run; if fewer than 3 qualify, the rest are the best working flagged ones, marked flagged (see opt/LOG.md for how this rule came about)",
  "caveat": "sim ranking only; uncalibrated; openings simulated at nominal - 0.15 mm (ASSUMED undersize)",
  "undersize_mm_assumed": 0.15,

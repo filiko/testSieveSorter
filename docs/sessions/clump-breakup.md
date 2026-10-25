@@ -27,19 +27,7 @@ It uses what the rig already has: the shaker (the up-and-down / angled stroke fr
 - **The stack under it:** the current winner tower, or `inserts:5mm,2mm` for the demo rig.
 
 ## A. Physics session (`physics-bench`): rocking motion, then clumps and debris. **This unblocks everything**
-0. **Rocking motion first** (user correction 10:30; aim to have it on `main` by ~11:15).
-   - Each box is held only at its +X tab and overhangs, so it rocks about the mount instead of translating as a rigid block. See [SYSTEM.md](../SYSTEM.md) §3.
-   - The user says the box is clamped and **flexes up to 20–30° either side, in yaw**: the free end swings side to side about a vertical axis through the +X tab.
-   - Add a stroke that rocks the tray about an axis through the +X tab on top of the existing stroke at the mount:
-     - `rock_deg` (0–30);
-     - `rock_axis` (`z` = yaw, the default; `y` = pitch; or a vector);
-     - `rock_hz` (the flex can be slower than the tool's stroke);
-     - `phase_deg`;
-     - plus the existing `amp_mm` / `freq_hz` / `angle_deg` at the mount.
-   - Sweep the angle and the frequency together, and report the free end's peak acceleration so the combinations stay physical (SYSTEM.md §3).
-   - Implement it with exact non-inertial forces per particle (SYSTEM.md §5).
-   - Check it: a particle near the free end gets thrown much more than one near the mount. With `rock_deg=0`, results match the old vertical stroke.
-   - Rerun the stacked rig under rocking, add it to VERTICAL.md, and open a PR.
+0. **Rocking moved to the new seesaw session** (10:55; see [SYSTEM.md](../SYSTEM.md) §3 and §5). Physics: **do the clumps now.** Put them in `sim/clumps.py` with a minimal hook in `sorter.py`.
 1. **A `clump` particle:**
    - N specimens (`insects.py` kinds, or grain surrogates for the bench demo) packed into a ball.
    - Each touching pair is joined by a **breakable bond**: an equality `weld` / `connect`. Each step, set `d.eq_active[i] = 0` once the bond's constraint force (from `efc_force`) exceeds `bond_N`.

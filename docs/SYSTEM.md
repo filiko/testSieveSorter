@@ -1,6 +1,6 @@
 # The system: read this first
 
-The one description of what we're building that every session works from. **If a brief, a doc or the code disagrees with this file, this file wins.** Tell the main session (or the user) instead of working around it. Facts come from the user and the team's photos, as of Oct 25 ~10:30 PT. Assumptions are marked.
+The one description of what we're building that every session works from. **If a brief, a doc or the code disagrees with this file, this file wins.** Tell the main session (or the user) instead of working around it. Facts come from the user and the team's photos, as of Oct 25 ~10:55 PT. Assumptions are marked.
 
 ## 1. The job
 - **Input:** a Malaise-trap sample. It's thousands of mostly tiny flies in ethanol, and often a **compacted clump**: a ball or mound of tangled insects, mixed with **leaves, twigs and dirt**.
@@ -14,23 +14,15 @@ Details: [docs/sessions/clump-breakup.md](sessions/clump-breakup.md).
 - **The stack:** separate holder boxes (about 140 × 104 × 25 mm), each holding one sieve insert (131.4 × 95.4 mm). Coarse is on top, finer below, and a catch pan at the bottom. The breaker layer (step 1) goes on top.
 - **The boxes are separate**, stacked one above the other. They aren't one block, and they aren't side by side.
 
-## 3. How a box is held, and why it rocks
-- **Each box is attached at ONE short end only:** its **mounting tab on the +X end**, the width side. It's **not** held along its length.
-  - On BioKEA's bench unit, the boxes hang from rods through their +X tabs in an extrusion frame.
-  - On the team's demo, the tray is bolted by its tab onto a handheld DeWalt 20V MAX tool.
-  - In both, the rest of the box **overhangs**. That's visible in Forum's photos (IMG_1315 / 1316 / 1318 / 1320, kept locally in `media/`).
-- **So the motion is rocking, not a rigid up-and-down translation.** From the user (10:40): the box is **clamped at the tab and flexes**, about **20–30° at most, either side, in yaw**.
-  - The free −X end swings side to side (±Y), rotating about a **vertical axis through the +X tab**, on top of the drive's stroke at the mount.
-  - At 30° and ~130 mm of overhang, the free end sweeps about ±65 mm sideways. Near the mount the box barely moves, so particles near the free end get thrown hardest.
-  - **Yaw is the default.** The sim should also support **pitch** (free end up and down, about Y through the tab) and a mix of the two, in case the flex has both. "Yaw" is the user's word; if the team meant tipping up and down, it's one parameter.
-- **Not known yet (ASSUMED until measured):**
-  - the exact rocking angle within 0–30° (sweep it);
-  - the stroke at the mount;
-  - the phase between the two;
-  - the frequency. The DeWalt's real motion is unmeasured; a side-on video of it running would settle it, and `sim/stroke_from_video.py` can track it.
-  - Sweep these in the sim; don't fix one guess.
-  - **Keep it physical:** a flex of ±30° can't also run at the tool's tens of Hz. At 20 Hz that's about 100 g at the free end. So sweep the angle and the frequency together, and keep the free end's peak acceleration in a plausible range (report it; about 1–10 g). The big-angle wobble is presumably a slower flex mode, with the tool's fast, small stroke on top.
-- **Pure translation strokes** (the 0° / 45° / 90° `angle_deg` runs, the firmware constant-speed stroke) are **simplifications**. Results from them (VERTICAL.md, the leaderboards made before rocking existed) need re-checking under rocking before the pitch uses them.
+## 3. The motion: each tray seesaws, neighbours alternate (confirmed by the user, 10:50)
+- **Seesaw, ends tip.** Each tray rocks about **its own pivot across its middle**: a horizontal axis along the tray's width (Y), through its centre. The two short ends (−X and +X) go up and down in turn, **about 20–30° either side**. Grains slide end to end across the sieve, as in a gold pan; rice on plastic starts sliding at about 22°.
+- **Each level has its own pivot, and neighbours alternate:** opposite phase, so when one tray tips its −X end down, the trays above and below tip it up. The user chose this so material doesn't fly off. Whatever drops from a level lands on a tray tilted the other way.
+- **Consequence for the hardware:** when neighbours tilt opposite ways, their facing ends close in by about L·sin θ (L ≈ 140 mm: 48 mm at 20°, 59 mm at 25°, 70 mm at 30°). So the level pitch has to be at least the box height (25 mm) + L·sin θ + clearance: **about 80–100 mm**, more than the 65 mm the replay assumed. The sim should check for trays touching. Bambu's CAD and rig need this spacing.
+- **Not known yet (ASSUMED; sweep them):**
+  - the exact angle (20–30°, search 10–30°);
+  - the period (the optimizer's seesaw uses 0.4–6 s per cycle);
+  - the motion profile: constant angular speed with hard reversals (as the firmware drives its stage) or a smooth sine.
+- **Superseded:** earlier notes in this file (rigid up-and-down translation, then "yaw about the +X tab") and the optimizer's default `rock_axis: x` (long sides tipping). The axis is **Y** (the ends tip). The pure translation strokes (`angle_deg`, the firmware stroke, VERTICAL.md, the leaderboards before 10:50) are simplifications; re-check them under the seesaw before the pitch quotes them.
 
 ## 4. Liquid
 Samples are in ethanol, and the rig sprays from fixed jets above. `sim/spray.py` models push, wetting and capillary adhesion. Wetting should also weaken clump bonds.
@@ -38,21 +30,25 @@ Samples are in ethanol, and the rig sprays from fixed jets above. `sim/spray.py`
 ## 5. What the sim models, and what it doesn't
 - **Modelled:** the trays (with their real mount point and rocking), the particles (specimens, grains, clumps, debris), the stroke and the spray.
 - **Not modelled:** the tool, the motor, the frame, the hand. The frame in the replay (`sim/rig.py`) is display only.
-- **Rocking in the sim:** keep the tray-fixed frame and add the full non-inertial forces of a frame that rotates about the mount axis while the mount translates:
-  - per particle: `-m(a_pivot + α × r + ω × (ω × r) + 2 ω × v_rel)`, with ω along Z for yaw, Y for pitch, or any axis through the tab for a mix;
-  - plus gravity rotated into the tray frame;
-  - applied per body through `xfrc_applied`.
-  - The current uniform-gravity trick is exact only for pure translation.
-- **One pivot or one per box?** (bambu's question in PR #10) For **yaw**, the boxes' +X tabs line up vertically, so a single vertical axis through the tabs fits the whole stack: **one pivot, one tray frame.** Per-box pivots (one frame per level) would only matter for pitch, or if boxes flex out of phase. Leave that for later.
-- **Recording, so the replay shows rocking** (PR #10's viewer reads these):
-  - `tray_q`: frames × 4, w x y z, the tray frame's orientation in the lab;
-  - `scene["tray"]["pivot"]`: mm in the tray frame.
+- **The seesaw in the sim:** levels rock **differently** (alternating), so one shared non-inertial tray frame can't do it, and neither can the optimizer's current `rocking()` wrapper, which turns every particle in phase.
+  - Run seesaw cases in the **lab frame**, with **each level its own body on a hinge** (axis Y through the level's centre).
+  - Prescribe its angle kinematically: write the hinge `qpos` / `qvel` each step from θ_k(t) = ±Θ·profile(t), the sign alternating by level. Gravity stays −Z.
+  - Then contacts see the real tray velocities, and nothing approximates the rotation.
+  - Translation strokes keep the existing tray-frame path.
+- **Recording, so the replay shows each level rocking:**
+  - `level_q`: frames × levels × 4 (w x y z), each level's orientation in the lab;
+  - `scene["levels"][k]`: that level's `pivot` (mm) and the ids of the geoms that belong to it.
+  - Bambu's viewer (PR #10) already reads a single `tray_q`; it extends to one group per level.
+- **Clumps** (physics): `sim/clumps.py`. Specimens are joined by breakable bonds (`eq_active` off above a force that drops with wetness), with a minimal hook in `sorter.py`'s step loop. Debris: leaf / twig / dirt. See clump-breakup.md part A.
 - **The sim ranks designs; it does not predict real percentages until it's calibrated against bench counts.**
 
 ## Who owns what
 | Area | Session |
 |---|---|
-| `sim/sorter.py` (stroke, rocking, clumps, debris, metrics) | physics (`physics-bench`) |
+| Per-level seesaw in the sim (`sim/rocking.py` + minimal hooks in `sorter.py`), per-level recording, the rocking tower run | **seesaw** (`seesaw-tower`, new at 10:55) |
+| Clumps and debris (`sim/clumps.py` + a minimal hook in `sorter.py`), break-up metrics | physics (`physics-bench`) |
 | `sim/optimize.py`, `sim/designs_*.py` for searched families, `sim/opt/` | optimizer (`design-opt`) |
 | `cad/`, slicing, `sim/viewer*`, `sim/rig.py`, replays and clips | bambu (`bambu-viz`) |
 | `README.md`, `docs/`, this file, merging PRs | main |
+
+Seesaw and physics both touch `sorter.py`. Keep those edits to small hooks, put the logic in your own module, and merge `origin/main` before you open a PR.

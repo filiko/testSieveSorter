@@ -139,13 +139,17 @@ class P:
 # firmware and 0 deg, so their strokes and cache keys are unchanged.
 STROKE_PARAMS = [P("drive", 0, 0, 0, ("firmware", "tool", "rock")), P("amp", 5.0, 15.0, 0.5),
                  P("speed", 15.0, 50.0, 1.0), P("freq", 10.0, 50.0, 1.0), P("accel", 1.0, 5.0, 0.1),
-                 P("angle", 0.0, 90.0, 5.0), P("rock_axis", 0, 0, 0, ("x", "y")), P("rock_deg", 2.0, 20.0, 0.5),
+                 P("angle", 0.0, 90.0, 5.0), P("rock_axis", 0, 0, 0, ("x", "y")), P("rock_deg", 2.0, 30.0, 0.5),
                  P("rock_period", 0.4, 6.0, 0.1)]
 # rock: the tray seesaws about a horizontal axis through its centre (the user, 10:10: "side to side like a seesaw",
 # trays on side pivots). x = about the tray's long axis (the width tips), y = about its short axis (the ends tip).
 # The tilt runs at constant angular speed between +/- rock_deg with hard reversals (the firmware's motion, mapped
 # through a lever), so the reversal jolt is there too. Pivot axis and amplitude are unmeasured: searched.
-ROCK_DEFAULT = {"rock_axis": "x", "rock_deg": 10.0, "rock_period": 1.6}
+# Confirmed by the user at 10:50 (SYSTEM.md section 3): the ends tip, about a pivot across the middle (axis y), about
+# 20-30 deg either side, neighbouring levels in opposite phase (not modelled here: every particle turns in phase).
+# Rounds up to 7 searched 2-20 deg with x as the default; only y-axis runs count as the rig's motor (RIG_ROCK_AXIS).
+ROCK_DEFAULT = {"rock_axis": "y", "rock_deg": 20.0, "rock_period": 1.6}
+RIG_ROCK_AXIS = "y"
 FORCE_DRIVE = None                # run --drive rock: every new candidate (and reference) of this run uses that drive
 CE_DEFAULTS = {"drive": "firmware", "angle": 0.0}     # what a candidate without these params ran with
 
@@ -1115,7 +1119,7 @@ def leaderboard_md(study, cands, summ, meta):
                   "BioKEA's stage can only run the firmware stroke (constant speed); the demo rig is a vibrating tool "
                   "(sine). Best full-run design for each, whether or not it is flagged:", "",
                   "| drive | id | family | robust | flags | design (CAD, nominal mm) | stroke |", "|---|---|---|---|---|---|---|"]
-        for prof, name in (("rock", "seesaw (the rig's current rocking motor)"), ("constant_speed", "firmware (BioKEA's stage)"),
+        for prof, name in (("rock", "seesaw (the rig's current rocking motor; ends tip, axis y)"), ("constant_speed", "firmware (BioKEA's stage)"),
                            ("sine", "vibrating tool (demo rig)")):
             c = by_drive.get(prof)
             if c:
@@ -1229,7 +1233,10 @@ def winners_json(study, cands, summ):
 
 
 def drive_of(c):
-    return "rock" if c["stroke"].get("rock") else c["stroke"].get("profile")
+    r = c["stroke"].get("rock")
+    if r:                         # a seesaw about the other axis is not the rig's motion
+        return "rock" if r["axis"] == RIG_ROCK_AXIS else "rock_" + r["axis"]
+    return c["stroke"].get("profile")
 
 
 def verified(sm):
@@ -1408,7 +1415,8 @@ def refs(study, rnd):
     for ref in [CURRENT] + ([DEMO_RIG] if study in ("demo", "smoke") else []):   # fixed, non-family references
         if FORCE_DRIVE == "rock":
             ref = dict(ref, stroke=stroke_of({"drive": "rock"}), label=ref["label"].split(",")[0] + ", seesaw "
-                       f"(default {ROCK_DEFAULT['rock_deg']:g} deg, {ROCK_DEFAULT['rock_period']:g} s, long axis)")
+                       f"(default {ROCK_DEFAULT['rock_deg']:g} deg, {ROCK_DEFAULT['rock_period']:g} s, "
+                       f"{'long axis' if ROCK_DEFAULT['rock_axis'] == 'x' else 'ends tip'})")
         cur = dict(ref, origin="current", round=rnd)
         cur["id"] = cand_id(cur)
         out.append(cur)

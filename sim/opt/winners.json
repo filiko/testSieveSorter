@@ -2,7 +2,7 @@
  "study": "demo",
  "title": "Demo set: surrogate grains (pasta + chickpea / rice / quinoa)",
  "exploratory": false,
- "generated": "2026-10-25 10:55",
+ "generated": "2026-10-25 10:58",
  "rule": "ranked by the worst robust score over every check run on the design (full runs; stiff-contact rerun; printer undersize 0.05 / 0.25 mm; stroke reversal 0.005 / 0.02 s for the firmware stroke); stress_tested says whether the stress checks were run. A flagged design that `verify` reran with stiffer contacts (dt 0.125 ms, timeconst 0.25 ms) with no failed or flagged run counts as clean. Otherwise: top 3 by robust full-run score (mean - 1 sd over 3 friction sets x 3 seeds, 30 s) among working sorters (robust >= 0.5, no failed run, meeting today's print constraints) with no penetration-flagged run; if fewer than 3 qualify, the rest are the best working flagged ones, marked flagged (see opt/LOG.md for how this rule came about)",
  "caveat": "sim ranking only; uncalibrated; openings simulated at nominal - 0.15 mm (ASSUMED undersize)",
  "undersize_mm_assumed": 0.15,
@@ -476,73 +476,6 @@
   }
  ],
  "best_by_drive": {
-  "seesaw (the rig's current rocking motor)": {
-   "id": "P-59cc0bf9",
-   "family": "plinko",
-   "sim_spec": "plinko",
-   "stroke": {
-    "profile": "none",
-    "rock": {
-     "axis": "x",
-     "deg": 19.0,
-     "period_s": 0.4,
-     "ramp_s": 0.01
-    }
-   },
-   "stroke_human": "seesaw +/-19 deg about the tray's long axis, 0.4 s per cycle",
-   "design": "rods L1 gap 3.1 (rod 2.1 wide, 1.8 tall) / L2 gap 1.6 (rod 2.8, 3)",
-   "cad": {
-    "file": "cad/plinko_layers.py",
-    "LAYERS": [
-     [
-      "layer_1_rods_3p1",
-      "rods",
-      3.1,
-      2.1,
-      1.8,
-      12.0,
-      0.0
-     ],
-     [
-      "layer_2_rods_1p6",
-      "rods",
-      1.6,
-      2.8,
-      3.0,
-      8.0,
-      -35.0
-     ],
-     [
-      "layer_3_catch",
-      "solid",
-      null,
-      null,
-      2.0,
-      6.0,
-      35.0
-     ]
-    ],
-    "note": "rows are (name, floor, gap, rod top width, rod height, wall height, tab x); walls and tabs unchanged"
-   },
-   "robust": 0.8355,
-   "per_class": [
-    {
-     "class": "big (pasta, chickpea)",
-     "purity": 0.9803921568627452,
-     "recovery": 1.0
-    },
-    {
-     "class": "rice",
-     "purity": 0.9240959335835996,
-     "recovery": 1.0
-    },
-    {
-     "class": "quinoa",
-     "purity": 1.0,
-     "recovery": 0.9037037037037037
-    }
-   ]
-  },
   "firmware (BioKEA's stage)": {
    "id": "P-ba5dd6b3",
    "family": "plinko",

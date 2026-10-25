@@ -1,6 +1,6 @@
 # Leaderboard: Demo set: surrogate grains (pasta + chickpea / rice / quinoa)
 
-Generated 2026-10-25 10:55 by `sim/optimize.py` (study `demo`). 329 candidates, 4365 sim runs so far.
+Generated 2026-10-25 10:58 by `sim/optimize.py` (study `demo`). 329 candidates, 4365 sim runs so far.
 
 **The sim ranks designs; it does not predict real percentages.** It is uncalibrated until `calibrate.py` has bench counts, has no water, rigid particles, and about 80 particles per run. Sizes are simulated at the as-printed opening, nominal - 0.15 mm (ASSUMED until the hole gauge is measured).
 
@@ -100,7 +100,7 @@ BioKEA's stage can only run the firmware stroke (constant speed); the demo rig i
 
 | drive | id | family | robust | flags | design (CAD, nominal mm) | stroke |
 |---|---|---|---|---|---|---|
-| seesaw (the rig's current rocking motor) | P-59cc0bf9 | plinko | 0.835 | ok | rods L1 gap 3.1 (rod 2.1 wide, 1.8 tall) / L2 gap 1.6 (rod 2.8, 3) | seesaw +/-19 deg about the tray's long axis, 0.4 s per cycle |
+| seesaw (the rig's current rocking motor; ends tip, axis y) | P-fccdb05e | plinko | 0.705 | PEN 2/9 (clr 0.14, pen 0.101) | rods L1 gap 3.3 (rod 2 wide, 3.8 tall) / L2 gap 1.7 (rod 2.8, 2.8) | seesaw +/-14.5 deg about the tray's short axis, 0.9 s per cycle |
 | firmware (BioKEA's stage) | P-6e03ce14 | plinko | 0.958 | ok | rods L1 gap 4.1 (rod 1.7 wide, 2.2 tall) / L2 gap 1.6 (rod 2.1, 3.2) | firmware 9 mm at 50 mm/s, 25 deg up |
 | vibrating tool (demo rig) | P-b192da7c | plinko | 1.000 | ok | rods L1 gap 4.7 (rod 2.6 wide, 2.2 tall) / L2 gap 1.6 (rod 2.3, 3.2) | tool sine 37 Hz, 2.1 g (0.38 mm), 25 deg up |
 

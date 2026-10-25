@@ -714,3 +714,27 @@ All three are stacks of removable trays, one class per tray.
 **Code note:** commit 4b8f76d's message says ce_update "pads or resets" a categorical whose size changed. It only resets it: a categorical that gained a choice restarts at uniform weights.
 
 **Stop.** The driver stopped at 10:54 (`out/opt/STOP`) after round 7, per the brief. The leaderboard, winners and this log are final for this session.
+
+## Correction: the rig's seesaw axis is y (notes, 2026-10-25 11:05)
+
+**Main's SYSTEM.md section 3 (the user confirmed it at 10:50, commit 9785b73 on main):**
+- Each tray tips at its ends, about its own pivot across its middle (axis y), about 20-30 deg either side.
+- Neighbouring levels rock in opposite phase.
+
+This overrides my 10:10 reading ("x matches attached at the mid points"). So round 7's winner, P-59cc0bf9 (+/-19 deg about x), rocks the wrong axis. It is not the design for the rig's motor.
+
+**Under the confirmed axis (executed, round 7 full runs):**
+- The best is **P-fccdb05e, plinko rods 3.3 / 1.7, +/-14.5 deg at 0.9 s, robust 0.705.** Rice is 93% kept and quinoa 83% through. Gate overlap is flagged in 2 of 9 runs.
+- Its layer-2 gap of 1.7 mm breaks the printing rule from the stress test (1.5-1.6 mm).
+- So `winners.json` has **no clean seesaw entry** now. The leaderboard's best-per-drive table lists P-fccdb05e, flagged.
+
+**Code (this commit):**
+- `RIG_ROCK_AXIS = "y"`: only y-axis runs count as the rig's motor in best-per-drive.
+- `ROCK_DEFAULT` is now y, 20 deg.
+- `rock_deg` is searched up to 30 deg.
+
+**Not modelled by `rocking()`:**
+- **Alternating levels.** It turns every particle in phase, which is right for one box (the plinko layers rock together) but not for a tower of separate trays.
+- **Each level hinged in the lab frame.** SYSTEM.md gives this to the new seesaw session (`sim/rocking.py`); its results supersede this round's for multi-tray designs.
+
+**Next:** a y-axis round at 10-30 deg on the seesaw session's model. The x-axis results stay in the log as a record of the search.

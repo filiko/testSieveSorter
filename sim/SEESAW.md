@@ -86,6 +86,39 @@ What it shows:
 
 Angle, period and profile are still assumptions. This is one seed with the default friction, so read it as "the motion works and sorts", not as a percentage to quote (SYSTEM.md §5).
 
+## Seesaw + vibration: does a buzz move the stuck quinoa and chia? (12:30)
+
+The 11:20 angle renders (PLAN.md) left half the quinoa and most of the chia on the 5 mm tray at every angle from ±5° to ±15°. A gentle seesaw is below the ~22° at which grains slide on plastic, so they sit on solid ribs instead of finding a hole. This test puts a 40 Hz vertical buzz of the whole tower on top of the ±10° seesaw.
+
+```
+wsl: python sorter.py --design inserts:5mm,2mm,pitch=85 --mix pasta=8,chickpea=4,rice=12,white_rice=12,brown_rice=12,black_rice=12,wild_rice=10,quinoa=20,couscous=20,chia=25 --stroke seesaw:deg=10,period_s=2,vib_mm=0.3,vib_hz=40 --duration 8 --dt 0.000125 --timeconst 0.00025 --fps 30 --out out/runs/vib_a0.3
+```
+
+All 10 grain kinds (135 grains), 5 mm over 2 mm over the catch pan at an 85 mm pitch, ±10° at constant speed, 2 s per cycle, neighbours in opposite phase. After a 1 s settle, 8 s of seesaw (4 cycles). End counts, on 5 mm / on 2 mm / in the catch / lost:
+
+| kind (n) | buzz 0.15 mm (1.0 g) | buzz 0.3 mm (1.9 g) | buzz 0.5 mm (3.2 g) |
+|---|---|---|---|
+| pasta (8) | **8** / 0 / 0 / 0 | **8** / 0 / 0 / 0 | **8** / 0 / 0 / 0 |
+| chickpea (4) | **4** / 0 / 0 / 0 | **4** / 0 / 0 / 0 | **4** / 0 / 0 / 0 |
+| rice (12) | 4 / 7 / 1 / 0 | 0 / 2 / 10 / 0 | 0 / 3 / 9 / 0 |
+| white_rice (12) | 3 / 7 / 2 / 0 | 0 / 4 / 7 / 1 | 0 / 6 / 6 / 0 |
+| brown_rice (12) | 1 / **11** / 0 / 0 | 0 / **10** / 2 / 0 | 0 / **11** / 1 / 0 |
+| black_rice (12) | 0 / **12** / 0 / 0 | 0 / **12** / 0 / 0 | 0 / **12** / 0 / 0 |
+| wild_rice (10) | 2 / 6 / 2 / 0 | 0 / **8** / 2 / 0 | 0 / **9** / 1 / 0 |
+| quinoa (20) | 0 / 3 / **17** / 0 | 0 / 0 / **20** / 0 | 0 / 0 / **20** / 0 |
+| couscous (20) | 0 / 0 / **20** / 0 | 0 / 0 / **20** / 0 | 0 / 0 / **20** / 0 |
+| chia (25) | 2 / 0 / **23** / 0 | 0 / 0 / **24** / 1 | 0 / 0 / **25** / 0 |
+
+What it shows:
+
+1. **A buzz of 0.3 mm or more clears the 5 mm tray of everything that should pass.** No quinoa, couscous or chia is left on 5 mm after t = 3 s. All of the quinoa and couscous and 24–25 of the 25 chia end in the catch. At 0.15 mm (1 g) 2 chia and a few rice grains still sit on the 5 mm ribs.
+2. **The cost is the long white rices on 2 mm.** The buzz stands the 2.0 mm wide `rice` and `white_rice` grains up in the 2 mm holes. At 0.3 mm, 10 of 12 `rice` and 7 of 12 `white_rice` reach the catch, against 1 and 2 at 0.15 mm. The sim's ideal rule puts both kinds in the catch anyway, since they fit a 2 mm square hole corner to corner (see the demo run above). Brown, black and wild rice stay on 2 mm at every amplitude.
+3. **Pasta and chickpea stay on 5 mm in every case.**
+4. **It's stable.** There were no resets, the largest overlap was 0.21 mm on the trays and 0.07 mm between particles, and the boxes never came closer than 28.4 mm.
+5. **The no-buzz baseline from this exact setup is missing.** That run was stopped when the machine ran low on memory, before it wrote anything. The only no-buzz reference is the 11:20 renders (9 kinds, the same pitch and period, 8 s).
+
+One seed, default friction, uncalibrated (SYSTEM.md §5). Read it as "the buzz moves the stuck fines", not as percentages. Ribs across the tilt (bambu's `5mm_across` insert) haven't been tried here yet.
+
 ## Limits
 
 - The trays are driven exactly, so nothing about the motor, pins, lever or frame is modelled (SYSTEM.md §5).

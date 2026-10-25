@@ -491,3 +491,22 @@ In both, the loose-printer variant (openings 0.05 mm under nominal instead of 0.
 
 P-6e03ce14 (plinko 4.1 / 1.6, firmware at 25 deg) scores 0.958 but falls to 0.826 at a 0.02 s reversal, so it ranks just below.
 
+## Design invariant from the user: a stack of baskets (notes, 2026-10-25 09:30)
+
+The user restated what the sorter *is*: a stack of baskets. Specimens fall through the levels, and everything of one size class ends up on **one level's removable tray**. That tray is then lifted out by its side extensions (the pull tabs) and placed straight into the next step.
+
+This is a hard constraint on every family, current and future:
+1. **One class per level, on a removable tray.** Each bin is a tray that lifts out whole. In the sim, a class's bin is exactly one level's zone. The catch at the bottom is a tray as well (plinko's `layer_3_catch`, the holder-tower's catch pan).
+2. **Pull tabs stay, and stay reachable.** No family may drop or bury them.
+   - The insert and gated-container tabs sit in the holder's finger notches; bambu cut the gated container's TAB_TOP to 21 mm so the tabs clear the box above.
+   - Plinko's tabs rise above the rim through slots in the layers above.
+   - `gated_mid` keeps its strip and rails out of the tab zone (|x| >= 13.15 mm).
+3. **A specimen has to sit loose on its tray, not wedged in its floor.** A grain stuck in rods, holes or mesh won't tip out when the tray is moved to the next step. The sim already counts any particle whose centre is inside a tray's floor, a strip, a slot or a ledge as **jammed** ("between"). That costs it its class's recovery plus a jam penalty, so the score favours trays you can pick up and empty cleanly.
+
+All three current winners meet this: **0 jammed and 0 lost in all 9 runs each**.
+- P-ae394887, plinko: pasta and chickpea 144/144 on layer 1, rice 270/270 on layer 2, quinoa 270/270 on the catch tray.
+- G-a1ecf9bb, gated_mid: the same counts in L1 / L2 / catch.
+- P-ba5dd6b3, plinko on the firmware stroke: 144 / 270 / 261 with 9 quinoa held a level up, none jammed.
+
+Today's glued mesh, by contrast, jams 3.2 grains and 17 insects per run in its mesh. Those are exactly the specimens that don't come out when the tray is lifted.
+

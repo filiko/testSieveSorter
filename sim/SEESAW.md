@@ -85,4 +85,4 @@ Angle, period and profile are still assumptions. This is one seed with the defau
 - The trays are driven exactly, so nothing about the motor, pins, lever or frame is modelled (SYSTEM.md §5).
 - Particles that bounce out between boxes fall to the invisible tub floor and count as `lost`.
 - Seesaw runs are slow cycles (seconds). The stiff contact settings (dt 0.125 ms, time constant 0.25 ms) are for the 100 mm drops between levels, not for the rocking itself.
-- The optimizer's `rocking()` wrapper on `design-opt` turns every particle in one shared tilted frame, so it can't alternate levels (SYSTEM.md §5). It can switch to emitting `{"profile": "seesaw", "deg": ..., "period_s": ...}` and drop the wrapper. The key is deliberately not its `stroke["rock"]`, so the two can't both act on one run.
+- The optimizer's `rocking()` wrapper in `optimize.py` (`stroke["rock"]` with profile `none`) turns every particle in one shared tilted frame, so it can't alternate levels (SYSTEM.md §5). It can switch to emitting `{"profile": "seesaw", "deg": ..., "period_s": ...}` and drop the wrapper. The key is deliberately not its `stroke["rock"]`, so the two can't both act on one run.

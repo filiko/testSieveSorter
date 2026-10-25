@@ -30,3 +30,10 @@ Bambu Studio is installed, `slice.py hole_gauge` prints an estimate, the gated-c
   - **Where the force is:** peak contact force p90 was 241 mN over the run, against 27 mN while still bonded in the clump. This agrees with the clump session's finding that the drops between levels (85 mm here) hit harder than the break-up. The sim's force units aren't calibrated; they only rank designs.
   - If the clump session records an insect clump, it should replace this one in the pitch.
 - Re-render the first two from the seesaw session's final all-grain run once it's on `main`, if the team prefers the current 5 / 2 mm parts in the pitch.
+
+## The breaker to print, 13:40 (PLAN.md 13:30)
+- **B-164f355a**, the optimizer's verified #1: `breaker_o11p3_b1p6_d3p1_h8_p8p5_round`, 57 min, 19.6 g. It's item 1 in `sim/opt/print_plan.md`. `cad/winners.py ../sim/opt/winners_malaise.json` builds and slices all three malaise winners into `sim/opt/print_plan_malaise.md`, and its Winner 1 is this one.
+- **Clip:** `media/hero_optimizer_breaker.mp4` (close-up at 1/4 speed, captioned "MuJoCo sim, uncalibrated") and `media/hero_optimizer_breaker_tower_1x.mp4`. The run is `sim/out/runs/hero_malaise_B-164f355a`: the malaise grain clump (54 grains, a leaf, 2 twigs, 6 dirt grains, medium bonds) on its own stroke, ±7°, 1.1 s, with a 0.35 mm, 40 Hz buzz.
+  - **Break-up:** 100% free, t50 = 0.07 s, t90 = 0.23 s, largest cluster 1.
+  - **Debris:** the leaf stays on the breaker, the twigs on 5 mm, and 5 of 6 dirt grains reach the catch.
+  - **The cost:** peak-force p90 was 815 mN, against 68 mN in the clump. The fast 1.1 s cycle hits hardest, and the drops between levels dominate, as the clump session found. The units aren't calibrated.

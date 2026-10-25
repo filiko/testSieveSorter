@@ -305,3 +305,25 @@ The insects are the generated specimens of `sim/insects.py`, with textbook sizes
 
 **Hypothesis (a question for the team, not for the optimizer):** BugPicker's real constraint is whether a specimen fits a 96-well, which is width-driven (`.claude/skills/sieve-gate-design/references/well-fit.md`). Gates can cut width; nothing in the stack cuts length. Classes defined by width, or "fits a well / doesn't", would be sortable. That's the team's call. Until then the insect study gets the leftover compute: one cross-entropy round after demo round 4.
 
+## Verification of the flagged demo leaders (notes, 2026-10-25 08:10)
+
+`verify` reran the four best flagged designs at dt 0.125 ms and timeconst 0.25 ms (half the contact softness), 3 friction sets x 3 seeds, 30 s:
+
+| id | standard: robust, flags | stiff: robust, flags | verdict |
+|---|---|---|---|
+| P-ae394887 plinko 3.7 / 1.5, sine 48 Hz 2.2 g 20 deg | 0.999, 1/9 flagged | **1.000**, none (max gate overlap 0.077 mm, threshold 0.13) | **clean** |
+| P-668db784 plinko 3.5 / 1.6, sine 14 Hz 2.0 g | 0.998, 3/9 | 1.000, 1/9 | still flagged |
+| G-060cecb0 gated_mid, window 3.1 x 3.1 | 0.955, 9/9 | 0.940, 9/9 | still flagged |
+| P-547508e5 plinko 3.1 / 1.7, sine 46 Hz 1.3 g 35 deg | 0.937, 1/9 | 0.927, none | **clean** |
+
+The scores barely move with stiffer contacts, so the ranking wasn't an artefact of soft contacts. P-ae394887 and P-547508e5 become eligible. G-060cecb0 stays flagged for a real reason: its 2.95 mm window is within 0.04 mm of a grain dimension, so any print error flips that grain's routing. That's a sim-trust flag and a printability warning in one.
+
+**winners.json now:**
+1. P-ae394887, plinko, vibrating tool;
+2. P-ba5dd6b3, plinko, firmware stroke;
+3. P-547508e5, plinko, vibrating tool.
+
+Best per drive: firmware P-ba5dd6b3 (0.929), vibrating tool P-ae394887 (1.000 verified).
+
+**Next:** demo round 3 (running); then the stress test of these winners (reversal time 0.005 / 0.02 s for the firmware one, printer undersize 0.05 / 0.25 mm for all); then round 4.
+

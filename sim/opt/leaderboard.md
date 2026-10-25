@@ -1,6 +1,6 @@
 # Leaderboard: Demo set: surrogate grains (pasta + chickpea / rice / quinoa)
 
-Generated 2026-10-25 07:14 by `sim/optimize.py` (study `demo`). 136 candidates, 1557 sim runs so far.
+Generated 2026-10-25 08:04 by `sim/optimize.py` (study `demo`). 136 candidates, 1593 sim runs so far.
 
 **The sim ranks designs; it does not predict real percentages.** It is uncalibrated until `calibrate.py` has bench counts, has no water, rigid particles, and about 80 particles per run. Sizes are simulated at the as-printed opening, nominal - 0.15 mm (ASSUMED until the hole gauge is measured).
 
@@ -40,6 +40,17 @@ Ranked by the robust score (mean - 1 sd) over 3 friction sets x 3 seeds at the f
 | I-f660966d | printed inserts as in the repo: 5 mm / 2 mm square holes, firmware cap stroke | 0.714 | 0.824 +/- 0.110 | 0.729 | 89% / 100% | 98% / 88% | 89% / 92% | 0.0 | 0.0 | 7.7 (6/9) | PEN 9/9 (clr 0.01, pen 0.178) | `inserts:h4p85b1p35,h1p85b1p15` |
 | C-243bf513 | TODAY on the bench: glued mesh inserts mesh5 / mesh2, firmware cap stroke | 0.523 | 0.608 +/- 0.085 | 0.575 | 100% / 100% | 100% / 67% | 78% / 94% | 3.2 | 0.0 | 5.0 (1/9) | PEN 6/9 (clr 0.12, pen 0.153) | `inserts:mesh5,mesh2` |
 | D-e018f15d | DEMO RIG the team built: one 5 mm printed insert, up and down (sine 20 Hz, 2 g, 90 deg; assumed tool motion, sim/VERTICAL.md) | 0.499 | 0.499 +/- 0.000 | 0.499 | 100% / 100% | 50% / 100% | 50% / 100% | 0.0 | 0.0 | 0.6 (9/9) | ok | `inserts:5mm` |
+
+## Verification of flagged leaders at stiffer contacts
+
+Rerun at dt 0.125 ms and contact timeconst 0.25 ms (half the overlap of the standard solver), same 3 friction sets x 3 seeds, 30 s. A design that comes back with no flagged or failed run counts as clean for `winners.json`, ranked by the lower of its two scores.
+
+| id | family | robust (standard) | flags (standard) | robust (stiff) | flags (stiff) | verdict | design |
+|---|---|---|---|---|---|---|---|
+| P-ae394887 | plinko | 0.999 | PEN 1/9 (clr 0.26, pen 0.153) | 1.000 | ok | clean | rods L1 gap 3.7 (rod 2.6 wide, 1.6 tall) / L2 gap 1.5 (rod 1.8, 2.4) |
+| P-668db784 | plinko | 0.998 | PEN 3/9 (clr 0.24, pen 0.205) | 1.000 | PEN 1/9 (clr 0.24, pen 0.125) | still flagged | rods L1 gap 3.5 (rod 3.7 wide, 2 tall) / L2 gap 1.6 (rod 2.9, 2.2) |
+| G-060cecb0 | gated_mid | 0.955 | PEN 9/9 (clr 0.04, pen 0.130) | 0.940 | PEN 9/9 (clr 0.04, pen 0.083) | still flagged | L1 w3.1x3.1 / L2 t1.8; slope 0.3 deg, tunnel width 8.3, tooth 1.1, L1 gate at x 31.8 with slot 7.4, L2 at x 53, unflipped |
+| P-547508e5 | plinko | 0.937 | PEN 1/9 (clr 0.14, pen 0.098) | 0.927 | ok | clean | rods L1 gap 3.1 (rod 2.8 wide, 1.8 tall) / L2 gap 1.7 (rod 2.3, 1.8) |
 
 ## Best per drive
 

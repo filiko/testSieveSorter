@@ -20,5 +20,6 @@
     80.0
   ],
   "gate_x_mm": 53.0,
+  "beyond_slot": "45 deg ramp",
   "gate_end": "+X; flip 180 deg on alternate tower levels"
 }

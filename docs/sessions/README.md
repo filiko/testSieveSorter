@@ -27,3 +27,11 @@ Options; the user decides which one:
 3. Conda-forge builds. Probably also unsigned, so they'd likely be blocked too. Only worth a quick check.
 
 Whichever option is chosen, record it here so the other session doesn't redo the work.
+
+**Chosen (2026-10-25, bambu session): option 1, WSL2.** Smart App Control is still on. The setup:
+- WSL distro `Ubuntu` (26.04, ships Python 3.14). uv installed in `~/.local/bin`. Venv `~/venvs/sieve` is Python 3.12 from `requirements.txt` (cadquery, mujoco, vtk all import).
+- Run from Git Bash or PowerShell, repo stays on the Windows side:
+  `wsl -d Ubuntu -- bash -lc 'cd /mnt/c/Users/ajfil/Documents/Github/<worktree>/cad && ~/venvs/sieve/bin/python gated_container.py'`
+  (From Git Bash, set `MSYS_NO_PATHCONV=1` first, or the `/mnt/c` path gets rewritten.)
+- VTK previews render through WSLg. Ignore the `bad X server connection` warning; the PNGs come out fine.
+- `slice.py` runs on the **Windows** venv: it no longer imports cadquery, and Bambu Studio is a signed Windows app. So build in WSL, then slice in Windows.

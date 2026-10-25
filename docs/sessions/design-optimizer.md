@@ -2,7 +2,12 @@
 
 **Goal:** a loop that proposes design variants, runs them in the MuJoCo sim, scores them, and keeps improving. Its output is a ranked shortlist of designs with parameters the CAD can build directly. This is the main deliverable for the rest of the hack. Submission is Sun Oct 25 at 2:30 PM PT.
 
-**Owner:** the physics session runs the optimizer. It owns the sim, the WSL venv `~/venvs/sieve` and the CPU. The bambu session builds and slices whatever wins.
+**Owner:** a dedicated **optimizer session**: worktree `Documents\Github\testSieveSorter-opt`, branch `design-opt`. The bambu session builds and slices whatever wins. The physics session (`physics-bench`) keeps working on benchmarking and the stroke and stays available as an extra hand.
+
+**Sharing with physics:**
+- MuJoCo runs in WSL2 (Ubuntu): venv `~/venvs/sieve`, uv-managed Python 3.12, with mujoco 3.17.0 and cadquery 2.8.0. Use it as is, don't recreate it, and log any package you add in `sim/opt/LOG.md`.
+- Physics has uncommitted edits to `sim/sweep.py`. **Import from `sweep.py`; don't edit it.**
+- Cap the optimizer at **16 parallel workers**, so the physics benchmarks keep some cores.
 
 ## Timeline (PT)
 - **~09:00:** the optimizer runs end to end on one design family. First leaderboard on `main`.

@@ -507,7 +507,9 @@ def propose(family, n, rnd, rng, existing, study="demo", fresh=False):
             raw = {}
             for q in ps:
                 if q.choices:
-                    w = dist["cat"].get(q.name, [1.0 / len(q.choices)] * len(q.choices))
+                    w = dist["cat"].get(q.name)
+                    if not w or len(w) != len(q.choices):
+                        w = [1.0 / len(q.choices)] * len(q.choices)
                     raw[q.name] = q.choices[rng.choice(len(q.choices), p=w)]
                 elif q.name not in dist["mean"]:
                     raw[q.name] = q.lo + rng.random() * (q.hi - q.lo)
@@ -546,7 +548,7 @@ def ce_update(family, cands, summaries, rng, study="demo"):
             w = counts / counts.sum()
             w = np.maximum(w, 0.15)
             w /= w.sum()
-            if old and q.name in old["cat"]:
+            if old and len(old["cat"].get(q.name, [])) == len(q.choices):    # a categorical that gained a choice restarts
                 w = 0.7 * w + 0.3 * np.array(old["cat"][q.name])
             cat[q.name] = (w / w.sum()).tolist()
             continue

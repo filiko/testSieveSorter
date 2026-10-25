@@ -10,6 +10,7 @@ numbers, in nominal (CAD) sizes:
              "mid_slot_PROPOSAL" (L<n>_GATE_X, L<n>_slot_mm, flip_levels) builds one container per level
     plinko   plinko_layers.py: "LAYERS" rows, top first
     inserts  sieve_insert.py: "INSERTS", coarse first
+    breaker  breaker_layer.py: "spec" (breaker:open=..,bar=..,...), built and flagged by the script itself
 The script is imported fresh for each winner, those tables are replaced, and the script's own builders
 make the parts, so a winner is built exactly like the hand-made parts. Each winner also gets a preview
 of its assembled tower. Printability flags go into the checks and into out/winners_build.json.
@@ -108,7 +109,16 @@ def insert_tower(si, names):
     return half(stack), {"preview_only": True, "levels_top_first": names}
 
 
-BUILDERS = {"gated_container.py": gated, "plinko_layers.py": plinko, "sieve_insert.py": inserts}   # by cad.file
+def breaker(cad):
+    bl = fresh("breaker_layer")
+    p = bl.spec(cad["spec"])
+    parts = {bl.name(p): lambda: bl.layer(p)}
+    previews = {"preview": lambda: bl.preview(p)}
+    return parts, previews, bl.layer(p)[1]["printability_flags"]
+
+
+BUILDERS = {"gated_container.py": gated, "plinko_layers.py": plinko, "sieve_insert.py": inserts,
+            "breaker_layer.py": breaker}   # by cad.file
 
 
 def main():
@@ -116,8 +126,9 @@ def main():
     data = json.loads(src.read_text(encoding="utf-8"))
     study = data.get("study", "demo")
     built = {"source": str(src), "study": study, "built": f"{datetime.now():%Y-%m-%d %H:%M}",
-             "caveat": data.get("caveat"), "undersize_mm_assumed": data.get("undersize_mm_assumed"), "winners": []}
-    for w in data["winners"]:
+             "caveat": data.get("caveat") or data.get("note"), "undersize_mm_assumed": data.get("undersize_mm_assumed"), "winners": []}
+    for i, w in enumerate(data["winners"], 1):
+        w = {**w, "rank": w.get("rank") or i}          # the malaise study leaves rank null: file order is rank
         script = Path((w.get("cad") or {}).get("file", "")).name     # the family name can be a variant (gated_mid)
         if script not in BUILDERS:
             print(f"build_winners: rank {w['rank']}: no CAD builder for {script or 'a winner without cad.file'} "
@@ -127,7 +138,8 @@ def main():
         parts, previews, flags = BUILDERS[script](w["cad"])
         entry = {k: w.get(k) for k in ("rank", "id", "family", "sim_spec", "stroke", "stroke_human", "score",
                                        "params_nominal")}
-        entry.update({"assembly": w["cad"].get("tower"), "flags": flags, "parts": []})
+        entry.update({"assembly": w["cad"].get("tower"), "flags": flags, "parts": [],
+                      "family": w.get("family") or script.split("_")[0]})
         for name, make in [*parts.items(), *previews.items()]:
             part, info = make()
             out = prefix + name

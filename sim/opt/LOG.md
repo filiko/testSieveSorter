@@ -738,3 +738,22 @@ This overrides my 10:10 reading ("x matches attached at the mid points"). So rou
 - **Each level hinged in the lab frame.** SYSTEM.md gives this to the new seesaw session (`sim/rocking.py`); its results supersede this round's for multi-tray designs.
 
 **Next:** a y-axis round at 10-30 deg on the seesaw session's model. The x-axis results stay in the log as a record of the search.
+
+## Restart on the alternating seesaw (notes, 2026-10-25 12:40)
+
+**PLAN.md (11:45):** rerun the search on `rocking.py`'s `seesaw:` stroke, where each tray rocks on its own hinge across its middle (axis y) and neighbours run in opposite phase. My `rocking()` wrapper turns every particle in phase, which is wrong for a stack. It stays only for the old `rock` drive.
+
+**New study `seesaw`** (`optimize.py run --study seesaw --families plinko,inserts`):
+- Same grains and classes as `demo`.
+- The stroke parameters are the seesaw's: `ss_deg` 5-15 deg (the user's default is 10), `ss_period` 0.4-6 s, `ss_shape` constant_speed or sine. The inserts family also searches `pitch` 80-110 mm.
+- At +/-15 deg, neighbouring boxes touch at 72 mm pitch with the +X tab (`rocking.py`), and 85 mm leaves 13 mm. A run whose trays touch counts as a failure.
+- References, on the default seesaw (+/-10 deg, 2 s, constant speed, 85 mm apart): the demo rig (printed 5 / 2 mm), today's glued mesh, plinko as in the repo, and the demo study's leader P-b192da7c.
+- **Plinko is one holder box,** so it rocks as one level on one hinge, all three layers in phase (`one_box_seesaw`, patched in the child process so `rocking.py` stays the seesaw session's). Gated is left out: round 7 showed it can't sort on a symmetric seesaw.
+- Screen 10 s, full 30 s, 12 workers.
+
+**Speed fix in `sorter.py` (executed):** a seesaw run was about 30x slower per step than a translation run: plinko took 99 s for 1 s of sim against 3.6 s. The cause:
+- Every contact touches a level's hinge DOF.
+- The level bodies came after the particles, so MuJoCo's factorization (which eliminates from the last DOF) filled the Newton Hessian in densely.
+- The fix puts the level bodies first. That took 5.1 s for the same run, with the same counts to within one grain, and Newton iterations unchanged (about 9 per step).
+- CG instead doesn't converge with the levels' 1e10 armature (grains fell through the floor in the test), and PGS took 61 s.
+- The recording is unchanged: `pbodies` and `write_recording` skip the level bodies at the front now.

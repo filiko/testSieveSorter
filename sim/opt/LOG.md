@@ -184,3 +184,11 @@ References, never tuned: the README design with the existing strips (w5.0 / t1.4
 
 **Structural hypothesis, revived by the angle: the unflipped mid-slot tower (`gated_mid`).** An angled throw is how a vibratory conveyor moves material in one direction, and it could cure the gated tower's transport problem. But the throw conveys toward the same end of every level, while today's tower flips every other level, so L2's grains would be conveyed away from L2's gate. The mid-slot layout tested at 06:30 keeps every gate at +X (L1's gate at mid-length with its drop slot, L2 unflipped at the end). It was useless under the firmware stroke, but it is the layout a directional throw needs. Round 2 adds it as the family `gated_mid` (Latin hypercube, 16 candidates): L1 gate x 14-38 mm (the strip has to clear the pull tabs) with a 6-14 mm slot ending at least 7 mm upstream of L2's strip, plus the whole stroke space.
 
+## Constraint from the bambu session: rods and teeth at least two print lines (notes, 2026-10-25 07:00)
+
+Bambu's `cad/build_winners.py` (branch `bambu-viz`, PR #4) flags rods, teeth and bars narrower than 0.8 mm (two 0.4 mm extrusion lines) as fragile, and openings under 0.8 mm as likely to close up on the first layer. Plinko rods taper 8 deg, so a tall, thin rod gets narrow at the bed. I adopted this as a hard constraint (`MIN_LINES`): a rod's width at the bed, top width - 2 x height x tan 8 deg, must be at least 0.8 mm. Winner selection re-checks every candidate against today's constraints.
+
+Effect: two of round 1's top 3 drop out of `winners.json`, but stay on the leaderboard. P-63092ca9 (0.915) has layer-2 rods 1.6 wide and 3.4 tall, 0.64 mm at the bed. P-7e49fbec (0.860) has layer-1 rods 1.5 wide and 3.2 tall, 0.60 mm at the bed. Both have feasible neighbours (shorter rods), which round 3's proposals will find. The insect study's smallest openings go up from 0.6 to 0.8 mm for the same reason.
+
+The `gated_mid` CAD block now keeps `GATE_X` scalar (L2, what today's script builds) and puts L1's position in `mid_slot_PROPOSAL`, so `build_winners.py` doesn't break on it. A mid-slot winner needs new L1 geometry first (`buildable_with_todays_cad: false`).
+

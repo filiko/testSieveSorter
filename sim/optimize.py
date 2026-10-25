@@ -81,6 +81,7 @@ PROMOTE = 0.2
 UNDERSIZE_MM = 0.15              # ASSUMED: nominal minus printed opening (XY); replace with hole_gauge data
 Z_STEP, XY_STEP = 0.2, 0.1       # layer height for vertical features; opening step
 MIN_FEATURE = 0.4
+MIN_LINES = 0.8                  # bambu's build_winners.py: thinner rods / teeth / bars than two 0.4 mm lines are fragile
 W_JAM, W_LOST, W_T90 = 0.5, 1.0, 0.05
 FAIL_SCORE = -1.0
 MIN_WINNER = 0.5                 # a winner must be a working sorter: worst class at about 50% or better
@@ -220,15 +221,17 @@ def gated_mid_ok(p):
 
 def gated_mid_cad(p):
     out = gated_cad(p)
-    out["constants"]["GATE_X"] = {"L1": p["gx1"], "L2": MID_L2_X}
+    out["constants"]["GATE_X"] = MID_L2_X      # what today's script builds: L2. L1 is in the proposal below
+    out["buildable_with_todays_cad"] = False
     out["tower"] = [f"L1 (top): {list(out['STRIPS'])[0]} at x {p['gx1']:g}, drop slot {p['slot']:g} mm, wedge beyond",
                     f"L2 (NOT flipped): {list(out['STRIPS'])[1]} at x {MID_L2_X:g}, standard slot and ramp",
                     "catch pan under L2"]
-    out["mid_slot_PROPOSAL"] = (
-        "not in gated_container.py yet: L1 needs its strip rails at GATE_X = gx1 and its drop slot from the strip's "
+    out["mid_slot_PROPOSAL"] = {"L1_GATE_X": p["gx1"], "L1_slot_mm": p["slot"], "L2_GATE_X": MID_L2_X,
+                                "L2_slot_mm": MID_L2_SLOT, "flip_levels": False, "description": (
+        "not in gated_container.py yet: L1 needs its strip rails at GATE_X = L1_GATE_X and its drop slot from the strip's "
         "downstream face for `slot` mm (|y| < OPEN_Y), then a solid wedge from the slot's far edge to the +X end wall, "
         "rising at 30 deg from a 0.4 mm lip and capped 2 mm under the wall top. L2 is the standard container. Levels "
-        "are not flipped. Sim: sim/designs_gated.py gx= / slot= / flip=0.")
+        "are not flipped. Sim: sim/designs_gated.py gx= / slot= / flip=0.")}
     return out
 
 
@@ -259,8 +262,8 @@ def plinko_show(p):
 def plinko_ok(p):
     taper = math.tan(math.radians(8.0))
     for b, h in ((p["b1"], p["h1"]), (p["b2"], p["h2"])):
-        if b - 2 * h * taper < MIN_FEATURE:
-            return "rod bottom under 0.4 mm (rods taper 8 deg)"
+        if b - 2 * h * taper < MIN_LINES:
+            return "rod bottom under 0.8 mm, two print lines (rods taper 8 deg; bambu's build_winners.py flag)"
     if p["g1"] <= p["g2"] + 0.5:
         return "layer 1 gap must be well above layer 2's"
     return None
@@ -346,11 +349,11 @@ FAMILIES = {
 # bodies over 6 mm (about 2-3 mm thick; gatecalc t2.75 effective), L2 keeps 2-6 mm (cut near 1 mm; gatecalc w1.05).
 STUDY_RANGES = {
     "insects": {
-        **{fam: {"s1": P("s1", 1.8, 4.2, XY_STEP), "k2": P("k2", 0, 0, 0, ("w", "t")), "s2": P("s2", 0.6, 1.6, XY_STEP),
+        **{fam: {"s1": P("s1", 1.8, 4.2, XY_STEP), "k2": P("k2", 0, 0, 0, ("w", "t")), "s2": P("s2", 0.8, 1.6, XY_STEP),
                  "gh": P("gh", 1.2, 8.0, XY_STEP), "tw": P("tw", 2.0, 10.0, XY_STEP)}
            for fam in ("gated", "gated_rib", "gated_mid")},
-        "plinko": {"g1": P("g1", 1.6, 4.2, XY_STEP), "g2": P("g2", 0.6, 1.6, XY_STEP), "b2": P("b2", 0.8, 3.0, XY_STEP)},
-        "inserts": {"a1": P("a1", 1.8, 4.5, XY_STEP), "a2": P("a2", 0.6, 1.8, XY_STEP)},
+        "plinko": {"g1": P("g1", 1.6, 4.2, XY_STEP), "g2": P("g2", 0.8, 1.6, XY_STEP), "b2": P("b2", 0.8, 3.0, XY_STEP)},
+        "inserts": {"a1": P("a1", 1.8, 4.5, XY_STEP), "a2": P("a2", 0.8, 1.8, XY_STEP)},
     },
 }
 
@@ -1070,14 +1073,15 @@ def ranking(cands, summ, exclude_refs=True):
 def winners_json(study, cands, summ):
     """Top 3 among full-run candidates with no failed and no flagged run (the rule is fixed, not tuned)."""
     working = [c for c in ranking(cands, summ) if c["family"] in FAMILIES and not summ[c["id"]]["full"]["fails"]
-               and summ[c["id"]]["full"]["robust"] >= MIN_WINNER]
+               and summ[c["id"]]["full"]["robust"] >= MIN_WINNER
+               and not FAMILIES[c["family"]]["ok"](c["params"])]    # constraints added since still apply
     clean = [c for c in working if not summ[c["id"]]["full"]["flagged"]]
     flagged = [c for c in working if summ[c["id"]]["full"]["flagged"]]
     eligible = clean[:3] + flagged[:max(0, 3 - len(clean))]     # fill with flagged ones only if needed, marked
     out = {"study": study, "title": STUDIES[study]["title"], "exploratory": STUDIES[study]["exploratory"],
            "generated": f"{datetime.now():%Y-%m-%d %H:%M}",
            "rule": f"top 3 by robust full-run score (mean - 1 sd over 3 friction sets x 3 seeds, 30 s) among working "
-                   f"sorters (robust >= {MIN_WINNER}, no failed run) with no penetration-flagged run; if fewer than 3 "
+                   f"sorters (robust >= {MIN_WINNER}, no failed run, meeting today's print constraints) with no penetration-flagged run; if fewer than 3 "
                    "qualify, the rest are the best working flagged ones, marked flagged (see opt/LOG.md for how this "
                    "rule came about)",
            "caveat": "sim ranking only; uncalibrated; openings simulated at nominal - "

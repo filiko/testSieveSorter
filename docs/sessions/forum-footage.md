@@ -8,6 +8,12 @@ That's the main checkout, not your worktree. Read them from there. `media/` is *
 
 **What's there:** 4 photos (`IMG_1315/1316/1318/1320.JPG`, 640×480) and 1 video, `IMG_1319.MOV`: 1920×1080 h264 at 30 fps, **1.1 s long, 33 frames** (recorded 2026-10-25 01:29 UTC). That's short. It may not show a full stroke, and at 30 fps it can't resolve `ramp_s` (about 33 ms per frame). Say what the clip can and can't show; don't stretch it.
 
+## Findings so far (physics session, checked against the photos)
+- **The drive is a handheld DeWalt 20V MAX cordless tool** (it looks like a compact reciprocating saw; the model isn't readable) with the printed square-grid tray bolted on. It isn't the stepper firmware stroke the sim models.
+- **In the clip the tool is idle.** The only motion is about ±1–2 mm of handheld wobble, so there's no stroke to extract, and `stroke_forum.csv` was **not** written. `sim/stroke_from_video.py` is built and self-tested, ready for a clip with the tool running.
+- **What's needed from the team:** the tool's model (rated strokes/min and stroke length give a better stroke than the firmware guess), plus a clip with the tool running: on a tripod, side-on, with a ruler in frame, in slow motion if possible.
+- **For Part 2 (bambu):** don't pair the idle clip with a shaking sim; it would mislead. Use a photo of the real rig (a still) next to the sim replay, labelled as such, until a running clip exists.
+
 Camera or vision simulation is **not** a track requirement. BioKEA judges three clean size classes. The footage is for two things, and the user chose both. Deadline: submission Sun Oct 25 at 2:30 PM PT.
 
 ## Part 1: real stroke from the video (physics session, `physics-bench`)

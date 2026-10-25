@@ -239,7 +239,7 @@ The `gated_mid` CAD block now keeps `GATE_X` scalar (L2, what today's script bui
 
 The best on BioKEA's firmware stroke is P-ba5dd6b3, plinko 5.6 / 1.6 at 9.5 mm and 47 mm/s, 5 deg up: 0.929. A small, fast vibration keeps every grain hopping over the rods or slots, so each gets many chances at a gap per second. The firmware stroke gives at most a ~1 g jolt 2.5 times a second.
 
-**The structural hypothesis held.** Under the firmware stroke the gated tower couldn't move grain (best 0.07). The unflipped mid-slot layout with an angled throw sorts at 0.955, with 99-100% recovery per class and t90 7.8 s. The throw conveys every level toward +X, and only the unflipped layout has every gate at +X. Today's flipped tower with the same kind of throw tops out at 0.33 in this round, because L2's grains are conveyed away from its gate.
+**The structural hypothesis held.** Under the firmware stroke the gated tower couldn't move grain (best 0.07). The unflipped mid-slot layout with an angled throw sorts at 0.955, with 99-100% recovery per class and t90 7.8 s. The throw conveys every level toward +X, and only the unflipped layout has every gate at +X. Today's flipped tower with a tool-drive throw scored -0.05 at best: all 4 such candidates were run at full length, at angles of 10-55 deg, and sorted almost nothing (checked against the run cache). L2's grains are conveyed away from its gate.
 
 **Why the losers failed (auto section above).**
 - **gated and gated_mid** bottom halves: 26-28 grains still on L1's floor. They are mostly firmware-drive candidates, so transport again.

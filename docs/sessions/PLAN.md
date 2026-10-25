@@ -22,6 +22,26 @@ Written by the main session at 11:45 PT, Oct 25. **Submission is at 14:30**; liv
 - **Half the quinoa and most of the chia sit on the 5 mm tray at every angle.** All the angles are below the ~22° at which grains slide on plastic, so a gentle seesaw barely moves them. They sit on solid ribs instead of finding a hole. ±15° sorts best of the three.
 - Fix options to test: a small fast vibration on top of the slow seesaw (the tool's buzz), longer runs, ribs running across the tilt instead of along it (the seesaw session saw grains ride X-ribs like rails), and taller catch-pan end walls (grains bounced out at 25°).
 
+## 13:00 update: the demo configuration
+Every final render and number for the pitch uses **the new seesaw parts plus the buzz**:
+- design `inserts:5mm_across,2mm_across,pitch=55,holder=seesaw` (PR #21);
+- stroke `seesaw:deg=10,period_s=2,vib_mm=0.3,vib_hz=40` (PRs #18 and #22).
+
+Why:
+- The ribs-across inserts cut the quinoa stuck on 5 mm from 7/12 to 1/12 (PR #24).
+- The buzz clears quinoa, couscous and chia off 5 mm (PR #22).
+- The 55 mm pitch cuts the drop impact by about 35%.
+- Known cost: the buzz pushes plain `rice` / `white_rice` through 2 mm. Say so.
+- Compare against the old parts with no buzz (`inserts:5mm,2mm,pitch=85`, `seesaw:deg=10,period_s=2`) as the before.
+
+**Memory:** the laptop hit 214 MB free at 12:53, and several batches were killed. Run **one seed at a time, ≤ 3 workers each**, and cache everything so a rerun resumes. The optimizer keeps its workers but should drop to 8 if memory goes under 2 GB.
+
+
+## 13:05 update: the optimizer's breaker is the hero part
+Malaise round 0 (PR #27, grain clump): optimizer leader B-32a7c82c, an 11.4 mm grid with 1.4 × 6.8 mm round pins every 8 mm, on a ±12° seesaw at 2.5 s with a 0.35 mm, 40 Hz buzz. Robust score **0.638, 97% freed, 85% sorted**. Compare: the CAD default + buzz 0.479, the default without buzz 0.287, no breaker 0.217. Final rounds end ~13:40.
+- **bambu:** once `sim/opt/winners_malaise.json` is final (~13:40), build and slice its #1 breaker with `cad/breaker_layer.py` (same keys). **Send it to the printer by ~13:50.** At about 90 min it's ready for the 15:30 live demo. Add it to the print plan, plus a clip of it breaking a clump (from its replay).
+- **optimizer:** after the final round, write the winner's replay (`view.html`) and say in `leaderboard_malaise.md` which stroke settings the bench should use.
+
 ## Next steps per session
 
 ### clump (`clump-sim`): critical path
@@ -33,7 +53,8 @@ Written by the main session at 11:45 PT, Oct 25. **Submission is at 14:30**; liv
 4. Workers ≤ 4.
 
 ### seesaw (`seesaw-tower`)
-1. **~12:15:** add a **seesaw + vibration** stroke: a slow alternating seesaw plus a small fast oscillation on top, both parametrised.
+0. **Now:** the final renders in the demo configuration above, with all 10 grain kinds. Do one before / after pair, PR it, and record the counts in SEESAW.md.
+1. **Done (PRs #18, #22):** add a **seesaw + vibration** stroke: a slow alternating seesaw plus a small fast oscillation on top, both parametrised.
    - Show whether it moves the stuck quinoa and chia off the 5 mm ribs.
    - Try ribs-across (when bambu has the spec) in the sim.
 2. **~12:30, the final demo renders:**

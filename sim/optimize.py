@@ -81,6 +81,8 @@ SCREEN_S, FULL_S = 8.0, 30.0
 DT, TIMECONST = 2.5e-4, 5e-4
 STIFF_DT, STIFF_TIMECONST = 1.25e-4, 2.5e-4   # `verify`: half the overlap, about 2x the wall time
 SEEDS = (0, 1, 2)
+SCREEN_SEEDS = SEEDS             # run --screen-seeds 1: screen on seed 0 only (slow seesaw runs)
+FULL_SEEDS = SEEDS               # run --full-seeds 2: the full runs on the first two seeds
 PROMOTE = 0.2
 UNDERSIZE_MM = 0.15              # ASSUMED: nominal minus printed opening (XY); replace with hole_gauge data
 Z_STEP, XY_STEP = 0.2, 0.1       # layer height for vertical features; opening step
@@ -115,6 +117,12 @@ STUDIES = {
 
 
 STUDIES["smoke"] = dict(STUDIES["demo"], title="smoke test (not a result)")
+# The rig's motion (SYSTEM.md section 3, the user at 10:50 and 11:20): each tray rocks about its own pivot across the
+# middle (axis y, the ends tip), neighbours in opposite phase, +/-5-15 deg. rocking.py's lab-frame hinges, one per
+# level; no translation. The stroke parameters are SEESAW_PARAMS instead of STROKE_PARAMS.
+STUDIES["seesaw"] = dict(STUDIES["demo"], seesaw=True,
+                         title="Demo set on the rig's seesaw: each tray rocks about its middle (the ends tip), "
+                               "neighbours alternate, +/-5-15 deg (rocking.py)")
 
 # ---------------------------------------------------------------- families
 
@@ -150,6 +158,17 @@ STROKE_PARAMS = [P("drive", 0, 0, 0, ("firmware", "tool", "rock")), P("amp", 5.0
 # Rounds up to 7 searched 2-20 deg with x as the default; only y-axis runs count as the rig's motor (RIG_ROCK_AXIS).
 ROCK_DEFAULT = {"rock_axis": "y", "rock_deg": 20.0, "rock_period": 1.6}
 RIG_ROCK_AXIS = "y"
+# The seesaw studies' stroke: rocking.py's seesaw: stroke, alternating levels. The user hasn't picked the angle from
+# the 5 / 10 / 15 deg renders (default 10), the period and profile are unmeasured: all searched. A one-box design
+# (plinko) rocks as one level (one_box_seesaw). Towers are spaced by pitch (box bottom to box bottom): at +/-15 deg
+# neighbours touch at 72 mm with the +X tab (rocking.py), and PLAN.md asks for 85-110.
+SEESAW_PARAMS = [P("ss_deg", 5.0, 15.0, 0.5), P("ss_period", 0.4, 6.0, 0.1),
+                 P("ss_shape", 0, 0, 0, ("constant_speed", "sine")), P("vib_mm", 0.0, 0.5, 0.05)]
+# vib_mm (from round 1): rocking.py's buzz of the whole tower on top of the seesaw, 40 Hz straight up (the tool's);
+# the seesaw session saw 0.3 mm (1.9 g) clear the stuck quinoa and chia off the 5 mm tray (SEESAW.md, 12:30).
+VIB_HZ = 40.0
+PITCH = P("pitch", 80.0, 110.0, 5.0)
+SEESAW_DEFAULT = {"ss_deg": 10.0, "ss_period": 2.0, "ss_shape": "constant_speed", "pitch": 85.0}
 FORCE_DRIVE = None                # run --drive rock: every new candidate (and reference) of this run uses that drive
 CE_DEFAULTS = {"drive": "firmware", "angle": 0.0}     # what a candidate without these params ran with
 
@@ -302,7 +321,7 @@ def insert_names(p):
 
 
 def inserts_spec(p):
-    return "inserts:" + ",".join(insert_names(p))
+    return "inserts:" + ",".join(insert_names(p)) + (f",pitch={p['pitch']:g}" if "pitch" in p else "")
 
 
 def inserts_inject(p):
@@ -378,6 +397,9 @@ def params_of(family, study):
     """The family's parameters for a study: its ranges with the study's overrides, plus the study's extras."""
     over = STUDY_RANGES.get(study, {}).get(family, {})
     base = [over.get(q.name, q) for q in FAMILIES[family]["params"]]
+    if STUDIES[study].get("seesaw"):
+        strokes = {q.name for q in STROKE_PARAMS}
+        base = [q for q in base if q.name not in strokes] + SEESAW_PARAMS + ([PITCH] if family == "inserts" else [])
     names = {q.name for q in base}
     return base + [q for n, q in over.items() if n not in names]
 
@@ -401,6 +423,21 @@ BASELINES = {
     ],
 }
 BASELINES["smoke"] = BASELINES["demo"]
+BASELINES["seesaw"] = [
+    ("plinko", "plinko_layers.py as in the repo: rods 5.0 / 1.4, one box on the default seesaw (+/-10 deg, 2 s)",
+     {"g1": 5.0, "b1": 2.4, "h1": 3.0, "g2": 1.4, "b2": 2.0, "h2": 2.6, **SEESAW_DEFAULT}),
+    ("plinko", "the demo study's leader P-b192da7c (rods 4.7 / 1.6, made for a 37 Hz tool) on the default seesaw",
+     {"g1": 4.7, "b1": 2.6, "h1": 2.2, "g2": 1.6, "b2": 2.3, "h2": 3.2, **SEESAW_DEFAULT}),
+    ("inserts", "DEMO RIG the team built: printed 5 mm / 2 mm trays, 85 mm apart, on the default seesaw "
+                "(+/-10 deg, 2 s, neighbours alternate)",
+     {"a1": 5.0, "bar1": 1.2, "a2": 2.0, "bar2": 1.0, **SEESAW_DEFAULT}),
+    ("inserts", "DEMO RIG on the default seesaw + a 0.3 mm buzz at 40 Hz (1.9 g; SEESAW.md 12:30)",
+     {"a1": 5.0, "bar1": 1.2, "a2": 2.0, "bar2": 1.0, **SEESAW_DEFAULT, "vib_mm": 0.3}),
+]
+# bambu's seesaw parts (not a family: the ribs-across inserts aren't parametric yet): 5 / 2 mm holes with ridges
+# along Y only and 45 deg border ramps, in the tabless seesaw holder over the deep catch pan with its lip.
+ACROSS = {"family": "across", "label": "RIBS ACROSS (bambu): 5mm_across / 2mm_across in the seesaw holder, 85 mm apart",
+          "spec": "inserts:5mm_across,2mm_across,pitch=85,holder=seesaw", "inject": {}, "params": {}}
 BASELINES["insects"] = [
     ("gated", "gatecalc plan (skill) for the length classes: gated t2.9 / w1.2 (8 tall), firmware cap stroke",
      {"slope": 2.0, "k1": "t", "s1": 2.9, "gh": 8.0, "k2": "w", "s2": 1.2, "tw": 8.0, "tooth": 2.0, "slot": 7.0,
@@ -427,7 +464,8 @@ ROUNDN = {"gated": 12, "gated_rib": 16, "gated_mid": 10, "plinko": 8, "inserts":
 EXPLORE = {"gated": 8, "gated_rib": 6, "gated_mid": 6, "plinko": 8, "inserts": 3}      # extra Latin hypercube when a
 #                                                                     family gains parameters (e.g. the stroke angle)
 # Insect runs cost about 3x a grain run per step (legs: many contacts), so the insect study searches fewer candidates.
-BUDGET = {"insects": ({"gated": 10, "gated_rib": 8, "gated_mid": 8, "plinko": 8, "inserts": 3},
+BUDGET = {"seesaw": ({"plinko": 12, "inserts": 8}, {"plinko": 8, "inserts": 5}),
+          "insects": ({"gated": 10, "gated_rib": 8, "gated_mid": 8, "plinko": 8, "inserts": 3},
                       {"gated": 6, "gated_rib": 6, "gated_mid": 6, "plinko": 6, "inserts": 2})}
 
 
@@ -439,6 +477,11 @@ def show(c):
 
 
 def stroke_of(p):
+    if "ss_deg" in p:
+        s = {"profile": "seesaw", "deg": p["ss_deg"], "period_s": p["ss_period"], "shape": p["ss_shape"]}
+        if p.get("vib_mm"):
+            s.update(vib_mm=p["vib_mm"], vib_hz=VIB_HZ)
+        return s
     if p.get("drive", "firmware") == "rock":
         q = {**ROCK_DEFAULT, **{k: p[k] for k in ROCK_DEFAULT if k in p}}
         return {"profile": "none", "rock": {"axis": q["rock_axis"], "deg": q["rock_deg"], "period_s": q["rock_period"],
@@ -454,6 +497,10 @@ def stroke_of(p):
 
 
 def stroke_show(st):
+    if st.get("profile") == "seesaw":
+        shape = "sine" if st.get("shape") == "sine" else "constant speed"
+        buzz = f" + {st['vib_mm']:g} mm buzz at {st['vib_hz']:g} Hz" if st.get("vib_mm") else ""
+        return f"seesaw +/-{st['deg']:g} deg (ends tip, neighbours alternate), {st['period_s']:g} s per cycle, {shape}{buzz}"
     if st.get("rock"):
         r = st["rock"]
         return f"seesaw +/-{r['deg']:g} deg about the tray's {'long' if r['axis'] == 'x' else 'short'} axis, {r['period_s']:g} s per cycle"
@@ -599,7 +646,7 @@ def jobs_for(c, study, fid, base, sets):
     stiff = {"dt": STIFF_DT, "contact": {"timeconst": STIFF_TIMECONST}} if fid == "stiff" else {}
     out = []
     for label, contact in sets:
-        for seed in SEEDS:
+        for seed in {"screen": SCREEN_SEEDS, "full": FULL_SEEDS}.get(fid, SEEDS):
             cfg = sweep.make_cfg(base, design=spec, stroke=stroke, contact=contact, duration_s=dur,
                                  seed=seed)
             if stiff:
@@ -648,6 +695,8 @@ def run_job(job):
         def checked_step(m, d):
             step(m, d)
             if "d" not in seen:
+                if mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_GEOM, "tray0") < 0:
+                    return                         # another model: clumps.py's packing pre-sim
                 seen["m"], seen["d"], seen["n"] = m, d, 0
                 seen["gate"] = np.array([m.geom(f"tray{i}").id for i, r in enumerate(roles) if r in ("gate", "screen")])
             seen["n"] += 1
@@ -663,7 +712,12 @@ def run_job(job):
         if rock:
             checked_step = rocking(checked_step, rock, job["cfg"], seen)
         mujoco.mj_step = checked_step
+        one_box_seesaw()
         res = sorter.run(sorter.RunConfig(**job["cfg"]))
+        if res.get("seesaw"):
+            rec["seesaw_clearance_mm"] = res["seesaw"]["clearance"]["min_mm"]
+            if res["seesaw"]["clearance"]["touching"]:
+                raise Unstable(f"seesaw: neighbouring trays touch ({rec['seesaw_clearance_mm']} mm); raise pitch=")
         if res.get("unstable_resets"):             # sorter.py's own reset detection (d.time going backwards)
             raise Unstable(f"MuJoCo reset the state at t = {res['unstable_resets'][:3]} s")
         m, d = seen["m"], seen["d"]
@@ -677,6 +731,11 @@ def run_job(job):
         ts = res["timeseries"]
         rec["timeseries"] = {"t": ts["t"], "counts": ts["counts"]}
         rec["gate_penetration_mm"] = round(seen["gate_pen"], 5)
+        if res.get("clumps"):                      # clumps.py metrics, less the per-bond and per-step arrays
+            c = res["clumps"]
+            rec["clumps"] = {**{k: v for k, v in c.items() if k not in ("bonds", "timeseries", "damage")},
+                             "damage": {k: v for k, v in c["damage"].items() if k != "per_specimen_mN"},
+                             "free_t": c["timeseries"]["t"][::5], "free": c["timeseries"]["free"][::5]}
         rec["sweep_metrics"] = {k: v for k, v in sweep.run_metrics(res).items() if not k.startswith("count:")}
     except Unstable as e:
         rec.update({"unstable": str(e)})
@@ -684,6 +743,31 @@ def run_job(job):
         rec.update({"error": traceback.format_exc()[-3000:]})
     rec["wall_total_s"] = round(time.time() - t0, 2)
     return rec
+
+
+def one_box_seesaw():
+    """rocking.py seesaws a tower of holder boxes. A one-box design (plinko: its three layers stand in one holder)
+    rocks as one level on one hinge across the holder's middle, every layer in phase since they are one part.
+    Patched in here, in the child process, so rocking.py stays the seesaw session's."""
+    import designs_holder
+    import rocking
+    if getattr(rocking, "_one_box", False):
+        return
+    tower, init = rocking.find_levels, rocking.Seesaw.__init__
+
+    def find_levels(design):
+        if "catch_z_mm" in design.info:
+            return tower(design)
+        H = designs_holder.cad()[0].H
+        return [{"name": "level0", "zone": design.zones[-1]["name"], "z0": 0.0, "pivot": [0.0, 0.0, H / 2],
+                 "geoms": list(range(len(design.geoms)))}], []
+
+    def __init__(self, stroke, design, *a):
+        init(self, stroke, design, *a)
+        if self.n == 1:                       # every zone of the box is in the one level's frame
+            self.zone_level = {z["name"]: 0 for z in design.zones}
+
+    rocking.find_levels, rocking.Seesaw.__init__, rocking._one_box = find_levels, __init__, True
 
 
 def rocking(inner, rock, cfg, seen):
@@ -1056,7 +1140,7 @@ def leaderboard_md(study, cands, summ, meta):
               " | ".join(f"{c} pur / rec" for c in cl) + " | jammed | lost | t90 s | flags | design (CAD, nominal mm) "
               "| sim spec (as printed) | stroke |",
               "|" + "---|" * (13 + len(cl))]
-    for f in [*FAMILIES, "current", "demo_rig"]:
+    for f in [*FAMILIES, "current", "demo_rig", "across"]:
         fam = [c for c in ranking(cands, summ, exclude_refs=False) if c["family"] == f]
         if fam:
             lines.append(row(ranking(cands, summ, exclude_refs=False).index(fam[0]) + 1, fam[0],
@@ -1233,6 +1317,8 @@ def winners_json(study, cands, summ):
 
 
 def drive_of(c):
+    if c["stroke"].get("profile") == "seesaw":
+        return "seesaw"
     r = c["stroke"].get("rock")
     if r:                         # a seesaw about the other axis is not the rig's motion
         return "rock" if r["axis"] == RIG_ROCK_AXIS else "rock_" + r["axis"]
@@ -1413,6 +1499,9 @@ def evaluate(cands, study, fid, base, sets, workers, summ):
 def refs(study, rnd):
     out = [make_cand(f, p, "baseline", rnd, label, study) for f, label, p in BASELINES.get(study, [])]
     for ref in [CURRENT] + ([DEMO_RIG] if study in ("demo", "smoke") else []):   # fixed, non-family references
+        if STUDIES[study].get("seesaw"):
+            ref = dict(ref, spec=f"{ref['spec']},pitch={SEESAW_DEFAULT['pitch']:g}", stroke=stroke_of(SEESAW_DEFAULT),
+                       label=ref["label"].split(",")[0] + ", 85 mm apart, on the default seesaw (+/-10 deg, 2 s)")
         if FORCE_DRIVE == "rock":
             ref = dict(ref, stroke=stroke_of({"drive": "rock"}), label=ref["label"].split(",")[0] + ", seesaw "
                        f"(default {ROCK_DEFAULT['rock_deg']:g} deg, {ROCK_DEFAULT['rock_period']:g} s, "
@@ -1420,6 +1509,12 @@ def refs(study, rnd):
         cur = dict(ref, origin="current", round=rnd)
         cur["id"] = cand_id(cur)
         out.append(cur)
+    if STUDIES[study].get("seesaw") and rnd >= 1:     # bambu's ribs-across parts, alone and with the buzz
+        for vib, tail in ((0.0, ", default seesaw (+/-10 deg, 2 s)"), (0.3, ", default seesaw + 0.3 mm buzz at 40 Hz")):
+            st = stroke_of({**SEESAW_DEFAULT, "vib_mm": vib})
+            cur = dict(ACROSS, label=ACROSS["label"] + tail, stroke=st, origin="current", round=rnd)
+            cur["id"] = cand_id(cur)
+            out.append(cur)
     return out
 
 
@@ -1596,11 +1691,15 @@ def main():
     ap.add_argument("--fps", type=float, default=20.0)
     ap.add_argument("--screen-s", type=float, help="override the screen length (smoke tests)")
     ap.add_argument("--full-s", type=float, help="override the full length (smoke tests)")
+    ap.add_argument("--screen-seeds", type=int, help="screen on the first n seeds only")
+    ap.add_argument("--full-seeds", type=int, help="full runs on the first n seeds only")
     args = ap.parse_args()
     args.workers = min(args.workers, MAX_WORKERS)
-    global SCREEN_S, FULL_S, FORCE_DRIVE
+    global SCREEN_S, FULL_S, FORCE_DRIVE, SCREEN_SEEDS, FULL_SEEDS
     SCREEN_S, FULL_S = args.screen_s or SCREEN_S, args.full_s or FULL_S
     FORCE_DRIVE = args.drive
+    SCREEN_SEEDS = SEEDS[:args.screen_seeds] if args.screen_seeds else SEEDS
+    FULL_SEEDS = SEEDS[:args.full_seeds] if args.full_seeds else SEEDS
     {"run": run_study, "report": report, "replay": replay, "plan": plan, "stress": stress,
      "verify": verify}[args.cmd](args)
 

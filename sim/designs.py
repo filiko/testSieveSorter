@@ -146,7 +146,11 @@ def build(spec):
     if kind == "gated":
         import designs_gated
         return designs_gated.build(args)
-    raise ValueError(f"unknown design {spec!r}: use pool:<g1>,<g2>, inserts:<a>,<b>, plinko or gated:<slope>,<strips>")
+    if kind == "breaker":
+        import designs_breaker
+        return designs_breaker.build(args)
+    raise ValueError(f"unknown design {spec!r}: use pool:<g1>,<g2>, inserts:<a>,<b>, plinko, gated:<slope>,<strips> "
+                     f"or breaker:<key>=<value>,...")
 
 
 if __name__ == "__main__":

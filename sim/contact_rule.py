@@ -4,7 +4,7 @@ stroke. Physics session, 2026-10-25. The measurements are in VERTICAL.md ("Conta
 Why. Contacts are soft: a grain pressed onto the tray sinks into it a little. Once that overlap reaches about half
 of a gate's clearance (the margin by which a grain fits or misses the opening), the sim can let a grain through a
 gate it shouldn't pass, which is why the optimizer flags such runs (PEN_FLAG = 0.5). A smaller contact time constant
-cuts the overlap, but it needs a smaller timestep (timeconst >= 2 dt), at about 2.5x the wall time per halving.
+cuts the overlap, but it needs a smaller timestep (timeconst >= 2 dt), at about 2x the wall time per halving.
 
 What drives the overlap is the stroke's profile and direction, not its peak acceleration alone. The firmware's
 constant-speed stroke never throws the grains: they slide and get knocked at each reversal, so pointing it up presses
@@ -12,9 +12,10 @@ constant-speed stroke never throws the grains: they slide and get knocked at eac
 
 Rule. Take the cheapest setting whose measured overlap for this stroke is at most FLAG x the clearance. The measured
 overlap is looked up among the strokes of the same profile that were measured (MEASURED): at the gentlest measured
-peak acceleration at least as hard as this stroke, interpolated linearly in angle. A stroke between two measured
-intensities gets the harder one's overlap, so the rule errs on the safe side. Anything else is unmeasured, and pick()
-returns the stiffest setting and says so.
+level whose peak acceleration and peak speed are both at least this stroke's (a lower frequency at the same
+acceleration moves faster and lands harder), interpolated linearly in angle. A stroke between two measured levels gets
+the harder one's overlap, so the rule errs on the safe side. Anything else is unmeasured, and pick() returns the
+stiffest setting and says so.
 
 The overlap is the worst design's median of the per-run maximum, read every step after the settle, on the surfaces
 that bound an opening: the screen of inserts:5mm; the gates of pool:w5p0,t1p4 and the floor under them (its 1.4 mm
@@ -46,7 +47,7 @@ import sorter
 FLAG = 0.5                       # optimize.py's PEN_FLAG: overlap >= FLAG x clearance is untrustworthy
 OPENING_ROLES = {"inserts:5mm": ("screen",), "pool:w5p0,t1p4": ("gate", "floor"), "plinko": ("gate",)}
 FW = "constant_speed:amp_mm=10,speed_mm_s=50,ramp_s=0.01"
-TOL_G = 0.05                     # a stroke within this of a measured peak acceleration counts as measured
+TOL_G, TOL_V = 0.05, 1.05        # within 0.05 g and 5 % of a measured level's peak acceleration and speed
 # (dt, timeconst) in s, cheapest first, with the wall time relative to the first (instab.py, rule2.jsonl)
 SETTINGS = {(2.5e-4, 5e-4): 1.0, (1.25e-4, 2.5e-4): 1.9, (6.25e-5, 1.25e-4): 3.8}
 # Overlap (mm) by setting and stroke, from
@@ -88,22 +89,22 @@ def parse_stroke(spec):
     return {"profile": profile, **sorter.parse_kv(rest)}
 
 
-def peak_and_angle(stroke):
-    """(peak acceleration along the stroke axis in g, angle above the tray in degrees). No design is needed: only
-    the axis' vertical part matters here."""
+def intensity(stroke):
+    """(peak acceleration along the stroke axis in g, peak speed in mm/s, angle above the tray in degrees). No design
+    is needed: only the axis' vertical part matters here."""
     if stroke.get("axis") is not None:
         ax = np.asarray(stroke["axis"], float)
         angle = float(np.degrees(np.arcsin(min(1.0, abs(ax[2]) / np.linalg.norm(ax)))))
     else:
         angle = float(stroke.get("angle_deg", 0.0))
     if stroke.get("profile", "sine") == "none":
-        return 0.0, angle
+        return 0.0, 0.0, angle
     f = stroke.get("freq_hz", 10.0)
     if "speed_mm_s" in stroke:
         f = stroke["speed_mm_s"] / (4 * stroke.get("amp_mm", 3.0))
     dt = 1.25e-4
-    _, _, a = sorter.stroke_profile(stroke, int(max(2.0, 2.0 / f) / dt), dt)
-    return float(np.abs(a).max() / sorter.G), angle
+    _, v, a = sorter.stroke_profile(stroke, int(max(2.0, 2.0 / f) / dt), dt)
+    return float(np.abs(a).max() / sorter.G), float(np.abs(v).max()), angle
 
 
 def predicted(setting, stroke):
@@ -111,19 +112,20 @@ def predicted(setting, stroke):
     profile = stroke.get("profile", "sine")
     if profile == "none":
         return 0.0, "no stroke"
-    peak, angle = peak_and_angle(stroke)
+    peak, speed, angle = intensity(stroke)
     levels = collections.defaultdict(list)
-    for spec, v in MEASURED.get(setting, {}).items():
+    for spec, pen in MEASURED.get(setting, {}).items():
         s = parse_stroke(spec)
         if s["profile"] == profile:
-            p, a = peak_and_angle(s)
-            levels[round(p, 2)].append((a, v))
-    for p in sorted(levels):
-        pts = sorted(levels[p])
-        if p + TOL_G >= peak and pts[0][0] - 1e-6 <= angle <= pts[-1][0] + 1e-6:
-            a, v = zip(*pts)
-            return float(np.interp(angle, a, v)), f"measured at {p:.2f} g, {'/'.join(f'{x:g}' for x in a)} deg"
-    return None, f"{profile} at {peak:.2f} g, {angle:g} deg is unmeasured"
+            p, v, a = intensity(s)
+            levels[(round(p, 2), round(v))].append((a, pen))
+    for p, v in sorted(levels):
+        pts = sorted(levels[(p, v)])
+        if p + TOL_G >= peak and v * TOL_V >= speed and pts[0][0] - 1e-6 <= angle <= pts[-1][0] + 1e-6:
+            a, pen = zip(*pts)
+            return (float(np.interp(angle, a, pen)),
+                    f"measured at {p:.2f} g, {v:g} mm/s, {'/'.join(f'{x:g}' for x in a)} deg")
+    return None, f"{profile} at {peak:.2f} g, {speed:.0f} mm/s, {angle:g} deg is unmeasured"
 
 
 def pick(clearance_mm, stroke):
@@ -165,7 +167,7 @@ def rebuild(paths):
     for (setting, stroke, _), v in runs.items():
         if setting in SETTINGS:
             out[setting][stroke] = round(max(out[setting].get(stroke, 0.0), float(np.median(v))), 3)
-    order = lambda kv: (parse_stroke(kv[0])["profile"], *peak_and_angle(parse_stroke(kv[0])))
+    order = lambda kv: (parse_stroke(kv[0])["profile"], *intensity(parse_stroke(kv[0])))
     return {k: dict(sorted(out[k].items(), key=order)) for k in SETTINGS if k in out}
 
 
@@ -186,9 +188,9 @@ def main():
     if args.table:
         for (dt, tc), rows in MEASURED.items():
             print(f"dt {dt * 1e3:g} ms, timeconst {tc * 1e3:g} ms ({SETTINGS[(dt, tc)]:g}x wall time)")
-            for s, v in rows.items():
-                p, a = peak_and_angle(parse_stroke(s))
-                print(f"    {v:.3f} mm  {p:4.2f} g at {a:2g} deg  {s}")
+            for s, pen in rows.items():
+                p, v, a = intensity(parse_stroke(s))
+                print(f"    {pen:.3f} mm  {p:4.2f} g, {v:3.0f} mm/s at {a:2g} deg  {s}")
         return
     dt, tc, why = pick(args.clearance, parse_stroke(args.stroke))
     print(f"--dt {dt:g} --timeconst {tc:g}    # {why}")

@@ -1,17 +1,14 @@
 """Second opinion on the optimizer's winners (physics session). Reruns the top designs from opt/winners.json and the
-demo tray with fresh seeds, every friction set, the study's load and a heavy load, at the contacts contact_rule.py
-picks for each design, then says whether the ranking holds. Writes opt/VERIFY.md; raw runs go to out/verify/
-(gitignored).
+demo rig with fresh seeds, every friction set, the study's load and a heavy load, at the contacts a short probe
+measures for each design (and one setting stiffer), then says whether the ranking holds. Writes opt/VERIFY.md; raw runs
+go to out/verify/ (gitignored).
 
 It uses optimize.py's own run (optimize.run_job, with its instability check) and score (imported, not edited), so a
-difference from the leaderboard comes from the seeds, the load or the contacts, not from the scoring. Two things are
-added:
-    - the overlap per tray role, read every step after the settle. optimize.py reads the gate overlap every 10th
-      step, which misses most of an impact's peak (VERTICAL.md, Contact rule), so a second flag uses the every-step
-      gate and screen overlap. The floor overlap is reported but not flagged: in the gated tower it is mostly the
-      landing after the drop to the next level, which can't push a grain through an opening;
-    - a score for designs with fewer bins than classes (the one-insert demo tray): class k goes to bin
-      min(k, last), so rice and quinoa share the catch pan and its purity shows that.
+difference from the leaderboard comes from the seeds, the load or the contacts, not from the scoring. One thing is
+added: the overlap per tray role, read every step after the settle. optimize.py reads the gate overlap every 10th
+step, which misses part of an impact's peak (VERTICAL.md, Contact rule), so a second flag uses the every-step gate
+and screen overlap. The floor overlap is reported but not flagged: in the gated tower it is mostly the landing after
+the drop to the next level, which can't push a grain through an opening.
 
 Run from sim\\ (WSL venv on this laptop), at most 8 workers while optimize.py is running:
     python verify.py --study demo [--top 3] [--seeds 6] [--heavy 2] [--workers 8]
@@ -37,11 +34,14 @@ import sweep
 HERE = Path(__file__).resolve().parent
 OUT = HERE / "out" / "verify"
 SEED0 = 100                      # fresh seeds: the optimizer ran 0, 1, 2
-DEMO_TRAY = [
-    {"id": "demo-tray", "label": "demo tray: inserts:5mm, firmware cap stroke", "spec": "inserts:5mm", "inject": {},
-     "stroke": dict(optimize.FIRMWARE)},
-    {"id": "demo-tray-up", "label": "demo tray: inserts:5mm, up and down (2 g sine at 20 Hz, as in VERTICAL.md)",
-     "spec": "inserts:5mm", "inject": {},
+PROBE_SEEDS, PROBE_S = (90, 91, 92), 2.0     # the per-design contact probe: runs at each setting, shake seconds
+# The demo rig: separate printed trays stacked one above the other, 5 mm over 2 mm over the catch pan
+# (docs/sessions/demo-rig.md), nominal hole size as in VERTICAL.md; the firmware stroke, and shaken up and down
+DEMO_RIG = [
+    {"id": "demo-rig", "label": "demo rig: inserts:5mm,2mm, firmware cap stroke", "spec": "inserts:5mm,2mm",
+     "inject": {}, "stroke": dict(optimize.FIRMWARE)},
+    {"id": "demo-rig-up", "label": "demo rig: inserts:5mm,2mm, up and down (2 g sine at 20 Hz, VERTICAL.md)",
+     "spec": "inserts:5mm,2mm", "inject": {},
      "stroke": {"profile": "sine", "amp_mm": 1.242, "freq_hz": 20, "angle_deg": 90}},
 ]
 
@@ -49,9 +49,9 @@ DEMO_TRAY = [
 def candidates(study, top):
     path = optimize.OPT / ("winners.json" if study == "demo" else f"winners_{study}.json")
     w = json.loads(path.read_text(encoding="utf-8"))
-    out = [{"id": x["id"], "label": f"#{x['rank']} {x['family']}: {x['sim_spec']}", "spec": x["sim_spec"],
+    out = [{"id": x["id"], "label": f"#{x['rank']} {x['id']} ({x['family']})", "spec": x["sim_spec"],
             "inject": x.get("sim_inject") or {}, "stroke": x["stroke"], "opt": x} for x in w["winners"][:top]]
-    return out + (DEMO_TRAY if study == "demo" else []), w
+    return out + (DEMO_RIG if study == "demo" else []), w
 
 
 def key_of(cfg, inject):
@@ -125,13 +125,20 @@ def run_all(jobs, study, workers):
     return {j["key"]: json.loads((cache / f"{j['key']}.json").read_text(encoding="utf-8")) for j in jobs}
 
 
+def gate_pen(rec):
+    roles = rec.get("pen_role_mm", {})
+    return max([roles.get(r, 0.0) for r in ("gate", "screen")])
+
+
 def contacts_for(c, study, base, seeds, workers):
-    """(dt, timeconst, why, clearance): the design's tightest clearance over 0.1 s runs at every seed (it depends on
-    the sampled grain sizes), then contact_rule.pick."""
+    """The design's contacts, measured on the design itself: its tightest clearance (over 0.1 s runs at every seed;
+    it depends on the sampled grain sizes), then PROBE_SEEDS short runs at each contact_rule.SETTINGS; the cheapest
+    setting whose median every-step gate and screen overlap is at most PEN_FLAG x the clearance. contact_rule.pick's
+    choice is kept beside it, as a check on the rule."""
     jobs = []
     for seed in seeds:
         cfg = sweep.make_cfg(base, design=c["spec"], stroke=c["stroke"], duration_s=0.05, settle_s=0.05, seed=seed)
-        jobs.append({"cfg": cfg, "inject": c["inject"], "tags": {"cand": c["id"], "fid": "probe"},
+        jobs.append({"cfg": cfg, "inject": c["inject"], "tags": {"cand": c["id"], "fid": "clearance"},
                      "key": key_of(cfg, c["inject"])})
     clrs = []
     for rec in run_all(jobs, study, workers).values():
@@ -139,7 +146,30 @@ def contacts_for(c, study, base, seeds, workers):
             raise RuntimeError(f"{c['id']}: clearance probe failed: {(rec.get('error') or rec['unstable'])[-300:]}")
         clrs.append(optimize.clearance(rec))
     clr = min((x for x in clrs if x is not None), default=None)
-    return (*contact_rule.pick(clr, c["stroke"]), clr)
+    order = sorted(contact_rule.SETTINGS, key=contact_rule.SETTINGS.get)
+    probe = {}
+    for dt, tc in order:
+        js = []
+        for seed in PROBE_SEEDS:
+            cfg = sweep.make_cfg(base, design=c["spec"], stroke=c["stroke"], dt=dt, contact={"timeconst": tc},
+                                 duration_s=PROBE_S, seed=seed)
+            js.append({"cfg": cfg, "inject": c["inject"], "tags": {"cand": c["id"], "fid": "probe"},
+                       "key": key_of(cfg, c["inject"])})
+        recs = [r for r in run_all(js, study, workers).values() if not r.get("error") and not r.get("unstable")]
+        probe[(dt, tc)] = float(np.median([gate_pen(r) for r in recs])) if recs else None
+    out = {"clearance": clr, "probe": probe, "rule": contact_rule.pick(clr, c["stroke"])}
+    if clr is None:
+        out.update(dt=order[0][0], tc=order[0][1], why="no gate near size: production contacts")
+        return out
+    for dt, tc in order:
+        if probe[(dt, tc)] is not None and probe[(dt, tc)] <= optimize.PEN_FLAG * clr:
+            out.update(dt=dt, tc=tc, why=f"median gate overlap {probe[(dt, tc)]:.3f} mm <= "
+                                         f"{optimize.PEN_FLAG * clr:.3f} mm")
+            return out
+    out.update(dt=order[-1][0], tc=order[-1][1],
+               why=f"no setting keeps the median gate overlap under {optimize.PEN_FLAG * clr:.3f} mm: stiffest, "
+                   "and the results near this gate are untrustworthy")
+    return out
 
 
 def jobs_for(c, study, base, load, mix, seeds, sets, dt, tc, dur):
@@ -153,46 +183,8 @@ def jobs_for(c, study, base, load, mix, seeds, sets, dt, tc, dur):
     return out
 
 
-def score_merged(rec, study):
-    """optimize.run_score for a design with fewer bins than classes: class k's bin is min(k, last bin)."""
-    if rec.get("error") or rec.get("unstable"):
-        why = rec.get("unstable") or rec["error"].strip().splitlines()[-1]
-        return {"score": optimize.FAIL_SCORE, "fail": why[:200]}
-    classes = optimize.STUDIES[study]["classes"]
-    zones = [z for z in rec["zones"] if z not in optimize.SPECIAL]
-    cols = zones + list(optimize.SPECIAL)
-    tgt = [min(i, len(zones) - 1) for i in range(len(classes))]
-    C = np.zeros((len(classes), len(cols)), int)
-    for p in rec["particles"]:
-        ci = optimize.class_of(study, p)
-        if ci is not None:
-            C[ci, cols.index(p["final_zone"])] += 1
-    n = int(C.sum())
-    rec_c = [C[i, tgt[i]] / C[i].sum() if C[i].sum() else None for i in range(len(classes))]
-    pur_c = [C[i, tgt[i]] / C[:, tgt[i]].sum() if C[:, tgt[i]].sum() else 0.0 for i in range(len(classes))]
-    q = min(min(r, p) for r, p in zip(rec_c, pur_c) if r is not None)
-    between, lost = int(C[:, -2].sum()), int(C[:, -1].sum())
-    bins = {k: zones[tgt[i]] for i, cl in enumerate(classes) for k in cl.get("kinds", [])}
-    ts = rec["timeseries"]
-    t = np.asarray(ts["t"], float) - rec["config"]["settle_s"]
-    i0 = int(np.searchsorted(t, -1e-9))
-    good = sum(np.asarray(zc[bins[kind]], float) for kind, zc in ts["counts"].items() if kind in bins)
-    hit = np.flatnonzero(np.asarray(good)[i0:] >= 0.9 * n - 1e-9)
-    tt = float(max(0.0, t[i0 + hit[0]])) if len(hit) else None
-    dur = rec["config"]["duration_s"]
-    score = (q - optimize.W_JAM * between / n - optimize.W_LOST * lost / n
-             - optimize.W_T90 * (tt / dur if tt is not None else 1.0))
-    clr = optimize.clearance(rec)
-    pen = rec.get("gate_penetration_mm", rec.get("max_penetration_mm")) or 0.0
-    return {"score": float(score), "quality": float(q), "recovery": rec_c, "purity": pur_c, "between": between,
-            "lost": lost, "n": n, "t90": tt, "matrix": C.tolist(), "cols": cols, "clearance": clr, "pen": pen,
-            "flag": bool(clr is not None and pen >= optimize.PEN_FLAG * clr)}
-
-
 def score(rec, study):
-    zones = [z for z in rec.get("zones", []) if z not in optimize.SPECIAL]
-    s = score_merged(rec, study) if zones and len(zones) < len(optimize.STUDIES[study]["classes"]) \
-        else optimize.run_score(rec, study)
+    s = optimize.run_score(rec, study)
     if "fail" not in s:
         roles = rec.get("pen_role_mm", {})
         s["pen_step"] = max([roles.get(r, 0.0) for r in ("gate", "screen")])
@@ -271,8 +263,8 @@ def write_md(study, cands, w, summ, contacts, args):
          f"Physics session, {datetime.now():%Y-%m-%d %H:%M}, `sim/verify.py`. The second opinion the brief's honesty "
          "rules ask for: the optimizer's runs are the screening, this reruns its top designs independently.", "",
          f"- **Winners checked:** `opt/{'winners.json' if study == 'demo' else f'winners_{study}.json'}` generated "
-         f"{w.get('generated', '?')}, top {len([c for c in cands if 'opt' in c])}, plus the demo tray (`inserts:5mm`) "
-         "as the baseline the team built, with the firmware stroke and with the up-and-down stroke.",
+         f"{w.get('generated', '?')}, top {len([c for c in cands if 'opt' in c])}, plus the demo rig "
+         "(`inserts:5mm,2mm`, the stacked trays the team built) with the firmware stroke and shaken up and down.",
          f"- **Runs:** fresh seeds {seeds[0]}-{seeds[-1]} (the optimizer used 0-2) x {len(sets)} friction sets "
          f"({source}) = {len(seeds) * len(sets)} runs per design and variant, {args.duration:g} s of shaking each, "
          "scored with `optimize.run_score` (robust = mean - 1 sd, as on the leaderboard).",
@@ -280,9 +272,10 @@ def write_md(study, cands, w, summ, contacts, args):
          f"({', '.join(f'{k} {v}' for k, v in optimize.STUDIES[study]['mix'].items())}); "
          f"a heavy load, {args.heavy}x every kind, in the same {args.duration:g} s; and the study's mix with contacts "
          "one setting stiffer, to see whether soft contacts are doing some of the sorting.",
-         "- **Contacts:** per design from `contact_rule.py`: the cheapest (dt, timeconst) whose measured overlap for "
-         "the design's stroke stays under half its tightest clearance (VERTICAL.md, Contact rule). The optimizer ran "
-         "everything at dt 0.25 ms / timeconst 0.5 ms.",
+         f"- **Contacts:** measured per design: {len(PROBE_SEEDS)} runs of {PROBE_S:g} s at each setting, on the "
+         "design's own stroke; the cheapest setting whose median every-step gate and screen overlap stays under half "
+         "the design's tightest clearance. `contact_rule.py`'s pick is listed beside it (VERTICAL.md, Contact rule). "
+         "The optimizer ran everything at dt 0.25 ms / timeconst 0.5 ms.",
          "- **Flags** (a run whose overlap with gates and screens reaches 0.5 x the tightest clearance): *10th* reads "
          "the overlap every 10th step, as optimize.py does; *every* reads it every step, which catches an impact's "
          "peak.",
@@ -308,16 +301,21 @@ def write_md(study, cands, w, summ, contacts, args):
     L += ["## Contacts and overlap per design", "",
           "Max overlap over all runs of a variant, mm. Gate = gates and screens, read every 10th step / every step.",
           "",
-          "| Design | Tightest clearance mm | dt / timeconst ms (rule; stiffer) | Why | "
+          "| Design | Tightest clearance mm | Probe: median gate overlap mm at "
+          + " / ".join(f"{dt * 1e3:g}" for dt, _ in sorted(contact_rule.SETTINGS, key=contact_rule.SETTINGS.get))
+          + " ms | Used: dt / timeconst ms (pick; stiffer) | Why | contact_rule.py would pick | "
           + " | ".join(f"{v}: gate 10th / every, floor" for v in var) + " | Wall s per run (" + ", ".join(var) + ") |",
-          "|---|---|---|---|" + "---|" * len(var) + "---|"]
+          "|---|---|---|---|---|---|" + "---|" * len(var) + "---|"]
     for c in cands:
-        dt, tc, why, clr = contacts[c["id"]]
-        sdt, stc = stiffer(dt, tc)
+        k = contacts[c["id"]]
+        sdt, stc = stiffer(k["dt"], k["tc"])
+        rdt, rtc, _ = k["rule"]
         cells = [f"{f2(s['pen_gate'], '{:.3f}')} / {f2(s['pen_step'], '{:.3f}')}, {f2(s['pen_floor'], '{:.3f}')}"
                  for s in (summ[c["id"]][v] for v in var)]
-        L.append(f"| {c['label']} | {f2(clr, '{:.3f}')} | {dt * 1e3:g} / {tc * 1e3:g}; {sdt * 1e3:g} / {stc * 1e3:g} "
-                 f"| {why} | " + " | ".join(cells) + " | "
+        L.append(f"| {c['label']} | {f2(k['clearance'], '{:.3f}')} | "
+                 + " / ".join(f2(k["probe"][x], "{:.3f}") for x in sorted(k["probe"], key=contact_rule.SETTINGS.get))
+                 + f" | {k['dt'] * 1e3:g} / {k['tc'] * 1e3:g}; {sdt * 1e3:g} / {stc * 1e3:g} | {k['why']} | "
+                 f"{rdt * 1e3:g} / {rtc * 1e3:g} | " + " | ".join(cells) + " | "
                  + ", ".join(f"{summ[c['id']][v]['wall_s']:.0f}" for v in var) + " |")
     L += ["", "## Count matrices (summed over all runs; rows = class, columns = final bin)", ""]
     for c in cands:
@@ -357,12 +355,13 @@ def main():
     var = variants(args.study, args.heavy)
     contacts = {c["id"]: contacts_for(c, args.study, base, seeds, args.workers) for c in cands}
     for c in cands:
-        dt, tc, why, clr = contacts[c["id"]]
-        print(f"{c['id']}: {c['label']}\n    clearance {clr}: dt {dt:g}, timeconst {tc:g} ({why})", flush=True)
+        k = contacts[c["id"]]
+        print(f"{c['id']}: {c['label']}\n    clearance {k['clearance']}, probe {k['probe']}: dt {k['dt']:g}, "
+              f"timeconst {k['tc']:g} ({k['why']}); contact_rule: {k['rule'][2]}", flush=True)
     jobs = {}
     for c in cands:
         for v, (_, mix, stiff) in var.items():
-            dt, tc = contacts[c["id"]][:2]
+            dt, tc = contacts[c["id"]]["dt"], contacts[c["id"]]["tc"]
             if stiff:
                 dt, tc = stiffer(dt, tc)
             jobs[(c["id"], v)] = jobs_for(c, args.study, base, v, mix, seeds, sets, dt, tc, args.duration)

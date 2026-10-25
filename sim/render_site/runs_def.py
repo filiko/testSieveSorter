@@ -7,8 +7,48 @@ CL = G / "testSieveSorter-clump/sim/out/runs"
 BA = G / "testSieveSorter-bambu/sim/out/runs"
 SE = G / "testSieveSorter-seesaw/sim/out/runs"
 OP = G / "testSieveSorter-opt/sim/out/opt"
+LY = G / "testSieveSorter-layers/sim/out/runs"
+ML = "More levels (multi-layer)"
 
 RUNS = [
+    # more levels: one tray per size class (multi-layer session, sim/LAYERS.md)
+    ("layers4best", ML, "4 trays + catch: 5 size classes (best, 2.25 mm tray 2)", LY / "layers_4tray_l2wide",
+     "The best multi-level tower. Four ribs-across trays on centre pivots, 55 mm apart, over the catch pan. Square holes "
+     "4.85 / 2.25 / 1.75 / 1.25 mm as modelled (print 5.0 / 2.4 / 1.9 / 1.4 mm; prints come out about 0.15 mm small). ±10° seesaw, "
+     "neighbours opposite, 0.3 mm 40 Hz buzz, all 10 grains. Tray 1: pasta 10/10, chickpea 5/5. Tray 2: black rice 12/12 (and 7 of 10 "
+     "wild rice, whose 10 mm needles lie flat). Tray 3: rice 11/12, white rice 11/12, brown rice 12/12. Tray 4: quinoa 15/15, couscous 12/15. "
+     "Catch: chia 15/15 and 2 couscous. One seed, uncalibrated: the sim ranks designs, it doesn't predict percentages."),
+    ("layers4", ML, "4 trays + catch, first try (2.15 mm tray 2)", LY / "layers_4tray_grains",
+     "Four ribs-across trays on centre pivots, 55 mm apart, over the catch pan. Square holes 4.85 / 2.15 / 1.75 / 1.25 mm as modelled "
+     "(print 5.0 / 2.3 / 1.9 / 1.4 mm; prints come out about 0.15 mm small). ±10° seesaw, neighbours opposite, 0.3 mm 40 Hz buzz. "
+     "Tray 1 (4.85): pasta 10/10, chickpea 5/5. Tray 2 (2.15): black rice 12/12, but also 8 of 10 wild rice (the 10 mm needles lie flat "
+     "and never stand up in a hole). Tray 3 (1.75): rice 11/12, white rice 11/12, brown rice 10/12. Tray 4 (1.25): quinoa 15/15, "
+     "couscous 12/15. Catch: chia 15/15 and 2 couscous. Settled by 7 s."),
+    ("layers5", ML, "5 trays + catch: adds a 1.95 mm brown-rice tray", LY / "layers_5tray_grains",
+     "The same tower with a fifth tray, 1.95 mm (print 2.1), between 2.15 and 1.75, to give brown rice its own class. It only half works: "
+     "it holds 8 of 12 brown rice, but also 4 of 12 white rice, and 3 brown rice still pass. Brown and white rice differ by about 0.1 mm "
+     "in their smallest hole, so a sixth class needs measured grains first. Every other level is as in the 4-tray run."),
+    ("layers4precise", ML, "4 trays with the gated tower's angled shake", LY / "layers_4tray_precise",
+     "The 4-tray tower with the gated tower's shake (0.4 mm at 48 Hz, thrown 30° up) instead of the vertical 0.3 mm buzz. Worse for "
+     "separate trays: 13 plain, white and brown rice stay on 2.15, 6 quinoa and couscous on 1.75, 4 chia on 1.25, and 5 fines bounce out. "
+     "Keep the vertical buzz for trays."),
+    ("layersgated3", ML, "Mid-slot ramp gated tower, 3 levels", LY / "layers_gated3_grains",
+     "The optimizer's mid-slot ramp tower with a third level: tunnels 3.35 / 1.45 / 0.95 mm (gates at x 22.2 / 38 / 53, slots 8.1 / 7 / 7 mm, "
+     "levels not flipped), rocking as one piece ±10° with 0.4 mm at 48 Hz thrown 30° up. Tunnels sort by thickness, so it makes 4 classes: "
+     "L1 pasta 10/10, chickpea 5/5; L2 all five rices 56/58; L3 quinoa 12/15, couscous 7/15; catch chia 9/15. The fines were still "
+     "moving at 12 s (8 couscous on L2)."),
+    ("layersgated4", ML, "Mid-slot ramp gated tower, 4 levels (2.15 mm window gate)", LY / "layers_gated4_grains",
+     "A 4-level try: a 2.15 × 2.15 mm window gate added as L2 to hold black rice, then tunnels 1.45 / 0.95 mm (gates at x 15 / 28 / 41 / 53). "
+     "The window holds black rice 11/12 but also about half of every other rice (rice 5, white 5, brown 6, wild 8): grains reach a "
+     "window lying flat, and a hole in a wall doesn't tip them the way a hole in a floor does. Square-hole trays do this split better."),
+    ("layersinsect3", ML, "Malaise insects on an insect-cut 3-tray tower", LY / "layers_insect3_malaise",
+     "60 specimens of the real Malaise mix on three trays cut for insects: 2.85 / 1.45 / 0.95 mm holes (print 3.0 / 1.6 / 1.1), same seesaw "
+     "and buzz. By body length: > 6 mm 3/3 on tray 1; 2–4 mm 7 on tray 1, 9 on tray 2; 1–2 mm 8 on tray 2, 9 on tray 3; < 1 mm 13 of 19 "
+     "in the catch, 5 bounce out. Legs and wings hold insects on holes 2–3× their body width, and 11 specimens end snagged in holes."),
+    ("layersmalaise4", ML, "Malaise insects on the 4-tray grain tower", LY / "layers_4tray_malaise",
+     "The same 60 specimens on the first 4-tray grain tower (4.85 / 2.15 / 1.75 / 1.25 mm). > 6 mm 3/3 stay on tray 1, 2–4 mm mostly on "
+     "tray 2 (12 of 16), 1–2 mm split between tray 4 (8) and the catch (8), < 1 mm in the catch (10) or bounced out (9). Grain-sized "
+     "holes are too coarse for the BugPicker classes; use the insect-cut tower."),
     # gated ramp designs on the seesaw with the precise fast shake (main session, the optimizer's designs)
     ("gatedmidseesaw", "Gated ramps on the seesaw + fast shake (main)", "Mid-slot ramp tower, all 10 grains",
      REPO_SIM / "out/runs/gated_mid_seesaw",

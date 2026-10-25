@@ -61,3 +61,11 @@ Written 2026-10-25 06:15 PT by the main session. The first physics session ran i
   - rice, quinoa, chickpea and pasta are frozen and byte-identical, so the optimizer's leaderboard stands.
   - Record the bench's white rice as `white_rice`. Rows of `rice` or `pasta` in `bench/grain_dims.csv` would replace the frozen kinds for every run (GRAINS.md, Suggested changes 5).
 - **Bugs:** `sim/insects.py` already models them. [`sim/INSECT_AUDIT.md`](../../sim/INSECT_AUDIT.md) compares it with real Malaise samples and ranks six proposals. None are applied; waiting on the user.
+
+## Status (physics session, 2026-10-25 12:50, relaunched at 12:25 for PLAN.md)
+- **Step 1 done (PR #19, merged):** the real Malaise mix. New kinds `insect_malaise` (real shares) and `insect_malaise_lt2` / `_2to6` / `_gt6` (stratified), presets `insects.MALAISE_MIX`, `MALAISE_MIX_STRATIFIED` and `MALAISE_SHARES`. They work in `--mix` and `--clump`. Run them with `--dt 0.000125 --timeconst 0.00025`: at 0.5 ms the smallest specimens pass through the trays. Details are in `sim/INSECT_AUDIT.md` under "Applied at 12:35".
+- **Step 2 cut short (PR, 12:58):** `sim/opt/VERIFY_SEESAW.md` has 8 of the demo rig's 18 runs. Claude Code stopped the batch at 12:53 because Windows had 214 MB free of 32 GB. The demo rig on ±10° scores robust 0.36: 40% of the quinoa and 20% of the rice are still on 5 mm after 8 s, and 17% of the rice slips through 2 mm. Don't rerun it until memory allows; the command is in its Reproduce section, and the 8 cached runs are reused.
+- **The script:** `sim/verify_seesaw.py` reruns the demo rig (`inserts:5mm,2mm,pitch=85`) and the demo winners P-ae394887 / P-b192da7c (each one box) on the alternating seesaw, ±10°, 2 s, for 8 s, at the optimizer's contacts. It writes `sim/opt/VERIFY_SEESAW.md`.
+  - The gated winner is skipped: the optimizer's round 7 found gated can't sort on a symmetric seesaw.
+  - The optimizer's seesaw winners (`winners_seesaw.json`) are picked up when they land. At 12:45 the optimizer wasn't running: its out dir had a STOP file and `optimize.py` had uncommitted changes.
+  - Cost: about 3 min per 8 s demo-rig run, and about 4x that for a one-box plinko (every rod rides the moving hinge), so the plinkos get 2 seeds × 3 friction sets.

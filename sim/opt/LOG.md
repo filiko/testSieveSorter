@@ -468,3 +468,9 @@ Rice's corner-to-corner diagonal (1.86 mm) is 0.01 mm over the as-printed 1.85 m
 
 **Next.** Verify P-7dd9222c and anything else flagged in the top 4; one more demo round; stress the top 6 again; replays of the final winners; then insect round 1 with whatever time is left.
 
+## Verification of P-7dd9222c (notes, 2026-10-25 09:15)
+
+P-7dd9222c (plinko 3.6 / 1.6, sine 20 Hz at 2.1 g along the tray) **stays flagged** at stiffer contacts: 5 of 9 runs, and the peak gate overlap went *up*, from 0.218 to 0.306 mm (threshold 0.12). The 1.3 mm amplitude throws grains hard into the rods, and the peak sink at impact comes from impact speed, not contact softness. The score didn't move (0.999 at both settings, every particle in its bin), so the deep contacts aren't changing routing. By the rule it isn't a winner. It's still the design to try if the demo rig's tool really runs near 20 Hz and 2 g, but only after the bench confirms it.
+
+A design-pipeline fix went in at the same time. Every step now recomputes all summaries from the run cache when it starts, so none decides what to stress, verify or replay from stale saved numbers. That staleness is why winner #2 (P-547508e5) and the firmware pick (P-cbe7dbec) hadn't been stress-tested; they are running now.
+

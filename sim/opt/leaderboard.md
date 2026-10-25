@@ -1,6 +1,6 @@
 # Leaderboard: Demo set: surrogate grains (pasta + chickpea / rice / quinoa)
 
-Generated 2026-10-25 09:07 by `sim/optimize.py` (study `demo`). 201 candidates, 2691 sim runs so far.
+Generated 2026-10-25 09:08 by `sim/optimize.py` (study `demo`). 201 candidates, 2700 sim runs so far.
 
 **The sim ranks designs; it does not predict real percentages.** It is uncalibrated until `calibrate.py` has bench counts, has no water, rigid particles, and about 80 particles per run. Sizes are simulated at the as-printed opening, nominal - 0.15 mm (ASSUMED until the hole gauge is measured).
 
@@ -71,6 +71,7 @@ Rerun at dt 0.125 ms and contact timeconst 0.25 ms (half the overlap of the stan
 | id | family | robust (standard) | flags (standard) | robust (stiff) | flags (stiff) | verdict | design |
 |---|---|---|---|---|---|---|---|
 | P-ae394887 | plinko | 0.999 | PEN 1/9 (clr 0.26, pen 0.153) | 0.999 | ok | clean | rods L1 gap 3.7 (rod 2.6 wide, 1.6 tall) / L2 gap 1.5 (rod 1.8, 2.4) |
+| P-7dd9222c | plinko | 0.999 | PEN 5/9 (clr 0.24, pen 0.218) | 0.999 | PEN 5/9 (clr 0.24, pen 0.306) | still flagged | rods L1 gap 3.6 (rod 2.1 wide, 1.8 tall) / L2 gap 1.6 (rod 2, 2.8) |
 | P-668db784 | plinko | 0.998 | PEN 3/9 (clr 0.24, pen 0.205) | 0.998 | PEN 1/9 (clr 0.24, pen 0.125) | still flagged | rods L1 gap 3.5 (rod 3.7 wide, 2 tall) / L2 gap 1.6 (rod 2.9, 2.2) |
 | G-060cecb0 | gated_mid | 0.955 | PEN 9/9 (clr 0.04, pen 0.130) | 0.934 | PEN 9/9 (clr 0.04, pen 0.083) | still flagged | L1 w3.1x3.1 / L2 t1.8; slope 0.3 deg, tunnel width 8.3, tooth 1.1, L1 gate at x 31.8 with slot 7.4, L2 at x 53, unflipped |
 | P-547508e5 | plinko | 0.937 | PEN 1/9 (clr 0.14, pen 0.098) | 0.937 | ok | clean | rods L1 gap 3.1 (rod 2.8 wide, 1.8 tall) / L2 gap 1.7 (rod 2.3, 1.8) |

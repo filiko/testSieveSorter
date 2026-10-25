@@ -54,7 +54,9 @@ def fmt_clump(cl):
 
 def build_view(run_dir: Path):
     view = run_dir / "view.html"
-    if not view.exists() or view.stat().st_mtime < (run_dir / "traj.npz").stat().st_mtime:
+    newest = max((run_dir / "traj.npz").stat().st_mtime, (REPO_SIM / "viewer_template.html").stat().st_mtime,
+                 (REPO_SIM / "viewer.py").stat().st_mtime)
+    if not view.exists() or view.stat().st_mtime < newest:
         subprocess.run([str(PY), "viewer.py", str(run_dir), "--rig", "bugsorter"], cwd=REPO_SIM, check=True,
                        capture_output=True)
     return view

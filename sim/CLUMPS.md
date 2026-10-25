@@ -58,19 +58,19 @@ The run itself uses Newton. On the seesaw tower the driven trays weigh 1e6 g aga
 
 ```
 wsl: cd sim
-python sorter.py --design inserts:5mm,2mm,pitch=110 --mix "" \
-    --clump rice=50,quinoa=50,pasta=6,leaf=1,twig=2,dirt=10,bond=medium \
-    --stroke seesaw:deg=25,period_s=2 --duration 10 --dt 0.000125 --timeconst 0.00025 --fps 60 --out out/runs/clump_seesaw
-python viewer.py out/runs/clump_seesaw --rig bugsorter
-python clump_study.py --name spray --workers 6          # bond sets x spray on/off, summary table
-python clumps.py rice=50,quinoa=50,pasta=6,leaf=1       # pack one clump and print it
+python sorter.py --design breaker:open=8,bar=1.6,pin_d=2.5,pin_h=12,pitch=10,tip=round --mix "" \
+    --clump rice=50,quinoa=50,pasta=6,leaf=1,twig=2,dirt=10,bond=medium --spray default \
+    --stroke seesaw:deg=10,period_s=2,vib_mm=0.3 --duration 4 --dt 0.000125 --timeconst 0.00025 --fps 30 --out out/runs/brk_grain_spray
+python viewer.py out/runs/brk_grain_spray --rig bugsorter
+python clump_study.py --name spray10 --duration 6 --record  # bond sets x spray on/off on inserts:5mm,2mm,pitch=85, +/-10 deg
+python clumps.py rice=50,quinoa=50,pasta=6,leaf=1           # pack one clump and print it
 ```
 
 `--clump` takes the kinds and these options: `bond` (weak / medium / strong, or sigma in µN/mm), `k_wet`, `type` (connect / weld), `gap_mm`, `timeconst` (bond softness, s), `fragile_mN`, `pull_g`, `seed`, `solver`. From Python, `RunConfig(clump={"kinds": {...}, "bond": "medium", ...})` or `clumps.parse("rice=50,...")`.
 
 ## Results
 
-All on the demo stack `inserts:5mm,2mm` (5 mm over 2 mm over the catch pan), seesaw with neighbours alternating, constant angular speed, 2 s per cycle, dt 0.125 ms, contact time constant 0.25 ms, friction 0.4, one seed. The demo clump is the bench surrogate: 50 rice, 50 quinoa, 6 pasta, 1 leaf, 2 twigs, 10 dirt. It's 21 mm across, with 407 bonds.
+All on the demo stack `inserts:5mm,2mm` (5 mm over 2 mm over the catch pan), seesaw with neighbours alternating, constant angular speed, 2 s per cycle, dt 0.125 ms, contact time constant 0.25 ms, friction 0.4, one seed. The demo clump is the bench surrogate: 50 rice, 50 quinoa, 6 pasta, 1 leaf, 2 twigs, 10 dirt. It's about 20 mm across, with 407 or 432 bonds (two packings: see the note under the table in section 3).
 
 ### 1. It builds and breaks: the first run (±25°, PR #17)
 Pitch 110, sigma 3,000 (below what now counts as weak), 10 s: 10.4 min wall, no unstable resets, overlap ≤ 0.18 mm.
@@ -101,7 +101,8 @@ Between 3,000 and 10,000 the clump goes from shattering at the first motion to b
 | weak | on | 36% | 49% | **49%** | 52 | 307 / 407 | 163 / 34 | 92% / 82% |
 | medium | off | 0% | 0% | **1%** | 105 | 55 / 407 | 34 / 34 | 45% / 45% |
 | medium | on | 0% | 0% | **1%** | 105 | 84 / 432* | 32 / 32 | 72% / 72% |
-| strong | off / on | still running (CPU shared with four sessions); next PR | | | | | | |
+| strong | off | 0% | 0% | **0%** | 106 | 5 / 432* | 47 / 47 | 59% / 59% |
+| strong | on | 0% | 0% | **0%** | 106 | 13 / 432* | 44 / 44 | 68% / 68% |
 
 \* **Two packings.** A fix to the packing relax (stiffening the contacts in stages, for insects) landed while the study was running. The study spawns a fresh process per run, so the runs that started after it packed a slightly different clump: 432 bonds and 20.2 mm across, against 407 and 20.7 mm. Each spray on/off pair stays within one packing for weak (407) and strong (432). Medium crosses packings, but both medium runs free 1%.
 
@@ -114,10 +115,25 @@ The leaf stayed stuck to the clump in every run, so leaf blinding stayed at 0%. 
 What the table says:
 1. **The break-up happens in the first tilt, then stalls.** Each run frees what it will within 1–2 s, and nothing more comes off over the next two cycles. The ball doesn't roll. In the weak, spray-off run, the bonded ball's centre stays within 2 mm of where it landed, over the top tray's pivot, for all 6 s, while the tray tips ±10° under it. Its lower grains sit in the 5 mm holes. ±10° is well under the ~22° at which grains slide on plastic, so once the first tilt has shed what was loose, nothing more hits or loads the ball. **The seesaw alone doesn't finish a clump.** That's the job of the pins (the breaker layer) or of a faster component in the motion (seesaw + vibration).
 2. **Spray roughly triples what's freed** with weak bonds (49% against 14%). The largest cluster drops from 89 to 52. Wetting takes up to 60% off a bond (k_wet), and it reaches only the outside of the clump, so the spray peels the ball from the top. It's the only thing in this table that keeps working after the first tilt (36% → 49% between 1 and 2 s).
-3. **Medium bonds survive the plain seesaw** (1% freed, largest 105).
+3. **Medium and strong bonds survive the plain seesaw,** spray or not: 1% and 0% freed, largest cluster 105–106. Spray breaks a few more strong bonds (13 against 5 of 432), but not enough to free anything.
 4. **Most of the damage proxy comes from falling, not from breaking.** In the clump, p90 is 34–46 mN. Once freed grains fall 85 mm between levels, it rises to 104–163 mN. More freeing means more drops, so a lower fall between levels (pitch) or a softer landing may matter more for gentleness than the breaker itself.
 
-### 4. An insect clump
+### 4. With the breaker layer and the buzz
+The CAD default breaker (`breaker:open=8,bar=1.6,pin_d=2.5,pin_h=12,pitch=10,tip=round`, a holder box on top of the 5 mm / 2 mm trays, 85 mm apart) on the ±10°, 2 s seesaw plus the tool's 0.3 mm, 40 Hz vertical buzz (`vib_mm=0.3`, 1.9 g). Demo clump (432-bond packing), **medium** bonds, 4 s. On `main`'s faster seesaw these runs took 7.5 min each.
+
+| | spray | free at 1 s | free at 2 s | free at 4 s | t50 | t90 | largest cluster | peak force p90, all / in the clump (mN) |
+|---|---|---|---|---|---|---|---|---|
+| plain seesaw, no breaker (section 3) | off | 0% | 0% | 1% | never | never | 105 | 34 / 34 |
+| breaker + buzz | off | 77% | 81% | **81%** | 0.49 s | never | 17 | 299 / 142 |
+| breaker + buzz | on | 84% | 92% | **92%** | 0.19 s | 1.37 s | 8 | 246 / 101 |
+
+- **The pins and the buzz do the breaking.** The same medium clump goes from 1% freed to 81–92%. That agrees with the optimizer's round 0, which uses PR #17's weaker sets: 31% without a breaker and 85% with the CAD default breaker and buzz.
+- **Spray helps on the breaker too:** 92% against 81%. It halves t50 and brings t90 within reach (1.4 s). It also lowers the peaks, probably because a wetter clump breaks sooner and is hammered less.
+- **The price is gentleness.** In the clump, the peak-force p90 goes from 34 mN on the plain seesaw to 100–140 mN, and every specimen passes 5 mN while still bonded. A 1.9 g buzz throws the clump onto the pins at 40 Hz. Somewhere between "doesn't break" and "hammers" is the stroke to look for, and the optimizer's gentleness term should drive that search.
+- **Sort:** the leaf stays on the breaker (scalped) and pasta stays on 5 mm (4–5 of 6; 1–2 are held on the breaker). With the buzz, most rice goes on through 2 mm to the catch (28–31 of 50), corner to corner, where the sim's ideal rule puts it anyway. Quinoa reaches the catch (34–41 of 50).
+- Replays: `out/runs/brk_grain_dry/view.html`, `out/runs/brk_grain_spray/view.html`.
+
+### 5. An insect clump
 The real input is insects. The clump: 40 `insect_elongate` (flies, wasps, ants), 10 `insect_compact` (beetles, mites), 10 `insect_longleg` (mosquitoes, crane flies, spiders), 1 leaf, 1 twig and 5 dirt, from `insects.py` as it stands. **That mix has too few small specimens:** INSECT_AUDIT.md says real Malaise samples are 56–58% under 1.5 mm. The physics session's `insect_malaise` kinds (now on `main`) have the real shares, and they pack too (below); the next insect runs use them.
 - **Packing:** 45 s, with Newton (CG blew up on the interlocked legs within 0.03 s). The ball is 16 mm across (38 mm counting the leaf and twig), with 273 bonds, 8.4 per specimen. Interlocked legs keep about 0.1 mm of overlap after the relax.
 - **Loads with unbreakable bonds,** over r_pair in µN/mm:
@@ -130,22 +146,45 @@ The real input is insects. The clump: 40 `insect_elongate` (flies, wasps, ants),
   At rest the bonds carry almost nothing, because insects are light. But one gentle cycle loads them about 100× more, and more than the grain clump (p50 1,340). The likely cause is legs. A leg that drops into a 5 mm hole gets dragged by the driven tray as it turns, and the bonds pass that pull to the rest of the clump. The audit's note that the glued mesh jams 17 specimens per run points the same way. In the sim, **legs catching on the grid are what loads an insect clump**, so pins and grid geometry should matter even more for insects than for grains.
 - On these loads the grain sets also span the insect clump: weak (5,000) ≈ the cycle's p50, medium ≈ p75, strong ≈ p95.
 - **Breakable, medium bonds, ±10°, 4 s (2 cycles), spray off:** 7% free and the largest cluster is 56 of 60 (10 min wall, no unstable resets, ≤ 0.05 mm on the tray). Like the grain clump, the plain seesaw sheds a few specimens and stops. Replay: `out/runs/insect_medium_dry/view.html`.
-- **The same with spray** is still running; next PR.
+- **The real Malaise mix (`insect_malaise=40`) needs half the timestep.** It packs to an 11 mm ball with 125 bonds. At dt 0.125 ms, though, every run had MuJoCo resetting the state within the first 0.23–0.33 s of the settle, again and again, so **those results aren't valid**. Tried:
+
+  | setup | contacts | dt (ms) | resets |
+  |---|---|---|---|
+  | on the breaker + buzz, with debris, spray off / on | 0.25 ms | 0.125 | 3 / 4 |
+  | on the breaker + buzz, with debris | 0.5 ms | 0.125 | 3 |
+  | on the breaker + buzz, no debris | 0.25 ms | 0.125 | 6 |
+  | plain tower (no breaker), with debris | 0.25 ms | 0.125 | 4 |
+  | on the breaker + buzz, with debris | 0.25 ms | **0.0625** | **none** |
+
+  It's not the breaker, the debris or the contact stiffness: **dt 0.0625 ms fixes it.** The likely cause is the mix's tiny specimens (down to 0.3 mm long), whose bonds are anchored out on legs around very small rotational inertia. **Run `insect_malaise` clumps at `--dt 0.0000625`.** That doubles the cost: 1.5 s took 2.6 min. The old kinds (`insect_elongate` / `_compact` / `_longleg`) run at 0.125 ms.
+- **The real Malaise mix on the breaker + buzz** (`insect_malaise=40,leaf=1,twig=1,dirt=5`, medium bonds, dt 0.0625 ms, 4 s, as in section 4). Both runs were stable, at 6–9 min wall:
+
+  | spray | free at 1 s | free at 2 s | free at 3 s | free at 4 s | t50 | largest cluster (of 40) | where they ended |
+  |---|---|---|---|---|---|---|---|
+  | off | 28% | 35% | 35% | **35%** | never | 22 | 27 on the breaker, 11 in the catch, 2 between levels |
+  | on | 30% | 43% | 53% | **60%** | 2.8 s | 10 | 22 on the breaker, 3 on 5 mm, 1 on 2 mm, 10 in the catch, 4 between levels |
+
+  - **Insects come apart more slowly than grains** on the same breaker and stroke: 35% dry against 81%, and 60% wet against 92%. The legs keep specimens hooked to each other and to the pins.
+  - **Spray matters more for insects.** Dry, the break-up stops at 2 s. With spray it's still going at 4 s (43% → 53% → 60%), so a longer run with spray would free more. Of everything tried, this is the clearest case for keeping the jets on.
+  - Freed insects mostly drop through to the catch or are still falling between levels: 13 of 14 dry, 14 of 24 with spray. Real Malaise specimens are mostly under 2 mm, so that's where most belong. The 27 / 22 "on the breaker" are mostly specimens still in clusters (26 / 16 of them are still bonded).
+  - Replays: `out/runs/brk_malaise_none/view.html`, `out/runs/brk_malaise_default/view.html`.
 - **Don't read the insect damage proxy yet.** Lying still, the insect clump already shows a contact p90 of 26 mN. That's the 0.1 mm of leg overlap left by packing, pushing against stiff contacts. It's not damage, and it hides the real peaks. The fix is a longer or softer relax for insect clumps, or running them with softer contacts. Until then, use the break-up numbers only.
 
 ## What it means for the breaker and the optimizer
 - **The ±10° seesaw shifts the clump once, then holds it still.** In the sim, a clump that can hold itself up comes through three ±10° cycles mostly intact, so the break-up has to come from something else: the **breaker's pins** (they load the ball wherever it sits), a **fast component** in the motion (the seesaw + vibration stroke), a **steeper or faster tilt**, or **spray**. Without those, `study malaise` will mostly measure how much of the clump falls off in the first tilt.
-- **Spray is worth keeping on.** It's the only thing here that keeps freeing specimens after the first tilt, and it roughly triples the freed share for weak bonds.
+- **The breaker and the buzz do the work, and spray finishes it.** On the CAD default breaker with the 0.3 mm, 40 Hz buzz, a medium clump is 81% freed dry and 92% with spray (1% on the plain seesaw). Spray is the only thing in these runs that keeps freeing specimens after the first second or two, so keep it on.
+- **But the buzz hammers.** In the clump, the peak-force p90 rises from about 34 mN to 100–140 mN on breaker + buzz. The stroke to look for frees the clump with the least buzz, and the gentleness term is what should find it.
+- **Insects need the spray most.** The real-mix insect clump on breaker + buzz frees 35% dry and 60% wet, and wet it's still freeing at the end of the run. Grains: 81% and 92%. A Malaise study scored dry will undersell the rig.
 - **Score gentleness on the fall too.** The damage proxy is dominated by the 85 mm drops between levels, not by the break-up. A design that frees more specimens also drops more of them. Use `damage.bonded_*` for "did the breaker hurt them" and `damage.p90_mN` / `share_over` for the whole trip.
-- **For `study malaise`:** one 6 s run of this 120-body clump takes 10–30 min on one core, depending on the load. Use one seed per bond set, or a smaller clump (e.g. 30 specimens). Rank by `free_frac`, then `largest_cluster`, then the damage numbers. t50 / t90 are often null on a plain seesaw.
+- **For `study malaise`:** with `main`'s faster seesaw, a 4 s run of this 120-body clump on the breaker takes about 7.5 min on one core at dt 0.125 ms (it was 10–30 min for 6 s before). Use one seed per bond set, or a smaller clump (e.g. 30 specimens). Rank by `free_frac`, then `largest_cluster`, then the damage numbers. t50 / t90 are often null on a plain seesaw.
 - **The optimizer's Malaise round 0 (PR #27) agrees:** a medium-bond grain clump sits whole without a breaker, and breaker + seesaw + buzz frees it.
-- **Insect clumps pack now.** On PR #17's code, insect clumps blew up while packing: the optimizer's LOG reports a 75 m "diameter" with 12 bonds for `insect_malaise=40`. Two changes fix it. Insects now pack with Newton (CG blew up within 0.03 s), and the relax stiffens the contacts in four stages instead of jumping to the run's stiffness. With them, `insect_malaise=40` packs to 11 mm with 125 bonds, and `insect_malaise_2to6=30,insect_malaise_gt6=5,leaf=1,twig=1,dirt=5` packs to 20 mm with 148 bonds (both at contact time constant 0.25 ms; about 30 s each).
-- **Next to run here:** the clump on the breaker layer with the seesaw + buzz (both now on `main`), loose leaves for blinding, the `insect_malaise` mix, and more seeds.
+- **Insect clumps pack now.** On PR #17's code, insect clumps blew up while packing: the optimizer's LOG reports a 75 m "diameter" with 12 bonds for `insect_malaise=40`. Two changes fix it. Insects now pack with Newton (CG blew up within 0.03 s), and the relax stiffens the contacts in four stages instead of jumping to the run's stiffness. With them, `insect_malaise=40` packs to 11 mm with 125 bonds, and `insect_malaise_2to6=30,insect_malaise_gt6=5,leaf=1,twig=1,dirt=5` packs to 20 mm with 148 bonds (both at contact time constant 0.25 ms; about 30 s each). **But `insect_malaise` clumps need dt 0.0625 ms** (section 5): at 0.125 ms they go unstable in the settle.
+- **Next to run here:** the optimizer's leader B-32a7c82c with spray on and off; loose leaves for blinding; and more seeds.
 
 ## Limits
 - **Bond strength, k_wet and the fragility threshold are assumptions,** and the sets are placed on the sim's own loads. The ranking across designs is what to use. Absolute times aren't.
 - **Brittle bonds:** a bond holds fully until it snaps, with no stretching, no fatigue and no re-bonding when specimens touch again. Real tangled legs and liquid bridges are more ductile, and wet specimens re-stick. So this model overstates cascades and understates re-clumping.
 - **Rigid specimens, rigid leaves:** legs don't snap, leaves don't fold. The damage proxy stands in for broken legs.
-- **No liquid in the tray:** the spray pushes and wets (spray.py), but nothing floats or drains, and nothing has drag in air or in ethanol. That limits the damage on landing and how far grains bounce.
+- **No liquid in the tray:** the spray pushes and wets (spray.py), but nothing floats or drains, and nothing has drag in air or in ethanol. So landings in the sim are probably harder than real ones, especially for insects, which in liquid weigh only 5–13% of their dry weight (INSECT_AUDIT.md).
 - **The settle is a numerical set-down.** Real clumps are tipped onto the tray from a jar, which is harsher than the sim's 100 mm/s set-down.
 - **Cost:** in these runs, Newton took about 12–19 ms per step for a 120-body clump, so a 6 s ±10° run took 10–35 min on one core, depending on the load. `main` has since put the seesaw's level bodies before the particles (about 20× faster per step for the seesaw), and these runs predate that. The optimizer gets about 3.5 min per 4 s run at dt 0.25 ms.

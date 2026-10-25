@@ -60,9 +60,10 @@ Metrics (Clumps.metrics, in results["clumps"]):
     and recovery cover every particle).
 
 Use from sorter.py (--clump), e.g. a bench-demo clump of grain surrogates on the seesaw tower:
-    <venv python> sorter.py --design inserts:5mm,2mm,pitch=110 --mix "" \\
+    <venv python> sorter.py --design inserts:5mm,2mm,pitch=85 --mix "" \\
         --clump rice=50,quinoa=50,pasta=6,leaf=1,twig=2,dirt=10,bond=medium \\
-        --stroke seesaw:deg=25,period_s=2 --duration 10 --dt 0.000125 --timeconst 0.00025 --fps 60 --out out/runs/clump
+        --stroke seesaw:deg=10,period_s=2 --duration 6 --dt 0.000125 --timeconst 0.00025 --fps 30 --out out/runs/clump
+    (insect_malaise clumps need --dt 0.0000625: at 0.125 ms they go unstable in the settle; CLUMPS.md)
 Options in --clump (with the kinds): bond (weak / medium / strong, or sigma in uN/mm), k_wet, type (connect /
 weld), gap_mm, timeconst (bond solref, s), fragile_mN, pull_g, seed, solver (cg / newton / pgs).
 

@@ -1,6 +1,6 @@
 # Leaderboard: Demo set: surrogate grains (pasta + chickpea / rice / quinoa)
 
-Generated 2026-10-25 09:00 by `sim/optimize.py` (study `demo`). 201 candidates, 2601 sim runs so far.
+Generated 2026-10-25 09:07 by `sim/optimize.py` (study `demo`). 201 candidates, 2691 sim runs so far.
 
 **The sim ranks designs; it does not predict real percentages.** It is uncalibrated until `calibrate.py` has bench counts, has no water, rigid particles, and about 80 particles per run. Sizes are simulated at the as-printed opening, nominal - 0.15 mm (ASSUMED until the hole gauge is measured).
 
@@ -49,14 +49,18 @@ Ranked by the robust score (mean - 1 sd) over 3 friction sets x 3 seeds at the f
 | id | family | as ranked (ramp 0.01 s, undersize 0.15 mm) | ramp 0.005 s | ramp 0.02 s | undersize 0.05 mm | undersize 0.25 mm | worst | design |
 |---|---|---|---|---|---|---|---|---|
 | P-ae394887 | plinko | 0.999 | - | - | 0.978 | 0.997 | **0.978** | rods L1 gap 3.7 (rod 2.6 wide, 1.6 tall) / L2 gap 1.5 (rod 1.8, 2.4) |
+| P-7dd9222c | plinko | 0.999 | - | - | 0.937 | 0.999 | **0.937** | rods L1 gap 3.6 (rod 2.1 wide, 1.8 tall) / L2 gap 1.6 (rod 2, 2.8) |
 | P-668db784 | plinko | 0.998 | - | - | 0.937 | 0.997 | **0.937** | rods L1 gap 3.5 (rod 3.7 wide, 2 tall) / L2 gap 1.6 (rod 2.9, 2.2) |
 | G-a1ecf9bb | gated_mid | 0.985 | - | - | 0.925 | 0.965 | **0.925** | L1 t3.5 / L2 t1.6; slope 2.7 deg, tunnel width 5, tooth 0.8, L1 gate at x 22.2 with slot 8.1, L2 at x 53, unflipped |
+| P-6e03ce14 | plinko | 0.958 | 0.983 | 0.826 | 0.937 | 0.936 | **0.826** | rods L1 gap 4.1 (rod 1.7 wide, 2.2 tall) / L2 gap 1.6 (rod 2.1, 3.2) |
+| G-060cecb0 | gated_mid | 0.955 | - | - | 0.760 | 0.954 | **0.760** | L1 w3.1x3.1 / L2 t1.8; slope 0.3 deg, tunnel width 8.3, tooth 1.1, L1 gate at x 31.8 with slot 7.4, L2 at x 53, unflipped |
 | P-fdf86953 | plinko | 0.937 | - | - | 0.650 | 0.977 | **0.650** | rods L1 gap 5.1 (rod 2.4 wide, 3.4 tall) / L2 gap 1.7 (rod 2.3, 3.2) |
 | P-ba5dd6b3 | plinko | 0.929 | 0.971 | 0.892 | 0.930 | 0.870 | **0.870** | rods L1 gap 5.6 (rod 1.8 wide, 2.6 tall) / L2 gap 1.6 (rod 2.2, 2.8) |
 | I-f660966d | inserts | 0.714 | 0.729 | 0.655 | 0.599 | 0.710 | **0.599** | square holes 5 (bar 1.2) / 2 (bar 1) |
 | P-99a23702 | plinko | 0.670 | 0.934 | 0.530 | 0.799 | 0.485 | **0.485** | rods L1 gap 5 (rod 2.4 wide, 3 tall) / L2 gap 1.4 (rod 2, 2.6) |
 | C-243bf513 | current | 0.523 | 0.518 | 0.522 | 0.523 | 0.523 | **0.518** | TODAY on the bench: glued mesh inserts mesh5 / mesh2, firmware cap stroke |
 | D-e018f15d | demo_rig | 0.499 | - | - | 0.499 | 0.499 | **0.499** | one level of the demo rig: the 5 mm tray alone over a catch pan, up and down (sine 20 Hz, 2 g, 90 deg). The full rig is the stacked baseline above |
+| I-8145d10d | inserts | 0.460 | - | - | -0.000 | 0.810 | **-0.000** | square holes 5 (bar 1.2) / 2 (bar 1) |
 | G-e1861ffb | gated | -0.024 | -0.062 | -0.073 | -0.028 | -0.065 | **-0.073** | L1 t3.8 / L2 t1.6; slope 2 deg, tunnel width 8, tooth 2, slot 7 |
 | G-c0121ff0 | gated | -0.074 | -0.067 | -0.074 | -0.055 | -0.078 | **-0.078** | L1 w5x8 / L2 t1.4; slope 2 deg, tunnel width 8, tooth 2, slot 7 |
 

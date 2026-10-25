@@ -1347,6 +1347,7 @@ def run_study(args):
     base = base_cfg(study)
     sets, source = sweep.param_sets()
     cands, summ = load_state(study)
+    refresh(study, cands, summ)
     have = {c["id"] for c in cands}
     done_rounds = max((c["round"] for c in cands), default=-1)
     fams = args.families.split(",")
@@ -1392,15 +1393,20 @@ def run_study(args):
         print(f"round {rnd} done in {(time.time() - t0) / 60:.1f} min; leaderboard written", flush=True)
 
 
-def report(args):
-    cands, summ = load_state(args.study)
-    base = base_cfg(args.study)
+def refresh(study, cands, summ):
+    """Recompute every summary from the run cache with today's scoring, so no step decides on stale numbers."""
+    base = base_cfg(study)
     sets, _ = sweep.param_sets()
     for c in cands:
         for fid in ["screen", "full", *[k for k in (summ.get(c["id"]) or {}) if k.startswith(("ramp", "us", "stiff"))]]:
-            s = summarize(c, args.study, fid, base, sets)
+            s = summarize(c, study, fid, base, sets)
             if s:
                 summ.setdefault(c["id"], {})[fid] = s
+
+
+def report(args):
+    cands, summ = load_state(args.study)
+    refresh(args.study, cands, summ)
     meta = {"n_cands": len(cands), "n_runs": len(list((OUT / args.study / "runs").glob("*.json")))}
     write_outputs(args.study, cands, summ, meta)
     print("rebuilt leaderboard and winners")
@@ -1411,6 +1417,7 @@ def replay(args):
     import sorter
     import viewer
     cands, summ = load_state(args.study)
+    refresh(args.study, cands, summ)
     by_id = {c["id"]: c for c in cands}
     win = json.loads((OPT / ("winners.json" if args.study == "demo" else f"winners_{args.study}.json"))
                      .read_text(encoding="utf-8"))
@@ -1432,6 +1439,7 @@ def replay(args):
 def stress(args):
     """Rerun the top designs (and the references) at other stroke reversal times."""
     cands, summ = load_state(args.study)
+    refresh(args.study, cands, summ)
     base = base_cfg(args.study)
     sets, _ = sweep.param_sets()
     top = ranking(cands, summ)[:args.top]
@@ -1439,7 +1447,8 @@ def stress(args):
     win = winners_json(args.study, cands, summ)            # the current winners and the best per drive, too
     by_id = {c["id"]: c for c in cands}
     wins = [by_id[w["id"]] for w in win["winners"]] + [by_id[v["id"]] for v in win["best_by_drive"].values()]
-    pick = list({c["id"]: c for c in wins + top + refs_}.values())
+    extra = [by_id[i] for i in (args.ids.split(",") if args.ids else []) if i in by_id]
+    pick = list({c["id"]: c for c in wins + extra + top + refs_}.values())
     fids = [f"ramp{float(r):g}" for r in args.ramps.split(",") if r] + \
            [f"us{float(u):g}" for u in args.undersize.split(",") if u]
     def applies(c, fid):
@@ -1459,6 +1468,7 @@ def stress(args):
 def verify(args):
     """Rerun the top flagged designs (full length) with stiffer contacts."""
     cands, summ = load_state(args.study)
+    refresh(args.study, cands, summ)
     base = base_cfg(args.study)
     sets, _ = sweep.param_sets()
     pick = [c for c in ranking(cands, summ)[:args.top * 3] if c["family"] in FAMILIES
@@ -1493,7 +1503,7 @@ def main():
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--small", action="store_true", help="a quarter of the candidates (smoke test)")
     ap.add_argument("--top", type=int, default=3)
-    ap.add_argument("--ids", help="replay: extra candidate ids")
+    ap.add_argument("--ids", help="replay / stress: extra candidate ids, comma separated")
     ap.add_argument("--ramps", default="0.005,0.02", help="stress: reversal times to try, s")
     ap.add_argument("--undersize", default="0.05,0.25", help="stress: printer undersizes to try, mm")
     ap.add_argument("--fps", type=float, default=20.0)

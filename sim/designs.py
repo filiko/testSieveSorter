@@ -4,6 +4,8 @@
                            e.g. pool:w5p0,t1p4 (the pool_gate_ prefix is optional)
     inserts:<a>,<b>,...    BioKEA's holder box with sieve inserts (designs_holder.py)
     plinko                 plinko layers in the holder box (designs_holder.py)
+    gated:<slope>,<strips> the gated container tower, one strip per level (designs_gated.py),
+                           e.g. gated:2,w5p0,t1p4
 
 Geometry is computed from the CAD parameters, so the sim follows the CAD when it changes.
 The pool's rounded corners and the gate grooves a strip fills are left out; the empty cover
@@ -141,7 +143,10 @@ def build(spec):
     if kind in ("inserts", "plinko"):
         import designs_holder
         return getattr(designs_holder, f"build_{kind}")(args)
-    raise ValueError(f"unknown design {spec!r}: use pool:<g1>,<g2>, inserts:<a>,<b> or plinko")
+    if kind == "gated":
+        import designs_gated
+        return designs_gated.build(args)
+    raise ValueError(f"unknown design {spec!r}: use pool:<g1>,<g2>, inserts:<a>,<b>, plinko or gated:<slope>,<strips>")
 
 
 if __name__ == "__main__":

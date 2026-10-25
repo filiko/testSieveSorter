@@ -6,7 +6,7 @@ Four Claude Code sessions work on this repo at the same time. Each has its own g
 |---|---|---|---|
 | Main / GitHub / coordination | `Documents\Github\testSieveSorter` | `main` | — |
 | Bambu + visualization / 3D modeling | `Documents\Github\testSieveSorter-bambu` | `bambu-viz` | [bambu.md](bambu.md) |
-| Physics engine test on the new laptop | `Documents\Github\testSieveSorter-physics` | `physics-bench` | [physics.md](physics.md), [demo-rig.md](demo-rig.md) A-B |
+| Physics engine test on the new laptop | `Documents\Github\testSieveSorter-physics` | `physics-bench` | [physics-handoff.md](physics-handoff.md) (current), [physics.md](physics.md), [demo-rig.md](demo-rig.md) A-B |
 | Design optimizer (sim-driven, self-improving) | `Documents\Github\testSieveSorter-opt` | `design-opt` | [design-optimizer.md](design-optimizer.md), [demo-rig.md](demo-rig.md) C |
 
 **Shared venv.** There is one venv, `testSieveSorter\.venv` (Python 3.12, from `requirements.txt`). Each worktree has a `.venv` junction that points at it, so `..\.venv\Scripts\python.exe` works from `cad\` and `sim\` in any folder. A `pip install` in one session changes the venv for all of them, so say so in the PR.

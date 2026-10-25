@@ -24,6 +24,8 @@ Photos: `C:\Users\ajfil\Documents\Github\testSieveSorter\media\forum-2026-10-24\
 - Include the demo tray (`inserts:5mm`) as a baseline row on the leaderboard, so the winners are measured against what the team actually built.
 
 ## D. Demo visual (bambu session, `bambu-viz`)
+> **06:15:** A is on `main` (PRs #2 and #3). The up-and-down demo-tray run for the viewer is in `sim/VERTICAL.md` under Reproduce: `sorter.py --design inserts:5mm --mix pasta=15,rice=40 --stroke sine:amp_mm=1.24,freq_hz=20,angle_deg=90 --duration 10 ...`. The sim says vertical sorts the demo mix fine, just 2-3x slower than shaking along the tray.
+
 - In the sim viewer: the demo tray only (5 mm square-grid insert, no tool) with the pasta + rice mix, shaken **up and down** once A lands. Until then, use the horizontal run.
 - Viewer work as before: camera from URL params, a **Copy camera** button, and a **Record** button (`canvas.captureStream()` + `MediaRecorder`) in `sim/viewer_template.html`.
 - Match the viewer camera to one of Forum's photos (`IMG_1316.JPG` shows the tray on the tool from the side; `IMG_1318.JPG` is top-down).

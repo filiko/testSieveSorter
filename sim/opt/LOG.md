@@ -566,3 +566,7 @@ Caveat: it is flagged in 9 of 9 runs. Its L2 tunnel is 1.65 mm as printed, 0.04 
 
 **Next:** verify and stress the new ones (queued), replays of the winners, then insect round 1 if time remains.
 
+## Verification of today's flipped tower on a flat shake (notes, 2026-10-25 09:50)
+
+G-d726c2e8, the standard flipped gated tower on a 26 Hz, 3.8 g shake along the tray, **stays flagged** at stiffer contacts: 7 of 9 runs, overlap 0.059 mm, but its clearance is only 0.04 mm. Its score holds (0.946, 0.937 stiff), so the result isn't a soft-contact artefact. The flag is a real near-size warning: the L2 tunnel prints at 1.65 mm against 1.7 mm rice. **Next hypothesis:** the same tower and shake with a safer L2 tunnel (t1.6-1.7 nominal) should keep the score and lose the flag. The gated family's cross-entropy now centres on this design, so round 6 samples that neighbourhood. Insect round 1 is dropped from the queue: it doesn't fit before 10:50, and the insect classes are capped by structure, not tuning (insect round 0 notes).
+

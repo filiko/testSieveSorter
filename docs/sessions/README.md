@@ -43,3 +43,9 @@ Smart App Control is still **on**; nothing in the Windows policy was changed.
 - VTK previews render through WSLg. Ignore the `bad X server connection` warning; the PNGs come out fine.
 - Speed: the reference `inserts:mesh5,mesh2` run takes 45 s wall in WSL, against 517 s on the old machine. See `sim/PERF.md`.
 - Incident: at 05:22 the physics session ran `python3 -m venv ~/venvs/sieve` on top of the uv venv while it was being built (most likely by the bambu session). That rewrote `pyvenv.cfg`. It has been repaired (uv-format `pyvenv.cfg`, stray `lib/python3.14` and `bin/pip*` removed), and the packages were not affected. Don't recreate this venv; add packages to it instead.
+
+## Contact settings for sim runs (physics, 2026-10-25)
+
+For every session that runs the sim (optimizer, bambu replays):
+- **`sim/contact_rule.py`** picks the timestep and contact time constant from a design's tightest gate clearance and its stroke: `python contact_rule.py --clearance 0.14 --stroke constant_speed:amp_mm=14,speed_mm_s=41,ramp_s=0.01`, or `contact_rule.pick(clearance_mm, stroke)` from Python. It's a new file, so nothing that imports `optimize.py` or `sweep.py` changed. The measurements and the reasoning are in `sim/VERTICAL.md`, under "Contact rule".
+- **`sim/verify.py`** is the second opinion on `sim/opt/winners.json`: it reruns the top 3 and the demo tray with fresh seeds, a heavy load and stiffer contacts, and writes `sim/opt/VERIFY.md`. It imports `optimize.py` and doesn't edit it.

@@ -28,6 +28,7 @@ MIXES = {
 }
 SOLVER = [(5e-4, 2e-3), (2.5e-4, 5e-4), (2.5e-4, 1e-3), (1.25e-4, 5e-4)]     # (dt, timeconst)
 STROKES = ["constant_speed:amp_mm=10,speed_mm_s=50,ramp_s=0.01"]                 # sorter.py --stroke syntax
+SETTLE_S = 1.0
 
 
 class Unstable(Exception):
@@ -36,15 +37,28 @@ class Unstable(Exception):
 
 def probe(job):
     import mujoco
+    import numpy as np
+    import designs
     import sorter
-    step = mujoco.mj_step
-    bad = {"qpos": mujoco.mjtWarning.mjWARN_BADQPOS, "qvel": mujoco.mjtWarning.mjWARN_BADQVEL,
+    # the pool reuses worker processes: wrap the original mj_step, not the previous job's wrapper
+    step = mujoco.__dict__.setdefault("_unwrapped_mj_step", mujoco.mj_step)
+    bad ={"qpos": mujoco.mjtWarning.mjWARN_BADQPOS, "qvel": mujoco.mjtWarning.mjWARN_BADQVEL,
            "qacc": mujoco.mjtWarning.mjWARN_BADQACC}
+    roles = [g["role"] for g in designs.build(job["design"]).geoms]
+    names = sorted(set(roles))
+    seen = {"pen": np.zeros(len(names))}
 
     def checked_step(m, d):
         t = d.time
         step(m, d)
-        if d.time < t:                                     # MuJoCo reset the state: it went unstable
+        if "role" not in seen:      # role index per geom, -1 off the tray
+            seen["role"] = np.full(m.ngeom, -1)
+            for i, r in enumerate(roles):
+                seen["role"][m.geom(f"tray{i}").id] = names.index(r)
+        if d.time >= SETTLE_S and d.ncon:      # worst overlap per tray role after the settle, every step (impacts
+            r = seen["role"][d.contact.geom[:d.ncon]].max(axis=1)      # last a few steps; sorter samples every 10th)
+            np.maximum.at(seen["pen"], r[r >= 0], -d.contact.dist[:d.ncon][r >= 0])
+        if d.time < t:                                   # MuJoCo reset the state: it went unstable
             what = next((k for k, w in bad.items() if d.warning[w].number), None)
             dof = int(d.warning[bad[what]].lastinfo) if what else -1
             body = int(m.body_rootid[m.dof_bodyid[dof]]) if 0 <= dof < m.nv else -1
@@ -55,13 +69,16 @@ def probe(job):
     profile, _, rest = job["stroke"].partition(":")
     stroke = {"profile": profile, **sorter.parse_kv(rest)}
     cfg = sorter.RunConfig(design=job["design"], mix=MIXES[job["mix"]], stroke=stroke, duration_s=job["duration"],
-                           settle_s=1.0, seed=job["seed"], dt=job["dt"],
+                           settle_s=SETTLE_S, seed=job["seed"], dt=job["dt"],
                            contact={"friction": 0.4, "timeconst": job["tc"], "dampratio": 1.0}, record_fps=0)
     t0 = time.perf_counter()
     out = {**job, "unstable": False}
     try:
         res = sorter.run(cfg)
         out["max_pen_tray"], out["max_pen_pp"] = res["max_penetration_mm"], res["max_penetration_particles_mm"]
+        out["max_pen_role"] = {r: round(float(v), 5) for r, v in zip(names, seen["pen"])}
+        # gates and screens only: optimize.py's measure. Floors count too where a tunnel's ceiling sits above them
+        out["max_pen_gate"] = max([out["max_pen_role"][r] for r in ("gate", "screen") if r in names], default=0.0)
     except Unstable as e:
         info = json.loads(str(e))
         out.update(unstable=True, **info, phase="settle" if info["t"] < cfg.settle_s else "shake")
@@ -70,6 +87,7 @@ def probe(job):
             out["kind"] = [k for k, n in cfg.mix.items() for _ in range(n)][i]
     except Exception:
         out["error"] = traceback.format_exc()[-1500:]
+    mujoco.mj_step = step
     out["wall_s"] = round(time.perf_counter() - t0, 2)
     return out
 
@@ -84,6 +102,7 @@ def main():
     ap.add_argument("--solver", default=";".join(f"{dt},{tc}" for dt, tc in SOLVER), help="'dt,tc;dt,tc;...'")
     ap.add_argument("--strokes", default=";".join(STROKES), help="';'-separated sorter.py --stroke specs")
     ap.add_argument("--out", default="out/instab.jsonl")
+    ap.add_argument("--retry", action="store_true", help="keep the runs in --out that finished; redo the rest")
     args = ap.parse_args()
     solver = [tuple(map(float, s.split(","))) for s in args.solver.split(";")]
     jobs = [{"design": de, "mix": mx, "stroke": st, "dt": dt, "tc": tc, "seed": s, "duration": args.duration}
@@ -91,9 +110,15 @@ def main():
                                                    args.strokes.split(";"), solver, range(args.seeds))]
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
-    print(f"{len(jobs)} runs on {args.workers} workers -> {out}", flush=True)
+    keep = []
+    if args.retry and out.exists() and jobs:
+        keep = [r for r in map(json.loads, out.read_text(encoding="utf-8").splitlines()) if "error" not in r]
+        done = {json.dumps({k: r[k] for k in jobs[0]}, sort_keys=True) for r in keep}
+        jobs = [j for j in jobs if json.dumps(j, sort_keys=True) not in done]
+    print(f"{len(jobs)} runs on {args.workers} workers -> {out} ({len(keep)} kept)", flush=True)
     t0 = time.time()
     with open(out, "w", encoding="utf-8") as f, ProcessPoolExecutor(args.workers) as ex:
+        f.writelines(json.dumps(r) + "\n" for r in keep)
         for n, fut in enumerate(as_completed([ex.submit(probe, j) for j in jobs]), 1):
             r = fut.result()
             f.write(json.dumps(r) + "\n")

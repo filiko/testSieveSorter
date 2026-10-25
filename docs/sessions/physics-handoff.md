@@ -54,3 +54,10 @@ Written 2026-10-25 06:15 PT by the main session. The first physics session ran i
   - `python verify.py --study demo --top 3 --seeds 6 --heavy 2 --workers 8`: about 2 h at 8 workers; the cached demo-rig runs are reused.
   - Or add `--variants normal`: about 40 min.
 - **Also open:** rerun the contact-rule grid with `inserts:5mm,2mm` added.
+
+## Status (physics session, 2026-10-25 11:35)
+- **Grains from the team's pantry photo** (asked for by the user): six new kinds in `sim/grains.py`, written up in [`sim/GRAINS.md`](../../sim/GRAINS.md).
+  - The kinds are `white_rice` (the photo's white rice: 7.2 × 2.1 × 1.7 mm, 21 mg), `brown_rice`, `black_rice` (short and medium pigmented, black and red), `wild_rice` (one capsule), `chia` and `couscous`.
+  - rice, quinoa, chickpea and pasta are frozen and byte-identical, so the optimizer's leaderboard stands.
+  - Record the bench's white rice as `white_rice`. Rows of `rice` or `pasta` in `bench/grain_dims.csv` would replace the frozen kinds for every run (GRAINS.md, Suggested changes 5).
+- **Bugs:** `sim/insects.py` already models them. [`sim/INSECT_AUDIT.md`](../../sim/INSECT_AUDIT.md) compares it with real Malaise samples and ranks six proposals. None are applied; waiting on the user.

@@ -14,6 +14,7 @@ else SD), clipped to +/-20% (CLIP sets a wider range for a few kinds).
     wild_rice   Zizania: a long thin needle, one capsule along x
     chia        chia seed, a small flattened ellipsoid
     couscous    durum semolina granules, an ellipsoid; one size draw scales the whole grain (SIZE_LINKED)
+    white_rice  white long-grain rice as photographed (US spec size): longer, wider and heavier than rice
 
 rice, quinoa, chickpea and pasta are FROZEN: the design optimizer's leaderboard was run with them,
 so their numbers and code paths stay as they are. The other kinds come from the team's pantry
@@ -55,6 +56,7 @@ SIZES = {
     "wild_rice": ((10.0, 1.85, 1.6), 1.28e-3, "0.19 0.15 0.12 1"),
     "chia": ((2.11, 1.32, 0.81), 1.12e-3, "0.34 0.32 0.30 1"),
     "couscous": ((2.15, 1.6, 1.3), 1.29e-3, "0.94 0.86 0.66 1"),
+    "white_rice": ((7.2, 2.1, 1.7), 1.56e-3, "0.97 0.94 0.92 1"),
 }
 FROZEN = ("rice", "quinoa", "chickpea", "pasta")
 PASTA_WALL = 1.2

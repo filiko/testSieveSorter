@@ -1184,7 +1184,7 @@ def leaderboard_md(study, cands, summ, meta):
     if ver:
         lines += ["", "## Verification of flagged leaders at stiffer contacts", "",
                   f"Rerun at dt {STIFF_DT * 1e3:g} ms and contact timeconst {STIFF_TIMECONST * 1e3:g} ms (half the "
-                  "overlap of the standard solver), same 3 friction sets x 3 seeds, 30 s. A design that comes back with "
+                  f"overlap of the standard solver), 3 friction sets x {len(SEEDS)} seeds, {FULL_S:g} s. A design that comes back with "
                   "no flagged or failed run counts as clean for `winners.json`, ranked by the lower of its two scores.", "",
                   "| id | family | robust (standard) | flags (standard) | robust (stiff) | flags (stiff) | verdict | design |",
                   "|---|---|---|---|---|---|---|---|"]

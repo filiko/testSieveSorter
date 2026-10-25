@@ -952,3 +952,18 @@ This overrides my 10:10 reading ("x matches attached at the mid points"). So rou
 - Seesaw + buzz with plinko rods sorts all three classes in the sim.
 - Breaker (short pins) + buzz frees 94% of a fresh grain clump, against 48% with no breaker (malaise, EXPLORATORY).
 - The buzz is the common lever.
+
+**Stiff-contact rerun (13:46, dt 0.125 ms, timeconst 0.25 ms, 3 seeds x 3 friction sets, 16 s):**
+- P-690b1645 holds at 0.996, with 1 of 9 runs still flagged.
+- P-a822b277 (plinko 3.5 / 1.4, +/-6 deg, 4.3 s + 0.3 mm) comes back clean at 0.947 and is now winner #3: a low-angle option.
+- Winners 1 and 2 were never flagged.
+
+**Replays (local, gitignored), for bambu's hero clips:**
+- `sim/out/opt/seesaw/replay/P-3bbfc231/view.html` and `.../P-3b817251/view.html`: every kind 100% in its class.
+- `sim/out/opt/malaise/replay/B-164f355a/view.html`: the winning breaker frees the clump (medium bonds, 100%).
+- `.../B-5405ea9b/view.html`: no breaker, and the clump sits whole on the 5 mm tray (2% freed).
+
+**Stop for the freeze.** Final: `winners_seesaw.json`, `winners_malaise.json` and their leaderboards. Next, after the hack:
+- the insect clump, once `clumps.pack` handles insects;
+- printer-undersize stress on the seesaw winners;
+- a bench check of whether the rig can add the 40 Hz buzz.

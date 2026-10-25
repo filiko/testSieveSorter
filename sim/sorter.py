@@ -17,6 +17,8 @@ Stroke profiles:
     sawtooth        amp_mm, freq_hz, forward_fraction, ramp_s: slow stroke along the axis, fast return
     csv             csv: a measured "t_s,x_mm" file (looped), smoothed before differentiating
     none
+    seesaw          deg, period_s, shape, ...: each level of an inserts: tower rocks on its own hinge about Y,
+                    neighbours in opposite phase, in the lab frame (rocking.py); no translation
 
 Run from sim\\:
     <venv python> sorter.py --design pool:w5p0,t1p4 --mix rice=30,quinoa=30,chickpea=8,pasta=8 \\
@@ -34,6 +36,7 @@ import mujoco
 import numpy as np
 
 import designs
+import rocking
 
 G = 9810.0
 SOLIMP = "0.95 0.99 0.0001"
@@ -161,7 +164,7 @@ def tray_xml(design):
     return "".join(assets), "".join(geoms)
 
 
-def build_model(cfg, design, particles, rng, extras=""):
+def build_model(cfg, design, particles, rng, extras="", rock=None):
     c = cfg.contact
     mu = c["friction"]
     pos = place(particles, design.spawn, rng)
@@ -174,6 +177,10 @@ def build_model(cfg, design, particles, rng, extras=""):
                       f'quat="{q[0]:.5f} {q[1]:.5f} {q[2]:.5f} {q[3]:.5f}" childclass="particle">'
                       f'<freejoint/>{p.xml.replace("{p}", name)}</body>')
     assets, tray = tray_xml(design)
+    levels = ""
+    if rock is not None:          # seesaw: the tray geoms move onto one hinged body per level, after the particles
+        tray, levels = rock.split_xml(assets, tray)
+        extras += rock.contact_xml()
     xml = f"""<mujoco model="{design.name}">
   <option timestep="{cfg.dt}" gravity="0 0 {-G}" integrator="implicitfast"/>
   <size memory="{MEMORY}"/>
@@ -187,21 +194,23 @@ def build_model(cfg, design, particles, rng, extras=""):
     <light pos="0 -80 300" dir="0 0.25 -1" diffuse="0.8 0.8 0.8"/>
     <camera name="iso" pos="0 -170 170" xyaxes="1 0 0 0 0.707 0.707"/>
     {tray}
-    {"".join(bodies)}
+    {"".join(bodies)}{levels}
   </worldbody>
   {extras}
 </mujoco>"""
     return mujoco.MjModel.from_xml_string(xml)
 
 
-def assign_zones(xyz, design, bounds):
-    """Zone index per particle root: design zones in order, then between, then lost."""
+def assign_zones(xyz, design, bounds, local=None):
+    """Zone index per particle root: design zones in order, then between, then lost. local(k, xyz), if given,
+    returns xyz in zone k's own frame (a seesaw level's)."""
     n_z = len(design.zones)
     zone = np.full(len(xyz), n_z, dtype=np.int32)                  # between
     for k in reversed(range(n_z)):
         x0, x1, y0, y1, z0, z1 = design.zones[k]["box"]
-        inside = ((xyz[:, 0] >= x0) & (xyz[:, 0] <= x1) & (xyz[:, 1] >= y0) & (xyz[:, 1] <= y1)
-                  & (xyz[:, 2] >= z0) & (xyz[:, 2] <= z1))
+        p = xyz if local is None else local(k, xyz)
+        inside = ((p[:, 0] >= x0) & (p[:, 0] <= x1) & (p[:, 1] >= y0) & (p[:, 1] <= y1)
+                  & (p[:, 2] >= z0) & (p[:, 2] <= z1))
         zone[inside] = k
     lo, hi = bounds
     lost = np.any(xyz < lo, axis=1) | np.any(xyz > hi, axis=1)
@@ -242,6 +251,7 @@ def body_geoms(m, b):
 def run(cfg: RunConfig) -> dict:
     rng = np.random.default_rng(cfg.seed)
     design = designs.build(cfg.design)
+    rock = rocking.Seesaw.of(cfg, design)            # None unless the stroke is a seesaw
     kinds = list(cfg.mix)
     particles = [make_particle(k, rng) for k in kinds for _ in range(cfg.mix[k])]
     names = [f"p{i:03d}" for i in range(len(particles))]
@@ -257,28 +267,31 @@ def run(cfg: RunConfig) -> dict:
             jets = spray.jets_from_csv(Path(__file__).resolve().parent / "bench" / "jets.csv")
         jets = [spray.Jet(**j) for j in jets]
         extras = spray.Spray.mjcf_extras(names, cfg.spray.get("params"))
-    m = build_model(cfg, design, particles, rng, extras)
+    m = build_model(cfg, design, particles, rng, extras, rock)
     d = mujoco.MjData(m)
     roots = np.array([m.body(n).id for n in names])
-    pbodies = np.arange(1, m.nbody)                                  # every particle body, roots and children
+    pbodies = np.arange(1, m.nbody - (rock.n if rock else 0))       # every particle body, roots and children
+    tray_body = np.isin(np.arange(m.nbody), [0, *(rock.bind(m).body if rock else [])])
     if cfg.spray:
         sp = spray.Spray(m, d, jets, list(pbodies), cfg.spray.get("params"))
 
     axis = stroke_axis(cfg.stroke, design)
     n_settle, n_shake = round(cfg.settle_s / cfg.dt), round(cfg.duration_s / cfg.dt)
-    x, v, a = stroke_profile(cfg.stroke, n_shake, cfg.dt)
+    x, v, a = stroke_profile({"profile": "none"} if rock else cfg.stroke, n_shake, cfg.dt)
     x, v, a = (np.concatenate([np.zeros(n_settle), s]) for s in (x, v, a))
     steps = n_settle + n_shake
 
     extent = np.array([[g["pos"][i] + s * g["size"][i] for g in design.geoms if g["type"] == "box" for s in (-1, 1)]
                        for i in range(3)])
     bounds = (extent.min(axis=1) - 5.0, extent.max(axis=1) + 5.0)
+    if rock:
+        bounds = rock.widen(bounds)
     zone_names = [z["name"] for z in design.zones] + ["between", "lost"]
     kind_idx = np.array([kinds.index(p.kind) for p in particles])
 
     fps = cfg.record_fps if cfg.out_dir and cfg.record_fps > 0 else 10.0
     every = max(1, round(1.0 / (fps * cfg.dt)))
-    rec = {"t": [], "tray_d": [], "pos": [], "quat": [], "zone_counts": [], "wet": []}
+    rec = {"t": [], "tray_d": [], "pos": [], "quat": [], "zone_counts": [], "wet": [], "level_q": []}
     recording = bool(cfg.out_dir and cfg.record_fps > 0)
     max_pen = max_pen_pp = 0.0
     t0 = time.perf_counter()
@@ -295,32 +308,36 @@ def run(cfg: RunConfig) -> dict:
         if sp is not None:
             d.xfrc_applied[:] = 0.0
             sp.step(m, d, d.time, x[i] * axis, v[i] * axis)
+        if rock:
+            rock.drive(d, i)
         t_before = d.time
         mujoco.mj_step(m, d)
         if d.time < t_before:
             resets.append(round((i + 1) * cfg.dt, 5))
         if i >= n_settle and i % 10 == 0 and d.ncon:   # overlap where it matters: particle against tray
             dist = d.contact.dist[:d.ncon]
-            on_tray = np.any(m.geom_bodyid[d.contact.geom[:d.ncon]] == 0, axis=1)
+            on_tray = np.any(tray_body[m.geom_bodyid[d.contact.geom[:d.ncon]]], axis=1)
             if on_tray.any():
                 max_pen = max(max_pen, -float(dist[on_tray].min()))
             if (~on_tray).any():
                 max_pen_pp = max(max_pen_pp, -float(dist[~on_tray].min()))
         if i % every == 0 or i == steps - 1:
-            zone = assign_zones(d.xpos[roots], design, bounds)
+            zone = assign_zones(d.xpos[roots], design, bounds, rock.zone_frames(d) if rock else None)
             counts = np.zeros((len(kinds), len(zone_names)), dtype=np.int32)
             np.add.at(counts, (kind_idx, zone), 1)
             rec["t"].append(d.time)
             rec["tray_d"].append(x[i] * axis)
             rec["zone_counts"].append(counts)
             if recording:
-                rec["pos"].append(d.xpos[1:].astype(np.float32))
-                rec["quat"].append(d.xquat[1:].astype(np.float32))
+                rec["pos"].append(d.xpos[pbodies].astype(np.float32))
+                rec["quat"].append(d.xquat[pbodies].astype(np.float32))
                 if sp is not None:
-                    rec["wet"].append(np.asarray(sp.wet)[1:].astype(np.float32))
+                    rec["wet"].append(np.asarray(sp.wet)[pbodies].astype(np.float32))
+                if rock:
+                    rec["level_q"].append(rock.quats(d))
     wall = time.perf_counter() - t0
 
-    final = assign_zones(d.xpos[roots], design, bounds)
+    final = assign_zones(d.xpos[roots], design, bounds, rock.zone_frames(d) if rock else None)
     plist = [{"name": n, "kind": p.kind, "group": p.group, "dims": {k: round(float(val), 3) for k, val in p.dims.items()},
               "final_zone": zone_names[z], "ideal_zone": design.ideal_zone(p.dims)}
              for n, p, z in zip(names, particles, final)]
@@ -338,16 +355,18 @@ def run(cfg: RunConfig) -> dict:
         "max_penetration_mm": round(max_pen, 5), "max_penetration_particles_mm": round(max_pen_pp, 5), "sim_s": round(d.time, 3), "wall_s": round(wall, 2), "steps": steps,
         "unstable_resets": resets,
     }
+    if rock:
+        results["seesaw"] = rock.summary()
     if cfg.out_dir:
-        write_recording(Path(cfg.out_dir), cfg, design, m, results, rec, kinds, zone_names, particles, names, sp)
+        write_recording(Path(cfg.out_dir), cfg, design, m, results, rec, kinds, zone_names, particles, names, sp, rock)
     return results
 
 
-def write_recording(out, cfg, design, m, results, rec, kinds, zone_names, particles, names, sp):
+def write_recording(out, cfg, design, m, results, rec, kinds, zone_names, particles, names, sp, rock=None):
     out.mkdir(parents=True, exist_ok=True)
     by_name = dict(zip(names, particles))
     bodies = []
-    for b in range(1, m.nbody):
+    for b in range(1, m.nbody - (rock.n if rock else 0)):
         root = m.body(int(m.body_rootid[b])).name
         p = by_name[root]
         bodies.append({"name": m.body(b).name, "particle": root, "kind": p.kind, "group": p.group,
@@ -361,6 +380,8 @@ def write_recording(out, cfg, design, m, results, rec, kinds, zone_names, partic
              "tray": {"geoms": scene_geoms(design, m)}, "bodies": bodies, "kinds": kinds,
              "zones": [*design.zones, {"name": "between"}, {"name": "lost"}], "jets": jets,
              "results": {k: v for k, v in results.items() if k != "timeseries"}}
+    if rock:                                         # per level: pivot, axis, geoms (rocking.py)
+        scene["levels"] = rock.scene_levels(m)
     (out / "scene.json").write_text(json.dumps(scene, default=float))
     arrays = {"t": np.array(rec["t"]), "tray_d": np.array(rec["tray_d"], dtype=np.float32),
               "zone_counts": np.array(rec["zone_counts"], dtype=np.int32)}
@@ -368,6 +389,8 @@ def write_recording(out, cfg, design, m, results, rec, kinds, zone_names, partic
         arrays["pos"], arrays["quat"] = np.array(rec["pos"]), np.array(rec["quat"])
     if rec["wet"]:
         arrays["wet"] = np.array(rec["wet"])
+    if rec["level_q"]:                               # frames x levels x 4 (w x y z), each level in the lab
+        arrays["level_q"] = np.array(rec["level_q"], dtype=np.float32)
     np.savez_compressed(out / "traj.npz", **arrays)
     (out / "results.json").write_text(json.dumps(results, indent=1, default=float))
 
@@ -412,6 +435,10 @@ def main():
     r = run(cfg)
     print(f"{r['design']}: {r['sim_s']} s simulated in {r['wall_s']} s wall, {r['steps']} steps, "
           f"max overlap {r['max_penetration_mm']} mm on the tray, {r['max_penetration_particles_mm']} mm between particles")
+    if "seesaw" in r:
+        c = r["seesaw"]["clearance"]
+        print(f"  seesaw +/-{r['seesaw']['deg']:g} deg, {r['seesaw']['period_s']:g} s: neighbouring boxes come within "
+              f"{c['min_mm']} mm" + ("  TOUCHING: raise pitch= (rocking.py)" if c["touching"] else ""))
     if r["unstable_resets"]:
         print(f"UNSTABLE: MuJoCo reset the state {len(r['unstable_resets'])} times (at {r['unstable_resets'][:5]} s); "
               "the results are not valid")

@@ -46,7 +46,7 @@ Same footprint as the sieve inserts, shaken longways (X).
 | What | Value |
 |---|---|
 | Outside | 131.4 × 95.4; walls 2 thick, 16 tall |
-| Pull tabs | 20 × 6, top at 25 (3 above the box rim) |
+| Pull tabs | 20 × 6, top at 21 above the container's bottom: 1 below the box rim, so boxes stack rim on rim; grip them through the box's finger notches |
 | Floor | solid, 2 thick at the gate end; slopes 2° up away from the gate (rises 4.06 over the length) |
 | Gate strip position | centre at x = 53, held by two rails per side with a 2.3 groove |
 | Drop slot | x 54 to 61 (7 long), y ±40, over the box's open bottom; 45° ramp from 61 to the end wall |

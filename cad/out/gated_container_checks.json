@@ -5,10 +5,10 @@
   "bbox_mm": [
     131.4,
     95.4,
-    25.0
+    21.0
   ],
   "fits_bed": true,
-  "volume_cm3": 61.98,
+  "volume_cm3": 61.02,
   "outside_mm": [
     131.4,
     95.4,

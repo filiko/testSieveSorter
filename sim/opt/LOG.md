@@ -192,3 +192,65 @@ Effect: two of round 1's top 3 drop out of `winners.json`, but stay on the leade
 
 The `gated_mid` CAD block now keeps `GATE_X` scalar (L2, what today's script builds) and puts L1's position in `mid_slot_PROPOSAL`, so `build_winners.py` doesn't break on it. A mid-slot winner needs new L1 geometry first (`buildable_with_todays_cad: false`).
 
+## demo round 2 (2026-10-25 07:12, auto)
+
+**Tried:** demo_rig: 1 (current); gated: 20 (ce, lhs); gated_mid: 16 (lhs); plinko: 16 (ce, lhs); inserts: 5 (ce, lhs). 648 runs, 22 min wall.
+
+**Leader so far:** P-ae394887 (plinko, round 2) rods L1 gap 3.7 (rod 2.6 wide, 1.6 tall) / L2 gap 1.5 (rod 1.8, 2.4), stroke tool sine 48 Hz, 2.2 g (0.24 mm), 20 deg up: robust 0.999 (mean 0.999 +/- 0.000); big (pasta, chickpea) 100% pure / 100% recovered, rice 100% pure / 100% recovered, quinoa 100% pure / 100% recovered; PEN 1/9 (clr 0.26, pen 0.153).
+
+**Screen results this round (8 s, progress score), best per family:**
+
+- demo_rig: best D-e018f15d screen robust 0.995; median 0.995; failures in 0 of 1 candidates
+- gated: best G-0c6843ad screen robust 0.659; median 0.341; failures in 0 of 20 candidates
+- gated_mid: best G-060cecb0 screen robust 0.876; median 0.333; failures in 0 of 16 candidates
+- plinko: best P-668db784 screen robust 1.000; median 0.882; failures in 0 of 16 candidates
+- inserts: best I-90aad5db screen robust 0.854; median 0.688; failures in 0 of 5 candidates
+
+**Why the losers failed** (particles per run, over this round's screened candidates in the bottom half of each family; the most common modes):
+
+- demo_rig: rice: held upstream -> on_5mm (0.1 in 1 cands)
+- gated: quinoa: held upstream -> L1 on the floor (28.0 in 10 cands); rice: held upstream -> L1 on the floor (25.7 in 10 cands); rice: held upstream -> L1 at the gate (within 10 mm) (2.6 in 10 cands); quinoa: held upstream -> L1 at the gate (within 10 mm) (1.0 in 10 cands); quinoa: held upstream -> L2 on the floor (0.7 in 8 cands); quinoa: held upstream -> L2 at the gate (within 10 mm) (0.5 in 7 cands)
+- gated_mid: quinoa: held upstream -> L1 on the floor (27.6 in 8 cands); rice: held upstream -> L1 on the floor (25.9 in 8 cands); rice: held upstream -> L1 at the gate (within 10 mm) (3.7 in 8 cands); quinoa: held upstream -> L1 at the gate (within 10 mm) (2.7 in 4 cands); quinoa: held upstream -> L2 in the drop slot (0.9 in 5 cands); quinoa: between -> L1 in the strip (0.3 in 4 cands)
+- plinko: quinoa: held upstream -> layer_2_rods (8.1 in 7 cands); quinoa: held upstream -> layer_1_rods (4.8 in 7 cands); rice: held upstream -> layer_1_rods (6.6 in 5 cands); rice: leaked downstream -> layer_3_catch (7.6 in 3 cands); rice: between -> in the floor of layer_1_rods (0.8 in 2 cands); quinoa: between -> in the floor of layer_1_rods (0.7 in 1 cands)
+- inserts: rice: held upstream -> on_h2p45b1p45 (28.6 in 1 cands); rice: held upstream -> on_h4p15b1p75 (18.9 in 1 cands); quinoa: held upstream -> on_h4p15b1p75 (17.7 in 1 cands); quinoa: held upstream -> on_h1p85b1p65 (10.8 in 1 cands); quinoa: held upstream -> on_h1p75b1p15 (10.3 in 1 cands); quinoa: held upstream -> on_h2p45b1p45 (8.4 in 1 cands)
+
+**Leaders' remaining losses** (full runs, top 3):
+
+- P-ae394887: none
+- P-668db784: none
+- G-060cecb0: rice: leaked downstream -> catch 0.4
+
+**Parameters at a bound among each family's elite** (the range may be too narrow):
+
+- gated: k1 w 0.22/t 0.78, drive firmware 0.78/tool 0.22, angle low (5.15)
+- gated_mid: k1 w 0.50/t 0.50, drive firmware 0.14/tool 0.86
+- plinko: drive firmware 0.74/tool 0.26, angle low (4.20)
+- inserts: drive firmware 0.86/tool 0.14, angle low (0.87)
+
+**Next hypothesis (auto):** the leader's near-size results are flagged (overlap vs clearance): check it at a smaller dt or stiffer contacts before trusting it
+
+
+## demo round 2: reading (notes, 2026-10-25 07:20)
+
+**The stroke matters more than the geometry.** Round 2 was the first with the vibrating-tool drive (sine) and the stroke angle. All three top designs use it:
+- P-ae394887, plinko, rods 3.7 / 1.5, sine 48 Hz at 2.2 g (0.24 mm amplitude), 20 deg up: **0.999**. Every class 100% pure and recovered in all 9 runs, t90 0.4 s.
+- P-668db784, plinko, rods 3.5 / 1.6, sine 14 Hz at 2.0 g, along the tray: 0.998.
+- G-060cecb0, **gated_mid**, L1 window w3.1 x 3.1 at x 31.8, L2 t1.8, sine 28 Hz at 4.3 g, 10 deg up: **0.955**.
+
+The best on BioKEA's firmware stroke is P-ba5dd6b3, plinko 5.6 / 1.6 at 9.5 mm and 47 mm/s, 5 deg up: 0.929. A small, fast vibration keeps every grain hopping over the rods or slots, so each gets many chances at a gap per second. The firmware stroke gives at most a ~1 g jolt 2.5 times a second.
+
+**The structural hypothesis held.** Under the firmware stroke the gated tower couldn't move grain (best 0.07). The unflipped mid-slot layout with an angled throw sorts at 0.955, with 99-100% recovery per class and t90 7.8 s. The throw conveys every level toward +X, and only the unflipped layout has every gate at +X. Today's flipped tower with the same kind of throw tops out at 0.33 in this round, because L2's grains are conveyed away from its gate.
+
+**Why the losers failed (auto section above).**
+- **gated and gated_mid** bottom halves: 26-28 grains still on L1's floor. They are mostly firmware-drive candidates, so transport again.
+- **plinko** bottom half: quinoa held on layer 2 (8 per run) or rice leaking to the catch (8 per run), the same gap-size trade as before. Some rice is also held on layer 1 at the slower strokes.
+- **inserts:** still can't split rice from quinoa.
+- **The demo rig** (reference, 0.499): pasta and chickpea 100% on the screen, rice and quinoa all in the catch together. That is perfect at what it was built for (pasta vs rice). It has no second bin, so the 3-class score caps it near 0.5.
+
+**Flags on the leaders.** P-ae394887 has 1 of 9 runs flagged (gate overlap 0.153 mm against a 0.13 threshold), P-668db784 has 3 of 9, and G-060cecb0 has 9 of 9. Its window gate is within 0.04 mm of a grain size, so its clearance is tiny. By the winners rule, none of them can be a winner yet. `winners.json` is P-ba5dd6b3 and P-cbe7dbec (firmware plinko, clean) and G-a48f4670 (gated_mid, sine 37 Hz at 2.5 g, 45 deg up, clean, 0.835).
+
+**Next hypothesis and actions.**
+1. **Verify the flagged leaders with stiffer contacts.** A new `verify` step reruns them at dt 0.125 ms and timeconst 0.25 ms (half the overlap, about 2x the time). A design that comes back unflagged and still scores well counts as clean in the winners rule. This resolves the untrustworthiness with a better solver; it doesn't loosen the rule. Queued after the insect round.
+2. **Recommend per drive.** BioKEA's stage can only do the firmware stroke, while the demo rig is a vibrating tool, so `winners.json` gets a best-per-drive entry as well as the overall top 3.
+3. **gated_mid** gets the next cross-entropy round (its elite is 86% tool drive).
+

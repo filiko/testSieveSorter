@@ -9,6 +9,8 @@
 - Physics has uncommitted edits to `sim/sweep.py`. **Import from `sweep.py`; don't edit it.**
 - Cap the optimizer at **16 parallel workers**, so the physics benchmarks keep some cores.
 
+> **Update (05:50):** also search over **stroke angle** (0° horizontal to 90° vertical), and include the demo rig (`inserts:5mm`) as a baseline row. See [demo-rig.md](demo-rig.md), part C.
+
 ## Timeline (PT)
 - **~09:00:** the optimizer runs end to end on one design family. First leaderboard on `main`.
 - **~11:00:** `sim/opt/winners.json` on `main` with the top 3. Bambu starts CAD + slicing.

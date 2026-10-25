@@ -27,12 +27,9 @@ BugSorter changes the electronics and control, not the sieving itself: insects s
 
 Full reasoning, tests and targets: [docs/gates-verdict.md](docs/gates-verdict.md)
 
-### What the bench prototype actually used (Oct 24)
+### Demo rig and next step
 
-Team photos from the hack show a white 3D-printed square-grid sieve tray bolted onto a **handheld DeWalt 20V MAX cordless tool**. It looks like a compact reciprocating saw; the model isn't readable in the photos. It was shaken by hand over tube pasta, rice and grains. That isn't the BugSorter stepper drive (a constant-speed 2 cm stroke at 5–50 mm/s) that `sim/` models.
-- Until the tool's model, stroke length and strokes/min are known, the sim's stroke is still the firmware guess.
-- The only clip (1.1 s, 30 fps) shows the tool idle, so it gives no stroke data. `sim/stroke_from_video.py` (on branch `physics-bench` until it merges) is ready for a clip with the tool running: on a tripod, side-on, with a ruler in frame, in slow motion if possible.
-- The photos and clip are local reference only (`media/`, gitignored).
+The demo rig, from the team's photos: a white 3D-printed square-grid sieve tray, bolted onto a **handheld DeWalt 20V MAX cordless tool**, sorting tube pasta from rice and grains. The next big improvement is **shaking it up and down**, not only side to side. The sim gets vertical and angled strokes, then a direct comparison against horizontal shaking on this rig ([docs/sessions/demo-rig.md](docs/sessions/demo-rig.md)). The photos are local reference only (`media/`, gitignored).
 
 ## Repository layout
 

@@ -226,8 +226,9 @@ def show(c):
     st = f"seesaw +/-{p['ss_deg']:g} deg, {p['ss_period']:g} s" + (f" + {p['vib_mm']:g} mm buzz at 40 Hz" if p.get("vib_mm") else "")
     if p.get("breaker") is False:
         return f"no breaker; {st}"
+    g = p["open"] + p["bar"]                     # pins stand on grid nodes: every k-th, k = round(pitch / step)
     return (f"grid {p['open']:g} mm (bars {p['bar']:g}), pins {p['pin_d']:g} x {p['pin_h']:g} mm {p['tip']} every "
-            f"~{p['pitch']:g} mm; {st}")
+            f"{max(1, round(p['pitch'] / g)) * g:.1f} mm; {st}")
 
 
 def f2(v, fmt="{:.2f}"):
@@ -266,6 +267,18 @@ def by_bond(c, summ):
 def ranking(cands, summ, refs_too=False):
     return sorted((c for c in cands if c["id"] in summ and (refs_too or c["origin"] != "baseline")),
                   key=lambda c: -summ[c["id"]]["robust"])
+
+
+def win_key(s):
+    """A verified design's winner score: the lower of its seed-0 robust and its robust over every seed (checking a
+    design can only lower it). None if not verified."""
+    v = s.get("verify")
+    return None if not v else min(s["robust"], v["robust_all_seeds"])
+
+
+def winners(cands, summ):
+    return sorted((c for c in ranking(cands, summ) if win_key(summ[c["id"]]) is not None),
+                  key=lambda c: -win_key(summ[c["id"]]))
 
 
 def why(cands, summ):
@@ -318,7 +331,21 @@ def write(cands, summ, meta):
           f"(rocking.py).",
           f"- **Score per run:** {W_BREAK:g} x break-up (0.75 x free share + 0.25 x speed from t90) + {W_GENTLE:g} x "
           f"gentleness (half: share never over 5 mN while still in the clump; half: the peak-force p90 on a log scale, "
-          f"1 at 5 mN, 0 at 500 mN) + {W_SORT:g} x sort (specimens in their ideal zone). A failed run scores -1.", "", "## Top 10", "", table(rk[:10], summ), "", "## References", "", table(refs_, summ), ""]
+          f"1 at 5 mN, 0 at 500 mN) + {W_SORT:g} x sort (specimens in their ideal zone). A failed run scores -1.",
+          "- **Winners** are verified designs only (rerun on freshly packed clumps, seeds 1-2), ranked by the lower of "
+          "the seed-0 robust and the robust over every seed. The top-10 table is seed 0 only.", ""]
+    wn = winners(cands, summ)
+    if wn:
+        md += ["## Winners (verified on fresh clumps)", "",
+               "| # | id | design and stroke | winner score | robust, all seeds | free, fresh seeds | breaker for the CAD |",
+               "|---|---|---|---|---|---|---|"]
+        import designs
+        for i, c in enumerate(wn[:3], 1):
+            s, v = summ[c["id"]], summ[c["id"]]["verify"]
+            md.append(f"| {i} | {c['id']} | {show(c)} | **{win_key(s):.3f}** | {v['robust_all_seeds']:.3f} | {pct(v['free'])} | "
+                      f"`{designs.build(c['spec']).info['breaker']['cad_spec']}` |")
+        md.append("")
+    md += ["## Top 10 (seed 0)", "", table(rk[:10], summ), "", "## References", "", table(refs_, summ), ""]
     ver = [c for c in rk[:10] + refs_ if summ[c["id"]].get("verify")]
     if ver:
         md += ["## Verified on fresh clumps", "", "Each seed packs a different clump. The same 3 bond sets per seed; robust "
@@ -337,9 +364,10 @@ def write(cands, summ, meta):
     (o.OPT / "leaderboard_malaise.md").write_text("\n".join(md), encoding="utf-8")
     import designs
     win = []
-    for c in rk[:3]:
+    for c in winners(cands, summ)[:3]:
         d = designs.build(c["spec"])
-        win.append({"id": c["id"], "robust": round(summ[c["id"]]["robust"], 4), "mean": round(summ[c["id"]]["mean"], 4),
+        win.append({"id": c["id"], "winner_score": round(win_key(summ[c["id"]]), 4),
+                    "robust": round(summ[c["id"]]["robust"], 4), "mean": round(summ[c["id"]]["mean"], 4),
                     "design": show(c), "cad": {"file": "cad/breaker_layer.py", "spec": d.info["breaker"]["cad_spec"],
                                                "facts": {k: v for k, v in d.info["breaker"].items() if k not in ("params", "cad_spec")}},
                     "sim_spec": c["spec"], "stroke": c["stroke"], "params": c["params"],
@@ -347,7 +375,9 @@ def write(cands, summ, meta):
                     "by_bond": summ[c["id"]]["by_bond"], "verify": summ[c["id"]].get("verify")})
     (o.OPT / "winners_malaise.json").write_text(json.dumps(
         {"study": "malaise", "exploratory": True, "note": "EXPLORATORY: the sim ranks designs; it isn't calibrated against "
-         "bench counts. Bond strengths, insect bodies and the 5 mN damage line are assumed.", "updated": f"{datetime.now():%Y-%m-%d %H:%M}",
+         "bench counts. The clump is the grain surrogate (insect clumps don't pack yet); bond strengths and the 5 mN "
+         "damage line are assumed. Winners are verified on fresh clumps, ranked by winner_score = min(robust seed 0, "
+         "robust over all seeds).", "updated": f"{datetime.now():%Y-%m-%d %H:%M}",
          "clump": CLUMP, "tower": {"under": UNDER, "pitch_mm": TOWER}, "winners": win}, indent=1, default=float), encoding="utf-8")
 
 

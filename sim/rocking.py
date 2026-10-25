@@ -12,7 +12,7 @@ so contacts see the trays' real velocities and nothing approximates the rotation
 move it within a step either.
 
 Stroke (sorter.py --stroke seesaw:k=v,...; every key optional):
-    deg        amplitude, degrees either side of level (25)
+    deg        amplitude, degrees either side of level (10: SYSTEM.md's default while the user picks from 5-15)
     period_s   one full cycle, s (2.0)
     shape      constant_speed: constant angular speed with reversals smoothed over ramp_s, as the firmware
                drives its stage (default); sine
@@ -20,6 +20,14 @@ Stroke (sorter.py --stroke seesaw:k=v,...; every key optional):
     ramp_in_s  ease the amplitude in from zero over this long after the settle (0: start at full speed)
     alternate  1: neighbours in opposite phase (default); 0: every level in phase
     catch      1: the catch pan rocks too, as the next level down (default); 0: it stays level
+  A small fast vibration on top of the seesaw (the handheld tool's buzz, the puck's 40 Hz), off by default:
+    vib_mm     amplitude of a sine buzz of the whole tower, mm (0: off)
+    vib_hz     its frequency (40); peak acceleration is vib_mm * (2 pi vib_hz)^2, so 0.3 mm at 40 Hz is 1.9 g
+    vib_angle_deg  its direction: 0 along X (the tilt direction), 90 straight up (90)
+    vib_deg    a fast angular buzz added to every hinge, degrees, in each level's own phase (0: off)
+  The buzz moves every level together, so sorter.py applies it the way it applies any translation stroke: as a
+  uniform pseudo-force, exact for a shared translation, and recorded as tray_d. The hinges still turn in that
+  translating frame.
 
 The sim has the trays only: no frame, pins or motor (the tower in rig.py is display only). Tray-tray contacts
 are switched off, since the trays are driven; instead clearance() checks how close neighbouring boxes come over
@@ -36,8 +44,9 @@ import re
 import mujoco
 import numpy as np
 
-DEFAULTS = {"deg": 25.0, "period_s": 2.0, "shape": "constant_speed", "ramp_s": 0.02, "ramp_in_s": 0.0,
-            "alternate": 1, "catch": 1}
+DEFAULTS = {"deg": 10.0, "period_s": 2.0, "shape": "constant_speed", "ramp_s": 0.02, "ramp_in_s": 0.0,
+            "alternate": 1, "catch": 1, "vib_mm": 0.0, "vib_hz": 40.0, "vib_angle_deg": 90.0, "vib_deg": 0.0}
+G = 9810.0                # mm/s^2
 LEVEL_MASS = 1e6          # g: a driven tray; particles weigh a few hundredths of a gram
 LEVEL_INERTIA = 1e10      # g mm^2, every axis, and the same again as hinge armature
 CLEARANCE_SAMPLES = 41    # poses checked over one cycle (f from -1 to 1)
@@ -128,6 +137,9 @@ class Seesaw:
             catch = k == self.n - 1
             L["amp_rad"] = 0.0 if catch and not self.cfg["catch"] else amp * L["sign"]
         self.f, self.df = profile(self.cfg, n_settle, n_shake, dt)
+        w, t = 2 * np.pi * self.cfg["vib_hz"], np.arange(n_shake) * dt
+        z = np.zeros(n_settle)
+        self.g, self.dg = np.concatenate([z, np.sin(w * t)]), np.concatenate([z, w * np.cos(w * t)])
         self.zone_level = {L["zone"]: k for k, L in enumerate(self.levels)}
         self.clear = None
 
@@ -152,14 +164,27 @@ class Seesaw:
         jnt = [m.joint(L["name"]).id for L in self.levels]
         self.qadr, self.dadr = m.jnt_qposadr[jnt], m.jnt_dofadr[jnt]
         self.amp = np.array([L["amp_rad"] for L in self.levels])
+        self.vamp = np.radians(self.cfg["vib_deg"]) * np.sign(self.amp)
         return self
 
     # ---------- every step ----------
     def drive(self, d, i):
         """Write every hinge's angle and angular velocity for step i (counted from the start of the settle)."""
         i = min(i, len(self.f) - 1)
-        d.qpos[self.qadr] = self.amp * self.f[i]
-        d.qvel[self.dadr] = self.amp * self.df[i]
+        d.qpos[self.qadr] = self.amp * self.f[i] + self.vamp * self.g[i]
+        d.qvel[self.dadr] = self.amp * self.df[i] + self.vamp * self.dg[i]
+
+    def vib_axis(self):
+        """Unit direction of the tower's buzz (sorter.py's stroke axis)."""
+        th = np.radians(self.cfg["vib_angle_deg"])
+        return np.array([np.cos(th), 0.0, np.sin(th)])
+
+    def vibration(self, n_shake, dt):
+        """The buzz as a translation stroke: displacement, velocity and acceleration along vib_axis() at each of
+        n_shake steps after the settle (sorter.py prepends the settle's zeros). All zero when vib_mm is 0."""
+        A, w = self.cfg["vib_mm"], 2 * np.pi * self.cfg["vib_hz"]
+        t = np.arange(n_shake) * dt
+        return A * np.sin(w * t), A * w * np.cos(w * t), -A * w * w * np.sin(w * t)
 
     def quats(self, d):
         """Each level's orientation in the lab, levels x 4 (w x y z)."""
@@ -185,9 +210,11 @@ class Seesaw:
                 if g["type"] != "box":
                     continue
                 c = np.array(g["pos"]) + np.array(np.meshgrid(*[(-s, s) for s in g["size"]])).reshape(3, -1).T
-                for th in (L["amp_rad"], -L["amp_rad"]):
+                th_max = abs(L["amp_rad"]) + np.radians(self.cfg["vib_deg"])
+                for th in (th_max, -th_max):
                     r = (c - p) @ rot_y(th).T + p
-                    lo, hi = np.minimum(lo, r.min(axis=0) - 5.0), np.maximum(hi, r.max(axis=0) + 5.0)
+                    pad = 5.0 + self.cfg["vib_mm"]
+                    lo, hi = np.minimum(lo, r.min(axis=0) - pad), np.maximum(hi, r.max(axis=0) + pad)
         return lo, hi
 
     # ---------- reporting ----------
@@ -203,7 +230,8 @@ class Seesaw:
                 for L, b in zip(self.levels, self.body)]
 
     def summary(self):
-        return {**self.cfg, "axis": "y", "levels": [{"zone": L["zone"], "pivot": L["pivot"], "sign": L["sign"],
+        vib_g = self.cfg["vib_mm"] * (2 * np.pi * self.cfg["vib_hz"]) ** 2 / G
+        return {**self.cfg, "vib_peak_g": round(float(vib_g), 3), "axis": "y", "levels": [{"zone": L["zone"], "pivot": L["pivot"], "sign": L["sign"],
                                                      "amp_deg": round(float(np.degrees(L["amp_rad"])), 4)}
                                                     for L in self.levels],
                 "pitch_mm": self.design.info.get("pitch_mm"), "clearance": self.clear}
@@ -234,7 +262,7 @@ def clearance(design, levels, cfg, assets, geoms, samples=CLEARANCE_SAMPLES, dis
     m = mujoco.MjModel.from_xml_string(f'<mujoco><asset>{assets}</asset><worldbody>'
                                        f'{"".join(level_body(L, geoms) for L in sub)}</worldbody></mujoco>')
     d = mujoco.MjData(m)
-    amp = np.radians(cfg["deg"])
+    amp = np.radians(cfg["deg"] + cfg.get("vib_deg", 0.0))
     signs = [(-1) ** k if cfg["alternate"] else 1 for k in range(len(levels))]
     if not cfg["catch"]:
         signs[-1] = 0

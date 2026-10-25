@@ -18,7 +18,8 @@ Stroke profiles:
     csv             csv: a measured "t_s,x_mm" file (looped), smoothed before differentiating
     none
     seesaw          deg, period_s, shape, ...: each level of an inserts: tower rocks on its own hinge about Y,
-                    neighbours in opposite phase, in the lab frame (rocking.py); no translation
+                    neighbours in opposite phase (rocking.py); vib_mm, vib_hz: a small fast buzz of the whole
+                    tower on top, as a translation stroke (none by default)
 
 Run from sim\\:
     <venv python> sorter.py --design pool:w5p0,t1p4 --mix rice=30,quinoa=30,chickpea=8,pasta=8 \\
@@ -287,9 +288,9 @@ def run(cfg: RunConfig) -> dict:
     if cfg.spray:
         sp = spray.Spray(m, d, jets, list(pbodies), cfg.spray.get("params"))
 
-    axis = stroke_axis(cfg.stroke, design)
+    axis = rock.vib_axis() if rock else stroke_axis(cfg.stroke, design)
     n_settle, n_shake = round(cfg.settle_s / cfg.dt), round(cfg.duration_s / cfg.dt)
-    x, v, a = stroke_profile({"profile": "none"} if rock else cfg.stroke, n_shake, cfg.dt)
+    x, v, a = rock.vibration(n_shake, cfg.dt) if rock else stroke_profile(cfg.stroke, n_shake, cfg.dt)
     x, v, a = (np.concatenate([np.zeros(n_settle), s]) for s in (x, v, a))
     steps = n_settle + n_shake
 

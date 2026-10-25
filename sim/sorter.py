@@ -184,7 +184,7 @@ def build_model(cfg, design, particles, rng, extras="", rock=None, clump=None):
                       f'<freejoint/>{p.xml.replace("{p}", name)}</body>')
     assets, tray = tray_xml(design)
     levels = ""
-    if rock is not None:          # seesaw: the tray geoms move onto one hinged body per level, after the particles
+    if rock is not None:          # seesaw: the tray geoms move onto one hinged body per level, before the particles
         tray, levels = rock.split_xml(assets, tray)
         extras += rock.contact_xml()
     if clump is not None:         # the clump's breakable bonds
@@ -202,7 +202,7 @@ def build_model(cfg, design, particles, rng, extras="", rock=None, clump=None):
     <light pos="0 -80 300" dir="0 0.25 -1" diffuse="0.8 0.8 0.8"/>
     <camera name="iso" pos="0 -170 170" xyaxes="1 0 0 0 0.707 0.707"/>
     {tray}
-    {"".join(bodies)}{levels}
+    {levels}{"".join(bodies)}
   </worldbody>
   {extras}
 </mujoco>"""
@@ -282,7 +282,10 @@ def run(cfg: RunConfig) -> dict:
     m = build_model(cfg, design, particles, rng, extras, rock, cl)
     d = mujoco.MjData(m)
     roots = np.array([m.body(n).id for n in names])
-    pbodies = np.arange(1, m.nbody - (rock.n if rock else 0))       # every particle body, roots and children
+    # every particle body, roots and children. The seesaw's level bodies come first, so their hinge DOFs are
+    # eliminated last: every contact touches a hinge, and after the particles they made the solver's
+    # factorization dense (about 30x the wall time per step)
+    pbodies = np.arange(1 + (rock.n if rock else 0), m.nbody)
     tray_body = np.isin(np.arange(m.nbody), [0, *(rock.bind(m).body if rock else [])])
     if cfg.spray:
         sp = spray.Spray(m, d, jets, list(pbodies), cfg.spray.get("params"))
@@ -384,7 +387,7 @@ def write_recording(out, cfg, design, m, results, rec, kinds, zone_names, partic
     out.mkdir(parents=True, exist_ok=True)
     by_name = dict(zip(names, particles))
     bodies = []
-    for b in range(1, m.nbody - (rock.n if rock else 0)):
+    for b in range(1 + (rock.n if rock else 0), m.nbody):
         root = m.body(int(m.body_rootid[b])).name
         p = by_name[root]
         bodies.append({"name": m.body(b).name, "particle": root, "kind": p.kind, "group": p.group,

@@ -777,3 +777,23 @@ This overrides my 10:10 reading ("x matches attached at the mid points"). So rou
 **Seesaw round 0, screen (10 s, seed 0 x 3 friction sets):** nothing sorts well on the seesaw alone. The best is today's glued mesh at 0.48, then plinko at +/-5.5 deg, 3.6 s, sine (0.38), and the demo rig at 0.34. This agrees with the physics session's VERIFY_SEESAW.md: below the ~22 deg at which grains slide, quinoa rides the 5 mm tray's ribs. **Round 1 adds `vib_mm`** (0-0.5 mm at 40 Hz, straight up), after the seesaw session saw 0.3 mm clear the 5 mm tray. It also adds references: the demo rig + 0.3 mm, and bambu's ribs-across inserts in the seesaw holder, with and without the buzz.
 
 **Memory:** at 12:53 Windows ran low (main's note). For about 5 minutes my two drivers overlapped at about 20 workers. Since 12:58 it's 12 in all: seesaw 4, malaise 8.
+
+## malaise round 0 (EXPLORATORY, 2026-10-25 13:03, auto)
+
+**Tried:** 15 candidates (baseline, lhs), 45 runs, 9 min wall.
+
+**Leader:** B-32a7c82c: grid 11.4 mm (bars 2.3), pins 1.4 x 6.8 mm round every ~8 mm; seesaw +/-12 deg, 2.5 s + 0.35 mm buzz at 40 Hz. Robust 0.638 (mean 0.726); free 97%, gentle 29%, sort 85%, largest cluster 1.7.
+
+- reference NO BREAKER: robust 0.217; free 31%, gentle 76%, sort 17%
+- reference cad/breaker_layer.py default (open 8, pins 2.5 x 12 every 10, round) on the default seesaw: robust 0.287; free 65%, gentle 46%, sort 22%
+- reference the CAD default breaker, default seesaw + 0.3 mm buzz at 40 Hz (1.9 g, the tool's): robust 0.479; free 85%, gentle 35%, sort 75%
+
+**Why the losers lost:**
+
+- free at the end: top half 0.86, bottom half 0.68
+- gentleness: top half 0.33, bottom half 0.42
+- in the ideal zone: top half 0.73, bottom half 0.30
+- largest cluster left: top half 7.94, bottom half 16.89
+- peak force p90, mN: top half 181.80, bottom half 106.13
+- rank correlation with the robust score (+ helps): vib_mm +0.84, ss_period +0.56, bar +0.43, ss_deg +0.31, tip=round +0.20, tip=flat -0.20
+

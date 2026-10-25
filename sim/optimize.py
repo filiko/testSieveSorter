@@ -1122,7 +1122,7 @@ def leaderboard_md(study, cands, summ, meta):
               "`calibrate.py` has bench counts, has no water, rigid particles, and about 80 particles per run. "
               "Sizes are simulated at the as-printed opening, nominal - "
               f"{UNDERSIZE_MM} mm (ASSUMED until the hole gauge is measured).", "",
-              "Ranked by the robust score (mean - 1 sd) over 3 friction sets x 3 seeds at the full "
+              f"Ranked by the robust score (mean - 1 sd) over 3 friction sets x {len(FULL_SEEDS)} seeds at the full "
               f"{FULL_S:g} s run. Score per run = min over classes of min(purity, recovery), minus {W_JAM} x jammed "
               f"share, {W_LOST} x lost share and {W_T90} x t90/duration. Failed (unstable) runs score {FAIL_SCORE:g}. "
               "Only candidates promoted to the full run are ranked; screened-only ones are in the log. "
@@ -1210,7 +1210,7 @@ def leaderboard_md(study, cands, summ, meta):
                 sm = summ[c["id"]]["full"]
                 lines.append(f"| {name} | {c['id']} | {c['family']} | {sm['robust']:.3f} | {flags(sm)} | {show(c)} | "
                              f"{stroke_show(c['stroke'])} |")
-    lines += ["", "## Count matrices of the top 3 (summed over the 9 full runs)", ""]
+    lines += ["", f"## Count matrices of the top 3 (summed over the {3 * len(FULL_SEEDS)} full runs)", ""]
     for i, c in enumerate(ranked[:3], 1):
         lines += matrix_md(f"{i}. {c['id']} ({c['family']}) {show(c)}; sim `{c['spec']}`", summ[c["id"]]["full"], cl)
     lines += ["", "Columns: purity = share of a bin's contents that belong to its class; recovery = share of a class "
@@ -1277,7 +1277,7 @@ def winners_json(study, cands, summ):
                    "rerun; printer undersize 0.05 / 0.25 mm; stroke reversal 0.005 / 0.02 s for the firmware stroke); "
                    "stress_tested says whether the stress checks were run. A flagged design that `verify` reran with "
                    "stiffer contacts (dt 0.125 ms, timeconst 0.25 ms) with no failed or flagged run counts as clean. "
-                   f"Otherwise: top 3 by robust full-run score (mean - 1 sd over 3 friction sets x 3 seeds, 30 s) among working "
+                   f"Otherwise: top 3 by robust full-run score (mean - 1 sd over 3 friction sets x {len(FULL_SEEDS)} seeds, {FULL_S:g} s) among working "
                    f"sorters (robust >= {MIN_WINNER}, no failed run, meeting today's print constraints) with no penetration-flagged run; if fewer than 3 "
                    "qualify, the rest are the best working flagged ones, marked flagged (see opt/LOG.md for how this "
                    "rule came about)",

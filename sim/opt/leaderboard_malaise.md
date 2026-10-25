@@ -1,6 +1,6 @@
 # EXPLORATORY: clump break-up leaderboard (study malaise)
 
-Updated 2026-10-25 13:11 by `sim/opt_malaise.py` (31 candidates, 93 runs).
+Updated 2026-10-25 13:19 by `sim/opt_malaise.py` (31 candidates, 129 runs).
 
 **EXPLORATORY. The sim ranks designs; it isn't calibrated against bench counts.** The clump's bond strengths are assumed (clumps.py) and so is the 5 mN damage line. Read the scores as a ranking, not as percentages.
 
@@ -32,6 +32,19 @@ Updated 2026-10-25 13:11 by `sim/opt_malaise.py` (31 candidates, 93 runs).
 | 1 | B-5405ea9b | NO BREAKER: the clump straight onto the demo rig's 5 mm / 2 mm trays, default seesaw (+/-10 deg, 2 s) | 0.217 | 0.419 | 31% | 0.32 | 76% | 17% | 36.3 | 33.98 | 0 |
 | 2 | B-75f277ad | cad/breaker_layer.py default (open 8, pins 2.5 x 12 every 10, round) on the default seesaw | 0.287 | 0.507 | 65% | 0.65 | 46% | 22% | 19.0 | 155.67 | 0 |
 | 3 | B-9dcf5153 | the CAD default breaker, default seesaw + 0.3 mm buzz at 40 Hz (1.9 g, the tool's) | 0.479 | 0.672 | 85% | 0.84 | 35% | 75% | 8.7 | 131.46 | 0 |
+
+## Verified on fresh clumps
+
+Each seed packs a different clump. The same 3 bond sets per seed; robust (all seeds) pools seed 0 with the fresh ones.
+
+| id | design and stroke | robust, seed 0 | robust, fresh seeds | robust, all seeds | free, fresh seeds | fails |
+|---|---|---|---|---|---|---|
+| B-31c4ea6d | grid 12 mm (bars 1.9), pins 2.8 x 6 mm round every ~9 mm; seesaw +/-10.5 deg, 3.6 s + 0.3 mm buzz at 40 Hz | 0.700 | 0.336 (seeds 1, 2) | **0.422** | 76% | 0 |
+| B-87f42099 | grid 8.9 mm (bars 1.2), pins 2 x 7.6 mm flat every ~11.8 mm; seesaw +/-8 deg, 3.5 s + 0.35 mm buzz at 40 Hz | 0.683 | 0.575 (seeds 1, 2) | **0.605** | 94% | 0 |
+| B-164f355a | grid 11.3 mm (bars 1.6), pins 3.1 x 8 mm round every ~8.5 mm; seesaw +/-7 deg, 1.1 s + 0.35 mm buzz at 40 Hz | 0.672 | 0.612 (seeds 1, 2) | **0.630** | 94% | 0 |
+| B-5405ea9b | NO BREAKER: the clump straight onto the demo rig's 5 mm / 2 mm trays, default seesaw (+/-10 deg, 2 s) | 0.217 | 0.235 (seeds 1, 2) | **0.229** | 48% | 0 |
+| B-75f277ad | cad/breaker_layer.py default (open 8, pins 2.5 x 12 every 10, round) on the default seesaw | 0.287 | 0.188 (seeds 1, 2) | **0.216** | 34% | 0 |
+| B-9dcf5153 | the CAD default breaker, default seesaw + 0.3 mm buzz at 40 Hz (1.9 g, the tool's) | 0.479 | 0.440 (seeds 1, 2) | **0.452** | 84% | 0 |
 
 ## Per bond set, top 3 and the no-breaker reference
 

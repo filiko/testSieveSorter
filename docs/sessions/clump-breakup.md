@@ -1,5 +1,7 @@
 # Task: break up the clump. This is the system's real job
 
+> Read [docs/SYSTEM.md](../SYSTEM.md) first. It's the one description of the rig, the mounting, the motion and the scope, and it overrides this brief where they differ.
+
 **From the user (Oct 25, ~10:15 PT):** Malaise samples often arrive as a **compacted ball or mound of insects**, mixed with **leaves, twigs and dirt**. The input to our system is **a clump**, not loose specimens. The first stage has to **break the clump apart**; size sorting comes after. That's the true point of the system, so it's now the top priority for every session. Submission is at 14:30.
 
 ## What we're designing
@@ -24,7 +26,13 @@ It uses what the rig already has: the shaker (the up-and-down / angled stroke fr
 - **Printable:** features ≥ 0.4 mm, openings on 0.1 mm steps, pin heights on 0.2 mm layers, printed without supports (pins point up).
 - **The stack under it:** the current winner tower, or `inserts:5mm,2mm` for the demo rig.
 
-## A. Physics session (`physics-bench`): clumps and debris in the sim. **Do this first, it unblocks everything**
+## A. Physics session (`physics-bench`): rocking motion, then clumps and debris. **This unblocks everything**
+0. **Rocking motion first** (user correction 10:30; aim to have it on `main` by ~11:15).
+   - Each box is held only at its +X tab and overhangs, so it rocks about the mount instead of translating as a rigid block. See [SYSTEM.md](../SYSTEM.md) §3.
+   - Add a stroke that combines a vertical stroke at the mount with a pitch about the Y axis through the +X tab: `rock_deg`, `phase_deg`, with the existing `amp_mm` / `freq_hz`.
+   - Implement it with exact non-inertial forces per particle (SYSTEM.md §5).
+   - Check it: a particle near the free end gets thrown much more than one near the mount. With `rock_deg=0`, results match the old vertical stroke.
+   - Rerun the stacked rig under rocking, add it to VERTICAL.md, and open a PR.
 1. **A `clump` particle:**
    - N specimens (`insects.py` kinds, or grain surrogates for the bench demo) packed into a ball.
    - Each touching pair is joined by a **breakable bond**: an equality `weld` / `connect`. Each step, set `d.eq_active[i] = 0` once the bond's constraint force (from `efc_force`) exceeds `bond_N`.
@@ -53,6 +61,7 @@ It uses what the rig already has: the shaker (the up-and-down / angled stroke fr
    - Make a surrogate clump by binding rice, quinoa and pasta with a little water-soluble binder (e.g. sugar water), plus some leaf bits.
    - Show it breaking up under the shake and spray, then sorting.
 4. **Viewer:** show the clump breaking apart on the breaker layer, once physics has a clump run.
+5. **Fix the replay's motion** ([SYSTEM.md](../SYSTEM.md) §3). The boxes must pitch about their +X tab, not slide up and down as one block. Don't show `demo_tower_stiff` as the real motion: the user says it misreads the rig. Re-render once physics's rocking stroke lands; the viewer has to apply the tray's rotation, not just its offset.
 
 ## C. Optimizer session (`design-opt`): the `malaise` study
 1. **Wrap up the demo study** so `winners.json` is final for the current print.
@@ -62,7 +71,9 @@ It uses what the rig already has: the shaker (the up-and-down / angled stroke fr
    - minus the damage proxy and leaf blinding;
    - then the existing sort score for what gets through.
    - Robust across the bond-strength sets × friction sets × seeds.
-4. **Search space:** breaker parameters + the stroke (angle 0–90°: up and down may be exactly what breaks clumps) + spray on/off/flow.
+4. **Search space:** breaker parameters + the stroke + spray on/off/flow.
+   - **Stroke:** use physics's **rocking** stroke (`rock_deg`, `phase_deg`, `amp_mm`, `freq_hz`; SYSTEM.md §3) once it lands. Translation-only angles are a simplification.
+   - Also re-score the current demo winners under rocking before the pitch quotes them.
 5. **Leaderboard:**
    - `sim/opt/leaderboard_malaise.md` and `winners_malaise.json`;
    - **EXPLORATORY** (bond strengths aren't measured);

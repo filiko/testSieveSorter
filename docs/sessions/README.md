@@ -1,5 +1,7 @@
 # Parallel sessions
 
+> **Every session: read [../SYSTEM.md](../SYSTEM.md) first.** It's the one shared description of the system (clump input, stacked trays, mounted at the +X tab, rocking motion, sim scope, who owns what).
+>
 > **Top priority since 10:15: [clump-breakup.md](clump-breakup.md).** Malaise samples arrive as a compacted clump of insects and debris. Breaking it apart is the system's real job, with parts for physics (A), bambu (B) and the optimizer (C).
 
 Four Claude Code sessions work on this repo at the same time. Each has its own git worktree and branch, so none of them edits another's files. Merge into `main` through PRs on https://github.com/filiko/testSieveSorter.

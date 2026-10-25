@@ -1,5 +1,7 @@
 # Handoff: physics session (prompting mode) to a bypass-permissions session
 
+> **Read [docs/SYSTEM.md](../SYSTEM.md) first** (added 10:30). It's the one description of the system: the input is a clump; the rig is separate trays one above the other, each held at its +X tab and overhanging, so they **rock**. It overrides this brief where they differ.
+
 Written 2026-10-25 06:15 PT by the main session. The first physics session ran in prompting mode and kept stopping for approvals. After its write-up landed, it was closed, and a session in bypass mode took over the same worktree (`testSieveSorter-physics`, branch `physics-bench`). Briefs: [physics.md](physics.md), [demo-rig.md](demo-rig.md) parts A and B (both done).
 
 ## Done and on `main`

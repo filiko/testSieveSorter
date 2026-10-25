@@ -10,6 +10,8 @@ Hackathon work on BioKEA's **BugSorter**, the size-sorting module at the front o
 - **Other tracks:** Opentrons Flex, and an open hardware challenge (a tool someone else could build for under $200).
 - **Deadlines:** final submission Sun Oct 25 at 2:30 PM PT; live demos 3:30–4:30 PM, then demos and pitching 4:30–5:30 PM.
 
+> **How the system works, in one page:** [docs/SYSTEM.md](docs/SYSTEM.md). That's the shared description every work stream follows.
+
 ## The real problem: the sample arrives as a clump
 
 Malaise-trap samples are thousands of mostly tiny flies in ethanol. They often arrive as a **compacted ball or mound of insects**, tangled together and mixed with **leaves, twigs and dirt**. Sieves can only sort specimens that are already loose. So the input to this system is a clump, and its first and most important job is to **break that clump apart gently**: no crushed specimens and no snapped legs, because everything goes on to imaging and DNA barcoding. Only then does it sort by size.
@@ -35,7 +37,7 @@ Full reasoning, tests and targets: [docs/gates-verdict.md](docs/gates-verdict.md
 
 ### Demo rig and next step
 
-The sorter is a **stack of separate trays, one above the other**: coarse on top, finer below, and a catch pan at the bottom. The whole stack shakes together. In the team's photos, one of those trays (a white 3D-printed square-grid sieve) is bolted onto a **handheld DeWalt 20V MAX cordless tool**, sorting tube pasta from rice and grains. The next big improvement is **shaking it up and down**, not only side to side. The sim models just the stacked trays, the grains and the shaking motion, not the tool (`inserts:5mm,2mm`: each tray in its own holder box, stacked straight up). It gets vertical and angled strokes, then a direct comparison against horizontal shaking on the stack ([docs/sessions/demo-rig.md](docs/sessions/demo-rig.md)). The photos are local reference only (`media/`, gitignored).
+The sorter is a **stack of separate trays, one above the other**: coarse on top, finer below, and a catch pan at the bottom. The whole stack shakes together. Each box is held only by its tab on one short end and overhangs, so it **rocks** about that end rather than moving as a rigid block ([docs/SYSTEM.md](docs/SYSTEM.md) §3). In the team's photos, one of those trays (a white 3D-printed square-grid sieve) is bolted onto a **handheld DeWalt 20V MAX cordless tool**, sorting tube pasta from rice and grains. The next big improvement is **shaking it up and down**, not only side to side. The sim models just the stacked trays, the grains and the shaking motion, not the tool (`inserts:5mm,2mm`: each tray in its own holder box, stacked straight up). It gets vertical and angled strokes, then a direct comparison against horizontal shaking on the stack ([docs/sessions/demo-rig.md](docs/sessions/demo-rig.md)). The photos are local reference only (`media/`, gitignored).
 
 ## Repository layout
 

@@ -1,5 +1,7 @@
 # [P] Physics engine test on the new laptop
 
+> **Read [docs/SYSTEM.md](../SYSTEM.md) first** (added 10:30). It's the one description of the system: the input is a clump; the rig is separate trays one above the other, each held at its +X tab and overhanging, so they **rock**. It overrides this brief where they differ.
+
 Worktree `Documents\Github\testSieveSorter-physics`, branch `physics-bench`. Read [README.md](README.md) first for the shared venv and the Smart App Control blocker. **MuJoCo doesn't import on Windows here yet.** Fixing that is step 1.
 
 ## This laptop

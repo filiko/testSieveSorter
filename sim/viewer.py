@@ -7,6 +7,11 @@ file:// with no server and no network. --open opens it in the default browser. -
 bench tower (frame, rods and knobs, spray plate, tub) round a holder-box run: display only, from
 rig.py, with sizes estimated from a photo.
 
+Tray motion: tray_d (frames x 3) is the lab offset of the tray frame. A rocking run also records
+tray_q (frames x 4, w x y z), the tray frame's orientation in the lab, about the point
+scene["tray"]["pivot"] (mm in the tray frame, default the origin): a tray-frame point x is drawn at
+tray_d + pivot + R(tray_q) (x - pivot). Particles are recorded in the tray frame, so they rock with it.
+
 The trajectory is quantized (positions int16 at 0.01 mm, so +/-327 mm; quaternions int16 at
 1/32767; wetness uint8), delta-coded along time, byte-shuffled, zlib-compressed and base64'd.
 The page undoes this with the browser's built-in DecompressionStream. If the page would still
@@ -80,6 +85,8 @@ def quantize(traj: dict, step: int) -> tuple[dict, int]:
         "pos": np.clip(np.rint(pos), -INT16_MAX, INT16_MAX).astype("<i2"),
         "quat": np.clip(np.rint(np.nan_to_num(traj["quat"][fr]) * QUAT_SCALE), -INT16_MAX, INT16_MAX).astype("<i2"),
     }
+    if "tray_q" in traj:           # rocking: the tray frame's orientation, w x y z, about scene tray.pivot
+        out["tray_q"] = np.nan_to_num(traj["tray_q"][fr]).astype("<f4")
     if "zone_counts" in traj:
         out["zone_counts"] = np.clip(traj["zone_counts"][fr], 0, 65535).astype("<u2")
     if "wet" in traj:

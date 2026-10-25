@@ -44,6 +44,8 @@ Outputs go in `sim\out\`, which is not committed.
 
 ### Camera, recording and the real-vs-sim clip
 
+> **Neither clip below shows the real motion.** Both runs slide the trays straight up and down as one block. The real boxes are held only at their +X tab and rock about it ([docs/SYSTEM.md](../docs/SYSTEM.md) §3). Both clips carry that warning in their captions, and both get re-rendered once physics's rocking stroke is on `main`. The replay page is ready for it: a run that records `tray_q` (the tray frame's orientation per frame, w x y z) and `scene["tray"]["pivot"]` (the point it turns about, mm in the tray frame) is drawn rocking (see `viewer.py`).
+
 The replay page reads its camera from the URL: `view.html?cam=x,y,z&target=x,y,z&fov=35&aspect=16:9` (mm, lab frame; FOV is vertical). Set the angle by eye against a photo (the **Frame** menu sets the aspect ratio, **FOV** dollies so the tray keeps its size), then **Copy camera** copies the URL. **Record** plays the run once in real time and downloads a `.webm` with the zone labels and the sim clock drawn in; its frame rate depends on the machine. For the demo clip, render frame-exact instead and put it next to Forum's photo of the bench prototype (demo-rig.md part D):
 
 ```

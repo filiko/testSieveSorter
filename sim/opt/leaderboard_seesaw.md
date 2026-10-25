@@ -1,10 +1,10 @@
 # Leaderboard: Demo set on the rig's seesaw: each tray rocks about its middle (the ends tip), neighbours alternate, +/-5-15 deg (rocking.py)
 
-Generated 2026-10-25 13:41 by `sim/optimize.py` (study `seesaw`). 51 candidates, 274 sim runs so far.
+Generated 2026-10-25 13:44 by `sim/optimize.py` (study `seesaw`). 51 candidates, 292 sim runs so far.
 
 **The sim ranks designs; it does not predict real percentages.** It is uncalibrated until `calibrate.py` has bench counts, has no water, rigid particles, and about 80 particles per run. Sizes are simulated at the as-printed opening, nominal - 0.15 mm (ASSUMED until the hole gauge is measured).
 
-Ranked by the robust score (mean - 1 sd) over 3 friction sets x 3 seeds at the full 16 s run. Score per run = min over classes of min(purity, recovery), minus 0.5 x jammed share, 1.0 x lost share and 0.05 x t90/duration. Failed (unstable) runs score -1. Only candidates promoted to the full run are ranked; screened-only ones are in the log. Solver: dt 0.25 ms, contact timeconst 0.5 ms (stiffer than sorter.py's default; see optimize.py). Friction sets: mu 0.3, mu 0.4, mu 0.5.
+Ranked by the robust score (mean - 1 sd) over 3 friction sets x 2 seeds at the full 16 s run. Score per run = min over classes of min(purity, recovery), minus 0.5 x jammed share, 1.0 x lost share and 0.05 x t90/duration. Failed (unstable) runs score -1. Only candidates promoted to the full run are ranked; screened-only ones are in the log. Solver: dt 0.25 ms, contact timeconst 0.5 ms (stiffer than sorter.py's default; see optimize.py). Friction sets: mu 0.3, mu 0.4, mu 0.5.
 
 | # | id | family | robust | mean +/- sd | worst mu set | big (pasta, chickpea) pur / rec | rice pur / rec | quinoa pur / rec | jammed | lost | t90 s | flags | design (CAD, nominal mm) | sim spec (as printed) | stroke |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
@@ -40,6 +40,15 @@ Ranked by the robust score (mean - 1 sd) over 3 friction sets x 3 seeds at the f
 | A-860ce30b | RIBS ACROSS (bambu): 5mm_across / 2mm_across in the seesaw holder, 85 mm apart, default seesaw (+/-10 deg, 2 s) | 0.528 | 0.577 +/- 0.048 | 0.559 | 63% / 100% | 90% / 78% | 90% / 73% | 0.0 | 0.0 | - (0/6) | PEN 6/6 (clr 0.13, pen 0.288) | `inserts:5mm_across,2mm_across,pitch=85,holder=seesaw` |
 | A-0f850e1f | RIBS ACROSS (bambu): 5mm_across / 2mm_across in the seesaw holder, 85 mm apart, default seesaw + 0.3 mm buzz at 40 Hz | -0.029 | -0.004 +/- 0.025 | -0.013 | 100% / 100% | 100% / 5% | 51% / 99% | 0.0 | 0.3 | - (0/6) | PEN 6/6 (clr 0.13, pen 0.316) | `inserts:5mm_across,2mm_across,pitch=85,holder=seesaw` |
 
+## Verification of flagged leaders at stiffer contacts
+
+Rerun at dt 0.125 ms and contact timeconst 0.25 ms (half the overlap of the standard solver), 3 friction sets x 3 seeds, 16 s. A design that comes back with no flagged or failed run counts as clean for `winners.json`, ranked by the lower of its two scores.
+
+| id | family | robust (standard) | flags (standard) | robust (stiff) | flags (stiff) | verdict | design |
+|---|---|---|---|---|---|---|---|
+| P-690b1645 | plinko | 0.974 | PEN 6/6 (clr 0.16, pen 0.130) | 0.996 | PEN 1/9 (clr 0.16, pen 0.219) | still flagged | rods L1 gap 4.9 (rod 3.4 wide, 3.8 tall) / L2 gap 1.4 (rod 2.2, 3.4) |
+| P-a822b277 | plinko | 0.962 | PEN 4/6 (clr 0.16, pen 0.116) | 0.947 | ok | clean | rods L1 gap 3.5 (rod 3.5 wide, 3 tall) / L2 gap 1.4 (rod 2.5, 3.6) |
+
 ## Best per drive
 
 BioKEA's stage can only run the firmware stroke (constant speed); the demo rig is a vibrating tool (sine). Best full-run design for each, whether or not it is flagged:
@@ -47,7 +56,7 @@ BioKEA's stage can only run the firmware stroke (constant speed); the demo rig i
 | drive | id | family | robust | flags | design (CAD, nominal mm) | stroke |
 |---|---|---|---|---|---|---|
 
-## Count matrices of the top 3 (summed over the 9 full runs)
+## Count matrices of the top 3 (summed over the 6 full runs)
 
 **1. P-3bbfc231 (plinko) rods L1 gap 4.7 (rod 3.5 wide, 3.2 tall) / L2 gap 1.5 (rod 2.9, 2.2); sim `plinko`**
 

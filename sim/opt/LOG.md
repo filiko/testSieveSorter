@@ -570,3 +570,171 @@ Caveat: it is flagged in 9 of 9 runs. Its L2 tunnel is 1.65 mm as printed, 0.04 
 
 G-d726c2e8, the standard flipped gated tower on a 26 Hz, 3.8 g shake along the tray, **stays flagged** at stiffer contacts: 7 of 9 runs, overlap 0.059 mm, but its clearance is only 0.04 mm. Its score holds (0.946, 0.937 stiff), so the result isn't a soft-contact artefact. The flag is a real near-size warning: the L2 tunnel prints at 1.65 mm against 1.7 mm rice. **Next hypothesis:** the same tower and shake with a safer L2 tunnel (t1.6-1.7 nominal) should keep the score and lose the flag. The gated family's cross-entropy now centres on this design, so round 6 samples that neighbourhood. Insect round 1 is dropped from the queue: it doesn't fit before 10:50, and the insect classes are capped by structure, not tuning (insect round 0 notes).
 
+## demo round 6 (2026-10-25 09:55, auto)
+
+**Tried:** gated: 12 (ce); gated_mid: 10 (ce); plinko: 8 (ce); inserts: 2 (ce). 360 runs, 13 min wall.
+
+**Leader so far:** P-b192da7c (plinko, round 5) rods L1 gap 4.7 (rod 2.6 wide, 2.2 tall) / L2 gap 1.6 (rod 2.3, 3.2), stroke tool sine 37 Hz, 2.1 g (0.38 mm), 25 deg up: robust 1.000 (mean 1.000 +/- 0.000); big (pasta, chickpea) 100% pure / 100% recovered, rice 100% pure / 100% recovered, quinoa 100% pure / 100% recovered; ok.
+
+**Screen results this round (8 s, progress score), best per family:**
+
+- gated: best G-e5083752 screen robust 0.829; median 0.345; failures in 0 of 12 candidates
+- gated_mid: best G-6525d37f screen robust 0.814; median 0.551; failures in 0 of 10 candidates
+- plinko: best P-e6f1f8db screen robust 1.000; median 0.886; failures in 0 of 8 candidates
+- inserts: best I-02a7cd44 screen robust 0.793; median 0.785; failures in 0 of 2 candidates
+
+**Why the losers failed** (particles per run, over this round's screened candidates in the bottom half of each family; the most common modes):
+
+- gated: quinoa: held upstream -> L1 on the floor (27.8 in 6 cands); rice: held upstream -> L1 on the floor (26.0 in 6 cands); rice: held upstream -> L1 at the gate (within 10 mm) (1.8 in 6 cands); quinoa: held upstream -> L1 at the gate (within 10 mm) (1.2 in 5 cands); quinoa: held upstream -> L2 on the floor (0.9 in 6 cands); rice: between -> L1 in the strip (0.3 in 5 cands)
+- gated_mid: quinoa: held upstream -> L1 on the floor (17.3 in 3 cands); rice: held upstream -> L1 on the floor (9.4 in 4 cands); rice: held upstream -> L1 at the gate (within 10 mm) (6.7 in 5 cands); rice: leaked downstream -> catch (10.5 in 2 cands); quinoa: held upstream -> L2 at the gate (within 10 mm) (2.7 in 5 cands); quinoa: held upstream -> L2 on the floor (3.3 in 3 cands)
+- plinko: quinoa: held upstream -> layer_2_rods (4.8 in 4 cands); quinoa: held upstream -> layer_1_rods (4.1 in 4 cands); rice: held upstream -> layer_1_rods (0.9 in 3 cands); rice: leaked downstream -> layer_3_catch (1.0 in 2 cands)
+- inserts: quinoa: held upstream -> on_h1p75b1p15 (9.1 in 1 cands); quinoa: held upstream -> on_h5p15b1p35 (4.9 in 1 cands); rice: held upstream -> on_h5p15b1p35 (2.0 in 1 cands); rice: leaked downstream -> catch (0.2 in 1 cands)
+
+**Leaders' remaining losses** (full runs, top 3):
+
+- P-b192da7c: none
+- P-e6f1f8db: none
+- P-ae394887: none
+
+**Parameters at a bound among each family's elite** (the range may be too narrow):
+
+- gated: k1 w 0.26/t 0.74, drive firmware 0.47/tool 0.53, angle low (8.68)
+- gated_mid: k1 w 0.25/t 0.75, drive firmware 0.13/tool 0.87
+- plinko: drive firmware 0.52/tool 0.48
+- inserts: drive firmware 0.86/tool 0.14, accel low (1.08), angle low (1.67)
+
+**Next hypothesis (auto):** the leader sorts cleanly; refine for robustness and throughput.
+
+
+## demo round 6: the hypothesis holds; today's gated tower is a clean winner (notes, 2026-10-25 10:00)
+
+**Hypothesis (09:50):** today's flipped tower on a strong flat shake, with a safer L2 tunnel, keeps its score and loses the flag. **Confirmed.**
+
+**G-e5083752**, the standard flipped gated tower, **buildable with today's `gated_container.py`**:
+- **CAD:** constants FLOOR_SLOPE_DEG 3.1, TUNNEL_W 8.3, TOOTH 1.7, GATE_X 52.8 (7.2 mm slot), plus two new strips, `gate_t5p3` (L1) and `gate_t1p6` (L2). No new geometry.
+- **Stroke:** sine 38 Hz at 4.8 g (0.83 mm), along the tray.
+- **Result:** robust **0.950, no flags** (gate overlap 0.091 mm against a 0.24 clearance). Pasta and chickpea 144/144 on L1, rice 270/270 on L2, quinoa 268/270 on the catch, 0 jammed, t90 10 s.
+
+L2's t1.6 prints at 1.45 mm: 0.25 mm under rice, 0.35 mm over quinoa. That's the same safe window as the plinko layer-2 rule.
+
+**Why the losers failed this round.** gated_mid candidates at steep throws (60-65 deg) bounce grains instead of conveying them (0.61-0.85). A flipped tower with a w5.2 gap at L1 leaks pasta on edge (0.62). Inserts are still flagged everywhere.
+
+It's provisionally winner #2 (stress test queued next: printer undersize +/- 0.1 mm). If it holds, **all three styles the optimizer explored have a working, stress-tested sorter**:
+- plinko rods;
+- today's gated tower on a flat shake;
+- the mid-slot gated tower on an angled throw.
+
+All three are stacks of removable trays, one class per tray.
+
+## The rig rocks: a seesaw drive (notes, 2026-10-25 10:10)
+
+**From the user (10:05-10:15), with a photo of the rig.** The trays are separate levels hung one above another in an aluminium frame. Each section drops into the next tray. Each tray is attached at its mid-points to the motor, which rocks it **side to side like a seesaw** (the holder's mounting tab at the middle of its +X end, `frame_holder.py`). That is the motion of the machine as it stands, so it's the quickest thing to improve. The shaking results above stay valid, for a rig that shakes.
+
+**What the optimizer did until now.** Every stroke was a translation: the firmware stage, or a vibrating tool, at any angle. `sorter.py` only translates the tray (a uniform pseudo-force).
+
+**New drive, `rock`** (in `optimize.py`'s run wrapper, without touching `sorter.py`):
+1. **Tilt.** Gravity is rotated into the tilted tray frame every step.
+2. **Rotating-frame forces.** Every particle also gets m(-alpha x r - w x (w x r) - 2 w x v), with r measured in plan from the tray centre, where the pivot axis runs. This includes the jolt from the angular acceleration at each hard reversal, so the tray ends jerk while the middle doesn't.
+3. **Profile.** The tilt follows the firmware's constant-speed profile with hard reversals, starting level, between +/- `rock_deg`, `rock_period` s per cycle.
+4. **Search space.** The pivot axis is a categorical: x = the tray's long axis (the width tips side to side; this matches "attached at the mid points") or y = its short axis (the ends tip). The amplitude is 2-20 deg and the period 0.4-6 s. All three are unmeasured.
+
+**Checked (executed, plinko 3.7 / 1.5, 2 s, mu 0.4):** rocking about the long axis put 27/30 rice on its tray against 19/30 with no motion; about the short axis, 23/30. The tilt traces as expected: gravity's x component reaches 1703 mm/s^2 = g sin 10 deg. A first smoke test showed identical counts for every motion. That was my test, not the physics: three runs in one process each wrapped the previous run's step. `run_job` now always starts from MuJoCo's own `mj_step`, and `replay` applies the rocking as well.
+
+**Not modelled yet.** The levels hang apart in the frame rather than rim on rim, so the drop between trays is longer than in the sim's tower. The pivot height relative to each tray floor isn't known either. Both are assumptions to check against the rig.
+
+**Next.** A demo round with every new candidate and reference on the seesaw drive (`run --drive rock`). `winners.json` gets a "seesaw" entry in its best-per-drive list: the design for the rig's current motor.
+
+## demo round 7 (2026-10-25 10:54, auto)
+
+**Tried:** gated: 22 (baseline, ce, lhs); plinko: 17 (baseline, ce, lhs); inserts: 7 (baseline, ce, lhs); current: 1 (current); demo_rig: 1 (current); gated_mid: 16 (ce, lhs). 756 runs, 43 min wall.
+
+**Leader so far:** P-b192da7c (plinko, round 5) rods L1 gap 4.7 (rod 2.6 wide, 2.2 tall) / L2 gap 1.6 (rod 2.3, 3.2), stroke tool sine 37 Hz, 2.1 g (0.38 mm), 25 deg up: robust 1.000 (mean 1.000 +/- 0.000); big (pasta, chickpea) 100% pure / 100% recovered, rice 100% pure / 100% recovered, quinoa 100% pure / 100% recovered; ok.
+
+**Screen results this round (8 s, progress score), best per family:**
+
+- gated: best G-2b33c311 screen robust 0.411; median 0.338; failures in 0 of 22 candidates
+- plinko: best P-59cc0bf9 screen robust 0.919; median 0.694; failures in 0 of 17 candidates
+- inserts: best I-907f0f4c screen robust 0.657; median 0.592; failures in 0 of 7 candidates
+- current: best C-1f16dae6 screen robust 0.554; median 0.554; failures in 0 of 1 candidates
+- demo_rig: best D-ef26c8c7 screen robust 0.804; median 0.804; failures in 0 of 1 candidates
+- gated_mid: best G-4947dd42 screen robust 0.465; median 0.333; failures in 0 of 16 candidates
+
+**Why the losers failed** (particles per run, over this round's screened candidates in the bottom half of each family; the most common modes):
+
+- gated: quinoa: held upstream -> L1 on the floor (27.9 in 11 cands); rice: held upstream -> L1 on the floor (26.0 in 11 cands); rice: held upstream -> L1 at the gate (within 10 mm) (2.7 in 11 cands); quinoa: held upstream -> L1 at the gate (within 10 mm) (1.2 in 9 cands); quinoa: held upstream -> L2 on the floor (1.0 in 10 cands); rice: between -> L1 in the strip (0.2 in 5 cands)
+- plinko: quinoa: held upstream -> layer_2_rods (12.0 in 9 cands); quinoa: held upstream -> layer_1_rods (8.8 in 9 cands); rice: held upstream -> layer_1_rods (6.8 in 9 cands); rice: leaked downstream -> layer_3_catch (6.1 in 3 cands)
+- inserts: quinoa: held upstream -> on_h4p85b1p35 (10.1 in 2 cands); rice: held upstream -> on_h3p05b1p55 (17.9 in 1 cands); quinoa: held upstream -> on_h1p85b1p15 (7.2 in 2 cands); rice: held upstream -> on_h4p85b1p35 (6.8 in 2 cands); quinoa: held upstream -> on_h3p95b2p05 (9.9 in 1 cands); quinoa: held upstream -> on_h3p05b1p55 (9.0 in 1 cands)
+- current: rice: leaked downstream -> catch (5.8 in 1 cands); rice: between -> in the floor of on_mesh5 (3.6 in 1 cands); quinoa: between -> in the floor of on_mesh5 (3.1 in 1 cands); quinoa: held upstream -> on_mesh2 (1.0 in 1 cands); quinoa: between -> in the floor of on_mesh2 (0.6 in 1 cands); rice: held upstream -> on_mesh5 (0.3 in 1 cands)
+- demo_rig: quinoa: held upstream -> on_5mm (9.1 in 1 cands); rice: held upstream -> on_5mm (6.3 in 1 cands)
+- gated_mid: quinoa: held upstream -> L1 on the floor (27.6 in 8 cands); rice: held upstream -> L1 on the floor (24.7 in 8 cands); rice: held upstream -> L1 at the gate (within 10 mm) (3.9 in 8 cands); quinoa: held upstream -> L1 at the gate (within 10 mm) (1.3 in 7 cands); quinoa: held upstream -> L2 at the gate (within 10 mm) (0.8 in 7 cands); rice: between -> L1 in the strip (0.5 in 7 cands)
+
+**Leaders' remaining losses** (full runs, top 3):
+
+- P-b192da7c: none
+- P-e6f1f8db: none
+- P-ae394887: none
+
+**Parameters at a bound among each family's elite** (the range may be too narrow):
+
+- gated: k1 w 0.25/t 0.75, drive firmware 0.38/tool 0.45/rock 0.17, angle low (8.29), rock_axis x 0.36/y 0.64
+- plinko: drive firmware 0.41/tool 0.41/rock 0.17, rock_axis x 0.36/y 0.64
+- inserts: drive firmware 0.73/tool 0.14/rock 0.13, accel low (1.20), rock_axis x 0.50/y 0.50
+- gated_mid: k1 w 0.20/t 0.80, drive firmware 0.13/tool 0.69/rock 0.18, rock_axis x 0.25/y 0.75
+
+**Next hypothesis (auto):** the leader sorts cleanly; refine for robustness and throughput.
+
+
+
+## demo round 7: the seesaw (notes, 2026-10-25 10:58)
+
+**Best design for the rig's rocking motor: P-59cc0bf9, plinko rods 3.1 / 1.6 mm (nominal), rocked +/-19 deg about the tray's long axis at 0.4 s per cycle.** Robust 0.835 (mean 0.898 +/- 0.063), no flags, 90% sorted after 3.2 s in 9 of 9 runs. Every big grain and every rice grain ends on its own layer. 90% of the quinoa reaches the catch, and the rest sits on the rice layer (rice purity 92%). It is `winners.json` `best_by_drive` "seesaw". Executed, 3 friction sets x 3 seeds, 30 s. Not stress-tested or verified at stiff contacts: the round ended at the stop time.
+
+**What rocking needs (executed, this round's full runs):**
+- **Fast and steep wins.** Ranked: +/-19 deg at 0.4 s about the long axis (0.835); +/-14.5 deg at 0.9 s about the short axis (0.705); +/-11 deg at 0.8 s (0.503); +/-17 deg at 3.4 s (0.471). Slow rocking leaves quinoa on the upper layers.
+- **The winner sits at two bounds** (amplitude 19 of 20 deg, period 0.4 of 0.4 s), so the optimum may lie beyond the searched range.
+- **The reversal jolts probably carry it.** At 0.4 s per cycle the tray turns at about 190 deg/s and reverses in 0.01 s (assumed, as for the firmware stage). That gives roughly 4 g at the tray ends. So this behaves more like a jolting shaker than a gentle tilt, and the unmeasured reversal time matters again.
+- **Today's setups on the default seesaw (+/-10 deg, 1.6 s, long axis):**
+  - glued mesh 0.480: 65% of the rice stays on its tray; the rest leaks or wedges in the 5 mm mesh;
+  - plinko as in the repo (5.0 / 1.4) 0.408;
+  - the demo rig's 5 mm tray alone 0.387;
+  - the printed inserts 0.359.
+- **Gated designs don't work on a seesaw** (best 0.293). Rice and quinoa stay on L1's floor: 26 and 28 per run in the bottom half. A symmetric tilt has no net push toward the gate, and a gate needs a drive with a direction.
+
+**Caveats (assumed):**
+- The pivot axis is taken through each tray's centre at the grain's own height. The real pivot height is unknown.
+- The rig's trays hang apart in the frame, so the drops between them are longer than in the sim's stacked box.
+- Whether the motor can rock +/-19 deg at 2.5 Hz is unknown. The amplitude and period it can actually do are the next thing to measure.
+
+**Next hypothesis:**
+1. Measure the rig's real tilt amplitude, period and pivot axis.
+2. Rerun the seesaw search with the range opened past 20 deg and below 0.4 s, if the motor allows it, or pinned to what it does.
+3. Stress the winner on reversal time (0.005 / 0.02 s) and printer undersize (+/- 0.1 mm), and verify it at stiff contacts.
+4. If the motor is slow, try a plinko with a steeper-sided rod or an asymmetric (sawtooth) floor, so a slow tilt still carries grain over the rods.
+
+**Code note:** commit 4b8f76d's message says ce_update "pads or resets" a categorical whose size changed. It only resets it: a categorical that gained a choice restarts at uniform weights.
+
+**Stop.** The driver stopped at 10:54 (`out/opt/STOP`) after round 7, per the brief. The leaderboard, winners and this log are final for this session.
+
+## Correction: the rig's seesaw axis is y (notes, 2026-10-25 11:05)
+
+**Main's SYSTEM.md section 3 (the user confirmed it at 10:50, commit 9785b73 on main):**
+- Each tray tips at its ends, about its own pivot across its middle (axis y), about 20-30 deg either side.
+- Neighbouring levels rock in opposite phase.
+
+This overrides my 10:10 reading ("x matches attached at the mid points"). So round 7's winner, P-59cc0bf9 (+/-19 deg about x), rocks the wrong axis. It is not the design for the rig's motor.
+
+**Under the confirmed axis (executed, round 7 full runs):**
+- The best is **P-fccdb05e, plinko rods 3.3 / 1.7, +/-14.5 deg at 0.9 s, robust 0.705.** Rice is 93% kept and quinoa 83% through. Gate overlap is flagged in 2 of 9 runs.
+- Its layer-2 gap of 1.7 mm breaks the printing rule from the stress test (1.5-1.6 mm).
+- So `winners.json` has **no clean seesaw entry** now. The leaderboard's best-per-drive table lists P-fccdb05e, flagged.
+
+**Code (this commit):**
+- `RIG_ROCK_AXIS = "y"`: only y-axis runs count as the rig's motor in best-per-drive.
+- `ROCK_DEFAULT` is now y, 20 deg.
+- `rock_deg` is searched up to 30 deg.
+
+**Not modelled by `rocking()`:**
+- **Alternating levels.** It turns every particle in phase, which is right for one box (the plinko layers rock together) but not for a tower of separate trays.
+- **Each level hinged in the lab frame.** SYSTEM.md gives this to the new seesaw session (`sim/rocking.py`); its results supersede this round's for multi-tray designs.
+
+**Next:** a y-axis round at 10-30 deg on the seesaw session's model. The x-axis results stay in the log as a record of the search.

@@ -93,6 +93,7 @@ input[type=number] { font: inherit; width: 54px; color: var(--ink); background: 
       <label class="chk"><input type="checkbox" id="show-zones" checked> Zones</label>
       <label class="chk"><input type="checkbox" id="show-jets" checked> Jets</label>
       <label class="chk"><input type="checkbox" id="show-walls" checked> Walls</label>
+      <label class="chk" id="rig-row" hidden><input type="checkbox" id="show-rig" checked> Bench tower (display only)</label>
     </section>
     <section>
       <h2>Camera</h2>
@@ -246,14 +247,13 @@ const tray = new THREE.Group();
 world.add(tray);
 const wallMeshes = [];
 const edgeMat = new THREE.LineBasicMaterial({ color: 0x51627a, transparent: true, opacity: 0.35 });
-for (const g of SCENE.tray?.geoms ?? []) {
-  if (g.role === 'lid') continue;
+function geomMesh(g) {
   let geo;
   if (g.type === 'box') {
     geo = new THREE.BoxGeometry(2 * g.size[0], 2 * g.size[1], 2 * g.size[2]);
   } else if (g.type === 'capsule' || g.type === 'cylinder') {   // wires of a glued mesh; MuJoCo axis is local z
     geo = g.type === 'capsule' ? new THREE.CapsuleGeometry(g.size[0], 2 * g.size[1], 3, 8)
-                               : new THREE.CylinderGeometry(g.size[0], g.size[0], 2 * g.size[1], 8);
+                               : new THREE.CylinderGeometry(g.size[0], g.size[0], 2 * g.size[1], g.size[0] > 2 ? 32 : 8);
     geo.rotateX(Math.PI / 2);
   } else if (g.type === 'mesh' && g.vertices && g.faces) {
     const indexed = new THREE.BufferGeometry();
@@ -262,8 +262,8 @@ for (const g of SCENE.tray?.geoms ?? []) {
     geo = indexed.toNonIndexed();      // flat shading for the convex solid
     geo.computeVertexNormals();
   } else {
-    console.warn('viewer: tray geom not drawn', g.type, g.role);
-    continue;
+    console.warn('viewer: geom not drawn', g.type, g.role);
+    return null;
   }
   const st = ROLE_STYLE[g.role] ?? { color: srgb(g.rgba), opacity: g.rgba?.[3] ?? 1 };
   const mat = new THREE.MeshLambertMaterial({ color: st.color, transparent: st.opacity < 1, opacity: st.opacity,
@@ -274,10 +274,29 @@ for (const g of SCENE.tray?.geoms ?? []) {
     mesh.quaternion.copy(qwxyz(g.quat));
   }
   if (g.type === 'box' || g.type === 'mesh') mesh.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo, 25), edgeMat));
-  tray.add(mesh);
-  if (g.role === 'wall') wallMeshes.push(mesh);
+  return mesh;
 }
+// seesaw runs: each level is its own group, turned about its pivot (scene levels[k], recorded level_q)
+const levelGroups = (SCENE.levels ?? []).map(() => { const grp = new THREE.Group(); tray.add(grp); return grp; });
+const levelPivots = (SCENE.levels ?? []).map((lv) => v3(lv.pivot));
+const levelOf = new Map();
+(SCENE.levels ?? []).forEach((lv, k) => (lv.geoms ?? []).forEach((i) => levelOf.set(i, k)));
+(SCENE.tray?.geoms ?? []).forEach((g, i) => {
+  if (g.role === 'lid') return;
+  const mesh = geomMesh(g);
+  if (!mesh) return;
+  (levelOf.has(i) ? levelGroups[levelOf.get(i)] : tray).add(mesh);
+  if (g.role === 'wall') wallMeshes.push(mesh);
+});
 const trayBox = new THREE.Box3().setFromObject(tray);
+
+// rig (viewer.py --rig): the bench tower round the tray, display only and fixed in the lab frame
+const rigGroup = new THREE.Group();
+world.add(rigGroup);
+for (const g of SCENE.rig?.geoms ?? []) {
+  const mesh = geomMesh(g);
+  if (mesh) rigGroup.add(mesh);
+}
 
 // zones: faint boxes with an outline and an HTML label at the front-bottom edge. Zone boxes are
 // often much taller than the tray, so they are drawn only over the tray's height.
@@ -388,9 +407,10 @@ for (const g of groups.values()) {
 
 // ---------- trajectory ----------
 const loading = $('loading');
-let T, TRAY, POS, QUAT, ZC, WET;
+let T, TRAY, TRAYQ, LEVELQ, POS, QUAT, ZC, WET;
 try {
-  [T, TRAY, POS, QUAT, ZC, WET] = await Promise.all(['t', 'tray_d', 'pos', 'quat', 'zone_counts', 'wet'].map(decode));
+  [T, TRAY, TRAYQ, LEVELQ, POS, QUAT, ZC, WET] = await Promise.all(
+    ['t', 'tray_d', 'tray_q', 'level_q', 'pos', 'quat', 'zone_counts', 'wet'].map(decode));
 } catch (err) {
   loading.textContent = 'Could not decode the recording: ' + err + '. This page needs a current Chrome, Edge or Firefox.';
   throw err;
@@ -476,12 +496,31 @@ function locate(tm) {
 }
 
 const lastTray = new THREE.Vector3();
+// rocking runs: the tray frame turns about this point (tray frame, mm); a point x is drawn at d + p + R (x - p)
+const PIVOT = v3(SCENE.tray?.pivot);
+const qa = new THREE.Quaternion(), qb = new THREE.Quaternion();
 function apply() {
   const [i0, i1, a] = locate(time);
   bodyPoses(i0, i1, a);
   updateInstances(a < 0.5 ? i0 : i1);
   tray.position.set(TRAY[3 * i0] + (TRAY[3 * i1] - TRAY[3 * i0]) * a, TRAY[3 * i0 + 1] + (TRAY[3 * i1 + 1] - TRAY[3 * i0 + 1]) * a,
     TRAY[3 * i0 + 2] + (TRAY[3 * i1 + 2] - TRAY[3 * i0 + 2]) * a);
+  if (TRAYQ) {
+    qa.set(TRAYQ[4 * i0 + 1], TRAYQ[4 * i0 + 2], TRAYQ[4 * i0 + 3], TRAYQ[4 * i0]);
+    qb.set(TRAYQ[4 * i1 + 1], TRAYQ[4 * i1 + 2], TRAYQ[4 * i1 + 3], TRAYQ[4 * i1]);
+    tray.quaternion.slerpQuaternions(qa, qb, a).normalize();
+    tray.position.add(PIVOT).sub(PIVOT.clone().applyQuaternion(tray.quaternion));
+  }
+  if (LEVELQ) {
+    const nl = levelGroups.length;
+    levelGroups.forEach((grp, k) => {
+      const o0 = 4 * (i0 * nl + k), o1 = 4 * (i1 * nl + k);
+      qa.set(LEVELQ[o0 + 1], LEVELQ[o0 + 2], LEVELQ[o0 + 3], LEVELQ[o0]);
+      qb.set(LEVELQ[o1 + 1], LEVELQ[o1 + 2], LEVELQ[o1 + 3], LEVELQ[o1]);
+      grp.quaternion.slerpQuaternions(qa, qb, a).normalize();
+      grp.position.copy(levelPivots[k]).sub(levelPivots[k].clone().applyQuaternion(grp.quaternion));
+    });
+  }
   if ($('lock').checked) {             // carry the camera along with the tray
     const d = tray.position.clone().sub(lastTray);
     camera.position.add(d);
@@ -518,7 +557,15 @@ scrub.addEventListener('input', () => { time = Number(scrub.value); dirty = true
 $('show-zones').onchange = (e) => { zoneGroup.visible = e.target.checked; };
 $('show-jets').onchange = (e) => { jetGroup.visible = e.target.checked; };
 $('show-walls').onchange = (e) => wallMeshes.forEach((m) => (m.visible = e.target.checked));
+$('show-rig').onchange = (e) => { rigGroup.visible = e.target.checked; };
+$('rig-row').hidden = !SCENE.rig;
 if (params.has('lock')) $('lock').checked = true;
+// rig=0 hides the bench tower; jets=0/1 sets the jet cones (default: hidden when a tower is drawn and spray is off)
+for (const [key, box, def] of [['rig', 'show-rig', true],
+                               ['jets', 'show-jets', !(SCENE.rig && !(SCENE.config ?? {}).spray)]]) {
+  $(box).checked = params.has(key) ? params.get(key) !== '0' : def;
+  $(box).onchange({ target: $(box) });
+}
 // clicked controls give focus back to the page, so Space always means play/pause
 document.addEventListener('click', (e) => { if (e.target.closest('button, input[type=checkbox]')) e.target.blur(); });
 document.addEventListener('change', (e) => { if (e.target.type === 'checkbox') e.target.blur(); });

@@ -1,5 +1,7 @@
 # Task: simulate the demo rig, with up-and-down shaking
 
+> **Read [docs/SYSTEM.md](../SYSTEM.md) first** (added 10:30). It's the one description of the system: the input is a clump; the rig is separate trays one above the other, each held at its +X tab and overhanging, so they **rock**. It overrides this brief where they differ.
+
 > **Correction (06:20, from the user): the rig is separate trays stacked one above the other**, not one tray. Coarse is on top and finer below, with a catch pan at the bottom; the whole stack shakes up and down together. Forum's photo shows one of those trays. In the sim, that's the holder tower: **`inserts:5mm,2mm`** (one insert per holder box, the boxes stacked straight up, the catch pan under them; see `sim/designs_holder.py`). Use a 3-class mix so each level holds one class: pasta stays on 5 mm, rice on 2 mm, quinoa in the catch. `inserts:5mm` (one tray plus the catch pan) is just a single level of it. The VERTICAL.md results so far are on that single level only.
 
 **What the user wants (Oct 25, ~05:50 PT).** This replaces the stroke-measurement idea in `forum-footage.md`.

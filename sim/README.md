@@ -16,6 +16,7 @@ Status: first build, 2026-10-24. Nothing here is calibrated yet. Until the bench
 | File | What it is |
 |---|---|
 | `sorter.py` | Core: builds the scene, shakes it, records it, and counts where everything ends up |
+| `rocking.py` | The seesaw: each box of a tower on its own hinge across its middle, neighbours in opposite phase, driven in the lab frame; also checks that neighbouring boxes never touch ([SEESAW.md](SEESAW.md)) |
 | `designs.py` | Pool sorter, plus the registry for every design spec |
 | `designs_holder.py` | BioKEA's holder tower with sieve inserts (glued mesh or printed), and the plinko layers |
 | `grains.py` | Rice, quinoa, chickpeas, pasta (frozen for the optimizer), plus brown rice, black rice, wild rice, chia and couscous |
@@ -45,6 +46,8 @@ Outputs go in `sim\out\`, which is not committed.
 
 ### Camera, recording and the real-vs-sim clip
 
+> **Neither clip below shows the real motion.** Both runs slide the trays straight up and down as one block. The real trays each seesaw about their own pivot across their middle, ±20–30°, with neighbouring levels in opposite phase ([docs/SYSTEM.md](../docs/SYSTEM.md) §3). Both clips carry that warning in their captions, and both get re-rendered once the seesaw session's run is on `main`. The replay page is ready for it. A run that records `level_q` (frames × levels × 4, w x y z) and `scene["levels"][k]` (`pivot` in mm, `geoms` as indices into `scene["tray"]["geoms"]`) is drawn with each level turning about its own pivot. A single rocking tray frame (`tray_q` about `scene["tray"]["pivot"]`) works too (see `viewer.py`).
+
 The replay page reads its camera from the URL: `view.html?cam=x,y,z&target=x,y,z&fov=35&aspect=16:9` (mm, lab frame; FOV is vertical). Set the angle by eye against a photo (the **Frame** menu sets the aspect ratio, **FOV** dollies so the tray keeps its size), then **Copy camera** copies the URL. **Record** plays the run once in real time and downloads a `.webm` with the zone labels and the sim clock drawn in; its frame rate depends on the machine. For the demo clip, render frame-exact instead and put it next to Forum's photo of the bench prototype (demo-rig.md part D):
 
 ```
@@ -59,5 +62,16 @@ python side_by_side.py --real ../../testSieveSorter/media/forum-2026-10-24/IMG_1
 - **The camera** looks at the long wall with the mounting-tab end on the right, as in `IMG_1316.JPG`. It is 4:3 landscape, not the photo's 3:4: in portrait the stack only fits small, and the rice and quinoa on the lower levels disappear.
 - **The clip** shows sim t = 0–2.4 s at 1/5 speed (12 s). The pour runs to t = 1 s, with no shaking. At 1/5 speed the 20 Hz shake plays as a visible 4 Hz bounce.
 - **Forum's photos and the clip stay local:** `media/` is gitignored. Copy the clip into the main checkout's `media/`.
+
+**The bench tower.** BioKEA's BugSorter hangs its holder boxes one above the other in an extrusion frame, with open air between them, each on a pivot across its middle, with a spray plate above and a water tub below. `pitch=` on an `inserts:` design spaces the boxes like that; the default is still rim on rim. For a ±25° seesaw with neighbours in opposite phase, SYSTEM.md asks for 80–100 mm, not the 65 mm used below. `viewer.py --rig bugsorter` draws the frame, the pivot axles and knobs (at the run's level pivots when it records them, otherwise at each box's centre), the spray plate, controller, tub and acrylic around the run. The tower is display only (`rig.py`), so it never touches the physics, and its sizes are estimated from the team's photo until someone measures the unit. A grain that bounces out through a gap lands on an invisible tub floor and counts as lost. The drop between boxes needs the stiffer contacts: 0.42 mm overlap at the production settings, 0.14 mm at these.
+
+```
+wsl: python sorter.py --design inserts:5mm,2mm,pitch=65 --mix pasta=15,rice=40,quinoa=40 --stroke sine:amp_mm=1.24,freq_hz=20,angle_deg=90 --duration 10 --dt 0.000125 --timeconst 0.00025 --fps 240 --out out/runs/demo_tower_stiff
+python viewer.py out/runs/demo_tower_stiff --rig bugsorter
+python record_view.py out/runs/demo_tower_stiff --view "?cam=-139.2,382.5,354.4&target=0,0,100&fov=45&aspect=7:8" --speed 0.2 --start 0 --duration 2.6 --height 960 -o out/runs/demo_tower_stiff/sim_tower_0p2x.mp4
+python side_by_side.py --real <photo of the tower> --sim out/runs/demo_tower_stiff/sim_tower_0p2x.mp4 -o ../../testSieveSorter/media/tower_side_by_side.mp4 --height 960 --real-label "BugSorter tower (bench)" --caption "..."
+```
+
+On the replay page, the **Bench tower** checkbox hides the tower; in the URL, `rig=0` hides it and `jets=1` shows the jet cones, which are hidden by default when the tower is drawn and the spray is off.
 
 `side_by_side.py` writes `..\media\demo_side_by_side.mp4`, capped under 19 MB. A photo as `--real` is held for the whole sim clip. A video works too (`--slow`, `--loops`). It also takes a Record-button `.webm` and fixes Chrome's colour-range tagging (light greys would otherwise clip to white).

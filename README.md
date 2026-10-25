@@ -10,6 +10,14 @@ Hackathon work on BioKEA's **BugSorter**, the size-sorting module at the front o
 - **Other tracks:** Opentrons Flex, and an open hardware challenge (a tool someone else could build for under $200).
 - **Deadlines:** final submission Sun Oct 25 at 2:30 PM PT; live demos 3:30–4:30 PM, then demos and pitching 4:30–5:30 PM.
 
+> **How the system works, in one page:** [docs/SYSTEM.md](docs/SYSTEM.md). That's the shared description every work stream follows.
+
+## The real problem: the sample arrives as a clump
+
+Malaise-trap samples are thousands of mostly tiny flies in ethanol. They often arrive as a **compacted ball or mound of insects**, tangled together and mixed with **leaves, twigs and dirt**. Sieves can only sort specimens that are already loose. So the input to this system is a clump, and its first and most important job is to **break that clump apart gently**: no crushed specimens and no snapped legs, because everything goes on to imaging and DNA barcoding. Only then does it sort by size.
+
+The design for that is a **breaker layer** on top of the sorting stack: a printed grid with blunt pins, plus the rig's shake and spray jets. The grid lets freed specimens through and holds the leaves back. The sim models the clump as specimens held together by breakable bonds that weaken when wet, and the design optimizer searches breaker shapes and shake directions for the fastest, gentlest break-up. Brief: [docs/sessions/clump-breakup.md](docs/sessions/clump-breakup.md).
+
 ## What this builds on: BioKEA's BugSorter
 
 [BioKEA/BugSorter](https://github.com/BioKEA/BugSorter) is BioKEA's upgrade of the [EntoSieve](https://pubmed.ncbi.nlm.nih.gov/40066677/) automated bug sorter. The original EntoSieve used custom Arduino electronics with analog controls. BugSorter replaces them with an ESP32 (an [M5Stack Core](https://shop.m5stack.com/products/esp32-basic-core-lot-development-kit-v2-7) plus the [M5Stack stepper module](https://shop.m5stack.com/products/stepmotor-driver-module-v1-1-hr8825)), built with PlatformIO. It joins the lab Wi-Fi and serves a web app that sets homing, the top and bottom positions, speed and sieving-cycle duration, and saves those settings. The M5Stack's screen and buttons give local, manual control.
@@ -29,7 +37,7 @@ Full reasoning, tests and targets: [docs/gates-verdict.md](docs/gates-verdict.md
 
 ### Demo rig and next step
 
-The sorter is a **stack of separate trays, one above the other**: coarse on top, finer below, and a catch pan at the bottom. The whole stack shakes together. In the team's photos, one of those trays (a white 3D-printed square-grid sieve) is bolted onto a **handheld DeWalt 20V MAX cordless tool**, sorting tube pasta from rice and grains. The next big improvement is **shaking it up and down**, not only side to side. The sim models just the stacked trays, the grains and the shaking motion, not the tool (`inserts:5mm,2mm`: each tray in its own holder box, stacked straight up). It gets vertical and angled strokes, then a direct comparison against horizontal shaking on the stack ([docs/sessions/demo-rig.md](docs/sessions/demo-rig.md)). The photos are local reference only (`media/`, gitignored).
+The sorter is a **stack of separate trays, one above the other**: coarse on top, finer below, and a catch pan at the bottom. The whole stack shakes together. Each box is held only by its tab on one short end and overhangs, so it **rocks** about that end rather than moving as a rigid block ([docs/SYSTEM.md](docs/SYSTEM.md) §3). In the team's photos, one of those trays (a white 3D-printed square-grid sieve) is bolted onto a **handheld DeWalt 20V MAX cordless tool**, sorting tube pasta from rice and grains. The next big improvement is **shaking it up and down**, not only side to side. The sim models just the stacked trays, the grains and the shaking motion, not the tool (`inserts:5mm,2mm`: each tray in its own holder box, stacked straight up). It gets vertical and angled strokes, then a direct comparison against horizontal shaking on the stack ([docs/sessions/demo-rig.md](docs/sessions/demo-rig.md)). The photos are local reference only (`media/`, gitignored).
 
 ## Repository layout
 
@@ -74,7 +82,7 @@ Python 3.12. Dependencies are in [requirements.txt](requirements.txt).
 | [sim/PERF.md](sim/PERF.md) | Sim speed on this laptop (WSL), worker scaling, chosen solver defaults |
 | [sim/BENCH.md](sim/BENCH.md) | What to measure on the bench, and which CSV template each number goes in |
 | [cad/WORKING_DIMENSIONS.md](cad/WORKING_DIMENSIONS.md) | Current holder and insert dimensions |
-| [docs/sessions/](docs/sessions/) | Work-stream briefs: [CAD and Bambu](docs/sessions/bambu.md), [physics](docs/sessions/physics.md), [design optimizer](docs/sessions/design-optimizer.md), [demo rig and up-and-down shaking](docs/sessions/demo-rig.md), [physics handoff](docs/sessions/physics-handoff.md) |
+| [docs/sessions/](docs/sessions/) | Work-stream briefs: [**clump break-up (top priority)**](docs/sessions/clump-breakup.md), [CAD and Bambu](docs/sessions/bambu.md), [physics](docs/sessions/physics.md), [design optimizer](docs/sessions/design-optimizer.md), [demo rig and up-and-down shaking](docs/sessions/demo-rig.md), [physics handoff](docs/sessions/physics-handoff.md) |
 
 ## Key sources
 

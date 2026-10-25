@@ -60,4 +60,18 @@ No printability flags.
 
 No printability flags.
 
+## Breaker layer (prints after the winner plate)
+
+The clump breaker for the top of the stack (`docs/sessions/clump-breakup.md`): `breaker:open=8,bar=1.6,pin_d=2.5,pin_h=12,pitch=10,tip=round`, built by `cad/breaker_layer.py`. These sizes are a sensible default, not an optimizer result; the optimizer's `malaise` study searches the same parameters, and a winner from it builds the same way.
+
+| Part | Time | Filament | Checks |
+|---|---|---|---|
+| `breaker_o8_b1p6_d2p5_h12_p10_round` | 89 min | 24.0 g | ok |
+
+- 12 x 8 openings (61.4% of the box's open bottom), 77 pins 9.6 mm apart, tops 17.4 mm up the box.
+- Preview: `cad/out/breaker_o8_b1p6_d2p5_h12_p10_round_preview.png`. Sliced file: `cad/out/slice/breaker_o8_b1p6_d2p5_h12_p10_round.gcode.3mf` (local, not committed).
+- No printability flags.
+
+**Bench demo clump (a suggestion to the team).** Stir rice, quinoa and a few pasta tubes with a little sugar water (a water-soluble binder) and some torn leaf bits, press it into a ball about 30 mm across and let it set for a few minutes. Put it on the breaker layer, run the shake with the spray on, and film it side-on: it should come apart on the pins, the leaf bits should stay on the breaker, and the grains should sort on the trays below. The binder dissolves in the spray, standing in for the ethanol film. How strong it is next to a real Malaise clump is an assumption.
+
 Checks: valid single solid, watertight mesh, fits the bed. A tower needs one holder box per level plus the catch pan; the holder (`frame_holder`) isn't repeated here.

@@ -53,6 +53,29 @@ Every part is exactly the size of a 24-well plate (127.76 × 85.47 × 20.27 mm),
 | `pool` + gate strips | One open plane, shaken along the long side, with swappable gates (see **Pool sorter** below). P1S estimate: 58 min, 44 g. |
 | `pool_coupon` | One gate slot of the pool (46 mm long), to check the strip fit and gate behaviour before printing the pool. 29 min. |
 
+### Sieve inserts for the holder box (`sieve_insert.py`)
+
+![2 mm insert](cad/out/sieve_insert_2mm.png)
+
+Printable versions of BioKEA's flat 2×3-window inserts with pull tabs, with the mesh printed in as square holes instead of glued on.
+
+| Part | Holes | Bars | Screen thickness |
+|---|---|---|---|
+| `sieve_insert_5mm` | 150 holes, 5.0 mm square | 1.2 mm | 1.6 mm |
+| `sieve_insert_2mm` | 726 holes, 2.0 mm square | 1.0 mm | 1.4 mm |
+
+**Shape:**
+- Insert 131.4 × 95.4 mm, frame 3 mm thick
+- Border 10 mm, ribs 3 mm, six windows of 35.1 × 36.2 mm
+- Two pull tabs, 20 × 6 mm and 18 mm tall, in the middle of the long edges; the hole size is debossed on one tab's top
+
+**Printing:**
+- The screen sits at the bottom of each window, on the print bed, so it prints without bridging. It ends up 1.4–1.6 mm below the frame's top surface; glued mesh sat on top.
+- Holes widen 8° downward so near-size grains fall free.
+- Flat, right side up, no supports.
+
+**Sizes:** measure an existing insert and correct `BORDER`, `RIB`, `FRAME_T` and the tab sizes. The outside size follows the `frame_holder.py` pocket.
+
 ### Plinko layers for the frame holder box (`plinko_layers.py`)
 
 ![plinko section](cad/out/plinko_section.png)

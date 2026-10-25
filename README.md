@@ -48,10 +48,40 @@ Every part is exactly the size of a 24-well plate (127.76 × 85.47 × 20.27 mm),
 | Part | What it does |
 |---|---|
 | `tray_open` + `clamp_ring` | Frame for a 121.2 × 78.9 mm piece cut from the kit's metal sheets. Clip the corners, drop it on the ledge, press the ring on top. |
-| `rings_5p0_1p3`, `rings_5p0_2p3` | Concentric gate sorter, one part. Load the 40 mm centre and shake, ideally on an orbital plate shaker. Ring 1 has 11 gates 5 mm wide; ring 2 has 67 gates 1.3 mm wide (or 38 at 2.3 mm). Each zone's floor is 3 mm lower than the zone inside it, so grains can't climb back. Zones, centre outward: pasta, rice, quinoa. Prints flat and upright with no supports. |
+| `tier_coarse` + `tier_fine` | Tiered concentric sorter that sits in `collector` (see **Tiered sorter** below). Built by `tiered_sorter.py`. |
 | `gate_coupon_2p3`, `gate_coupon_5p0` | The gates idea, to run beside a perforated tray. Grains start on a raised deck, pass between tapered posts, and drop 5 mm into a pocket. Shake along the long side. |
 | `pool` + gate strips | One open plane, shaken along the long side, with swappable gates (see **Pool sorter** below). P1S estimate: 58 min, 44 g. |
 | `pool_coupon` | One gate slot of the pool (46 mm long), to check the strip fit and gate behaviour before printing the pool. 29 min. |
+
+### Tiered sorter
+
+![tiered section](cad/out/tiered_section.png)
+
+Circles with gates on separate tiers: a small coarse tier sits on a bigger fine tier, which sits in the plate-sized `collector`. Load the mix on top of the coarse tier and shake.
+
+**The physics it relies on:**
+- **Push.** Each tier's floor is a 10° cone, high in the middle. Still, nothing slides: rice on plastic needs about 22°. Shaking at roughly 0.2–0.3 g makes grains flow downhill to the rim.
+- **Gate shape.** Shaking lays grains flat, so each gate is a low tunnel at floor level. The tunnel's height sets the thickness cut and its width sets the width cut.
+- **One-way.** Whatever passes a tunnel drops 8 mm onto the tier below and can't climb back.
+- **Unloading.** Lift each tier off; it carries its own size class.
+
+**Tiers, top to bottom:**
+
+| Part | Size | Tunnels | Keeps | Passes |
+|---|---|---|---|---|
+| `tier_coarse` | 40 mm cone | 17 tunnels, 5.0 wide × 4.0 high | Tube pasta | Rice, quinoa |
+| `tier_fine` | 66 mm cone | 34 tunnels, 4.0 wide × 1.4 high | Long-grain rice (~1.7 mm thick) | Quinoa (~1.0 mm thick) |
+| `collector` | plate-sized bin | — | Quinoa | — |
+
+**Fit.** A peg on `tier_fine` centres `tier_coarse`. Four feet centre `tier_fine` in the collector.
+
+**Printing.** Each part prints flat on its base with no supports. Only the tunnel ceilings bridge, over 4–5 mm. Print at 0.2 mm layers so the 1.4 mm tunnels are exactly 7 layers.
+
+**Caveats:**
+- Keep pasta to about 10 short pieces (under 25 mm). The 40 mm top tier fills fast, and pasta lying against the rim covers tunnels.
+- Flat pasta such as farfalle is thinner than 4 mm and will pass the coarse tier.
+
+**Rebuild:** run `..\..\..\BioKEA-hack\.venv\Scripts\python.exe tiered_sorter.py` from `cad\`. Change sizes in `TIERS` and `SLOPE_DEG`.
 
 ### Pool sorter
 

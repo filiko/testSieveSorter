@@ -44,13 +44,18 @@ Outputs go in `sim\out\`, which is not committed.
 
 ### Camera, recording and the real-vs-sim clip
 
-The replay page reads its camera from the URL: `view.html?cam=x,y,z&target=x,y,z&fov=35&aspect=16:9` (mm, lab frame; FOV is vertical). Set the angle by eye against a photo (the **Frame** menu sets the aspect ratio, **FOV** dollies so the tray keeps its size), then **Copy camera** copies the URL. **Record** plays the run once in real time and downloads a `.webm` with the zone labels and the sim clock drawn in; its frame rate depends on the machine. For a clip to commit, render it frame-exact instead and put it next to the real footage:
+The replay page reads its camera from the URL: `view.html?cam=x,y,z&target=x,y,z&fov=35&aspect=16:9` (mm, lab frame; FOV is vertical). Set the angle by eye against a photo (the **Frame** menu sets the aspect ratio, **FOV** dollies so the tray keeps its size), then **Copy camera** copies the URL. **Record** plays the run once in real time and downloads a `.webm` with the zone labels and the sim clock drawn in; its frame rate depends on the machine. For the demo clip, render frame-exact instead and put it next to Forum's photo of the bench prototype (demo-rig.md part D):
 
 ```
-python record_view.py out/runs/current_mesh --view "?cam=92.7,-78.3,240.3&target=15,5,58&fov=66&aspect=9:16" --speed 0.25 --start 2.0 --duration 1.1 -o out/runs/current_mesh/sim_forum_q.mp4
-python side_by_side.py --real ../../testSieveSorter/media/forum-2026-10-24/IMG_1319.MOV --sim out/runs/current_mesh/sim_forum_q.mp4 --slow 4 --loops 3 --height 1080 --caption "Both at 1/4 speed: the same 1.1 s of shaking, looped. Sim stroke not yet fitted to this video."
+wsl: python sorter.py --design inserts:5mm --mix pasta=15,rice=40 --stroke sine:amp_mm=1.24,freq_hz=20,angle_deg=90 --duration 10 --dt 0.00025 --timeconst 0.0005 --fps 240 --out out/runs/demo_vertical
+python viewer.py out/runs/demo_vertical
+python record_view.py out/runs/demo_vertical --view "?cam=116.5,-209.7,180.4&target=5,0,32&fov=45&aspect=3:4" --speed 0.2 --start 0 --duration 2.2 --height 960 -o out/runs/demo_vertical/sim_demo_0p2x.mp4
+python side_by_side.py --real ../../testSieveSorter/media/forum-2026-10-24/IMG_1316.JPG --sim out/runs/demo_vertical/sim_demo_0p2x.mp4 --height 960 --real-label "Bench prototype" --sim-label "MuJoCo sim, uncalibrated" --caption "Sim at 1/5 speed. Grains are poured in; from t 1 s the tray shakes up and down (20 Hz, ±1.24 mm, assumed).\nRice falls through the 5 mm grid into the catch; the pasta stays on top."
 ```
 
-These two lines made `media/demo_side_by_side.mp4`. Forum's clip (`IMG_1319.MOV`) is a 1.1 s Live Photo, so both halves are slowed 4x over the same 1.1 s of physical time, and the pair is looped. The camera was matched by eye to that clip. Sim t = 2.0 s was chosen because the sort there is in the same state as the video: pasta on the top mesh, small grains already through. For a run with the fitted stroke, change the run dir and keep the rest.
+- **The run** is VERTICAL.md's viewer run, recorded at 240 fps. At the default 30 fps a 20 Hz shake aliases into a slow wobble that isn't there.
+- **The camera** is matched by eye to `IMG_1316.JPG`, the side view on the tool: the long wall faces the camera, the mounting-tab end is on the right, and the frame is 3:4 portrait. The camera sits higher (32°) than the photo so the grid and the catch show.
+- **The clip** shows sim t = 0–2.2 s at 1/5 speed (11 s). The pour runs to t = 1 s, with no shaking. From there the shake clears the rest of the rice by t = 2.0, and nothing changes after that. At 1/5 speed the 20 Hz shake plays as a visible 4 Hz bounce.
+- **Forum's photos and the clip stay local:** `media/` is gitignored. Copy the clip into the main checkout's `media/`.
 
-`side_by_side.py` writes `..\media\demo_side_by_side.mp4`, capped under 19 MB. It also takes a Record-button `.webm` and fixes Chrome's colour-range tagging (light greys would otherwise clip to white).
+`side_by_side.py` writes `..\media\demo_side_by_side.mp4`, capped under 19 MB. A photo as `--real` is held for the whole sim clip. A video works too (`--slow`, `--loops`). It also takes a Record-button `.webm` and fixes Chrome's colour-range tagging (light greys would otherwise clip to white).

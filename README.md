@@ -117,7 +117,7 @@ The holder box and sieve inserts are the current working design. The numbers are
 
 ![gated container in the holder box](cad/out/gated_preview.png)
 
-A drop-in replacement for the mesh inserts in the BugSorter tower: same 131.4 × 95.4 mm footprint and the same pull tabs, shaken longways.
+A drop-in replacement for the mesh inserts in the BugSorter tower: same 131.4 × 95.4 mm footprint and the same pull tabs, shaken longways. The tabs stop 1 mm under the box rim so the boxes stack rim on rim; grip them through the box's finger notches.
 
 **How it sorts:**
 1. The floor is solid and slopes 2° toward a gate strip at the +X end. Shaking walks grains, and the spray water, down to the gate.
@@ -132,6 +132,8 @@ A drop-in replacement for the mesh inserts in the BugSorter tower: same 131.4 ×
 | `gate_t1p2`, `gate_t1p4`, `gate_t1p6` | Tunnels 8 mm wide, 1.2 / 1.4 / 1.6 mm tall | Thickness. Long-grain rice (~1.7 mm) stays; quinoa (~1.0 mm) passes. |
 
 **In the tower, flip the container 180° on every other level.** That way, what drops from the level above lands on the solid end of the next container instead of falling straight through its slot.
+
+![gated tower, cut in half: two levels over the catch pan](cad/out/gated_tower.png)
 
 Dimensions are in [cad/WORKING_DIMENSIONS.md](cad/WORKING_DIMENSIONS.md).
 
@@ -279,5 +281,6 @@ The drop biases grains forward; it isn't a one-way valve. Each gate is a separat
 - STL and STEP files land in `cad\out\` but aren't committed: rebuilding them takes about 2 min.
 - Previews (`.png`) and checks (`_checks.json`) are committed.
 - Print `hole_gauge.py` first and pour each grain over it, so the aperture numbers match what your printer actually makes.
+- **The design optimizer's winners:** `..\.venv\Scripts\python.exe winners.py` builds every part of each winner in `sim\opt\winners.json` (in WSL, through `build_winners.py`), renders a cut-away of its tower, and slices each part. Parts land in `cad\out\win<rank>_*`, and the times, grams and printability flags go in `sim\opt\print_plan.md`.
 
 **Changing sizes:** every dimension is a named parameter at the top of `sieve_system.py`. `cadkit.py`, `hole_gauge.py` and `slice.py` are copies from `Documents\BioKEA-hack\cad`.

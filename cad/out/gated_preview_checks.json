@@ -5,10 +5,10 @@
   "bbox_mm": [
     162.0,
     52.01,
-    28.0
+    25.0
   ],
   "fits_bed": true,
-  "volume_cm3": 58.54,
+  "volume_cm3": 58.06,
   "preview_only": true,
   "gate": "gate_w5p0"
 }

@@ -46,7 +46,10 @@ SLOT_FIT = 0.3                     # rail gap minus strip thickness
 END_FIT = 0.4                      # inside width minus strip length
 GATE_X = OPEN_X - 8.0              # strip centre; the drop slot runs from its face to OPEN_X
 RAIL_P, RAIL_T = 1.5, 2.0          # rail: how far it sticks out from the wall, its thickness
-TAB_W, TAB_T, TAB_TOP = ins.TAB_W, ins.TAB_T, 25.0   # pull tabs, top 3 mm above the box rim
+TAB_W, TAB_T = ins.TAB_W, ins.TAB_T                  # pull tabs, centred on the long walls
+TAB_TOP = box.H - box.LEDGE_T - 1.0                 # 21: 1 mm under the rim, like the inserts' tabs. Higher
+                                                    # tabs hit the ledge of the box above in the tower; the
+                                                    # box's finger notches sit over them for gripping
 
 # gate strips: (kind, size). w = width gaps GATE_H tall; t = tunnels TUNNEL_W wide, size tall
 GATE_H, TUNNEL_W, TOOTH = 8.0, 8.0, 2.0
@@ -106,16 +109,43 @@ def strip(name):
                              "strip_mm": [round(length, 2), STRIP_H, STRIP_T]}
 
 
+def seated(gate):
+    """The container with the strip standing in its rails, in the container's frame."""
+    s = (strip(gate)[0].rotate((0, 0, 0), (1, 0, 0), 90).rotate((0, 0, 0), (0, 0, 1), 90)
+         .translate((GATE_X - STRIP_T / 2, 0, FLOOR_T)))
+    return container()[0].union(s)
+
+
+def half(stack):
+    """Cut away y < 0 so the preview shows the inside."""
+    return stack.cut(cq.Workplane("XY").box(300, 100, 400, centered=(True, False, False)).translate((0, -100, -50)))
+
+
 def preview(gate="gate_w5p0"):
     """out/gated_preview.png: holder box + container + one seated strip, cut in half. Preview only."""
-    seated = (strip(gate)[0].rotate((0, 0, 0), (1, 0, 0), 90).rotate((0, 0, 0), (0, 0, 1), 90)
-              .translate((GATE_X - STRIP_T / 2, 0, FLOOR_T)))
-    stack = box.frame().union(container()[0].union(seated).translate((0, 0, box.LEDGE_T)))
-    return stack.cut(cq.Workplane("XY").box(300, 100, 200, centered=(True, False, False))
-                     .translate((0, -100, -50))), {"preview_only": True, "gate": gate}
+    stack = box.frame().union(seated(gate).translate((0, 0, box.LEDGE_T)))
+    return half(stack), {"preview_only": True, "gate": gate}
 
 
-PARTS = {"gated_container": container, **{n: (lambda n=n: strip(n)) for n in STRIPS}, "gated_preview": preview}
+def tower(gates=("gate_w5p0", "gate_t1p4")):
+    """out/gated_tower.png: the tower cut in half, one holder box per gate (top first) stacked rim on rim, the
+    container flipped 180 deg on every other level, over a catch pan (a holder with its open centre filled).
+    Preview only."""
+    pan = box.frame().union(cq.Workplane("XY").box(box.OPEN_L + 1, box.OPEN_W + 1, box.LEDGE_T,
+                                                   centered=(True, True, False)))
+    stack = pan
+    for i, gate in enumerate(gates):
+        z = (len(gates) - i) * box.H
+        level = seated(gate).translate((0, 0, box.LEDGE_T))
+        if i % 2:
+            level = level.rotate((0, 0, 0), (0, 0, 1), 180)
+        stack = stack.union(box.frame().translate((0, 0, z))).union(level.translate((0, 0, z)))
+    return half(stack), {"preview_only": True, "levels_top_first": list(gates),
+                         "stacking": "holder boxes rim on rim, containers flipped on alternate levels, catch pan under"}
+
+
+PARTS = {"gated_container": container, **{n: (lambda n=n: strip(n)) for n in STRIPS}, "gated_preview": preview,
+         "gated_tower": tower}
 
 
 if __name__ == "__main__":

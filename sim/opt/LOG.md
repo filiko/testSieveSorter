@@ -387,3 +387,28 @@ The tower is built without the 180 deg flip. The sim geometry is `designs_gated.
 
 **Next hypothesis.** The top 3 are all vibrating-tool designs, and two are verified clean. What's left to learn is robustness: does the ranking hold if the printer makes openings 0.1 mm tighter or looser, or if the stage reverses faster or slower? The stress test is running now on the winners, the best per drive and the references. After it: round 4, with the stacked demo rig on its up-and-down stroke as a reference.
 
+## Stress test, a scoring bug, and the winners rule (notes, 2026-10-25 09:00)
+
+**Bug (mine, fixed).** `summarize()` used the strict score only when the fidelity was literally `full`. The stress variants (`us*`, `ramp*`) and `verify`'s stiff reruns fell through to the screen's *progress* score. It showed up as the README gated reference scoring -0.07 on its standard runs but about 0.43 under every stress variant, although the raw counts were the same in both: about 10-15 rice on L2 and most quinoa still on L1 at 30 s. All stress and verification numbers were recomputed from the cached runs with the strict score; no reruns were needed. The verification verdicts don't change: P-ae394887 is 0.999 at stiff contacts (reported as 1.000 before), clean.
+
+**Stress results (strict score, 3 friction sets x 3 seeds, 30 s each).** Undersize: openings printed 0.05 mm small (looser than assumed) or 0.25 mm (tighter). Ramp: stage reversal 0.005 s or 0.02 s, firmware stroke only.
+
+| design | as ranked | undersize 0.05 / 0.25 | ramp 0.005 / 0.02 | worst |
+|---|---|---|---|---|
+| P-ae394887 plinko 3.7 / 1.5, sine 48 Hz | 0.999 | 0.978 / 0.997 | - | **0.978** |
+| G-a1ecf9bb gated_mid, sine 48 Hz 30 deg | 0.985 | 0.925 / 0.965 | - | **0.925** |
+| P-668db784 plinko 3.5 / 1.6, sine 14 Hz | 0.998 | 0.937 / 0.997 | - | 0.937 (still flagged) |
+| P-fdf86953 plinko 5.1 / 1.7, sine 50 Hz | 0.937 | **0.650** / 0.977 | - | **0.650** |
+| P-ba5dd6b3 plinko 5.6 / 1.6, firmware | 0.929 | 0.930 / 0.870 | 0.971 / 0.892 | 0.870 |
+| repo plinko 5.0 / 1.4, firmware | 0.670 | 0.799 / 0.485 | 0.934 / 0.530 | 0.485 |
+| repo inserts 5 / 2, firmware | 0.714 | 0.599 / 0.710 | 0.729 / 0.655 | 0.599 |
+| today's mesh | 0.523 | 0.523 / 0.523 | 0.518 / 0.522 | 0.518 |
+
+What it says:
+1. The top plinko and the gated_mid tower hold up within 0.1 mm of print error.
+2. P-fdf86953 doesn't: with its 1.7 mm L2 gap printed 0.1 mm wider than assumed, rice leaks to the catch (0.65). It would have been a bad print.
+3. The firmware winner is moderately sensitive to both unknowns (0.87-0.97).
+4. The repo's own plinko is very sensitive (0.49-0.93): its 1.4 mm gap holds quinoa if the printer runs tight.
+
+**Winners rule refinement (after seeing results; recorded here).** Winners now rank by the **worst** robust score over every check run on the design: friction x seeds, the stiff rerun, and the stress variants. The brief offers the worst case as a ranking key, and the point of the stress test was to avoid printing a design that only works if the printer hits its assumed size. It demotes P-fdf86953; it doesn't promote any particular design. A design that hasn't been stress-tested can rank above one that has, simply because it hasn't been tested yet. `winners.json` says which are `stress_tested`, and the next step stresses the top 6 (all current winners and the best per drive) so the final winners are compared fairly.
+

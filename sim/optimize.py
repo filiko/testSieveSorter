@@ -831,7 +831,7 @@ def summarize(c, study, fid, base, sets):
             return None
         recs.append((j, json.loads(f.read_text(encoding="utf-8"))))
     rs = [(j, run_score(r, study), r) for j, r in recs]
-    key = "score" if fid == "full" else "progress"     # the screen ranks sorting progress (see the docstring)
+    key = "progress" if fid == "screen" else "score"   # only the short screen ranks sorting progress (docstring)
     s = np.array([x[key] for _, x, _ in rs])
     ok = [x for _, x, _ in rs if "fail" not in x]
     by_set = {}
@@ -1120,8 +1120,10 @@ def winners_json(study, cands, summ):
     eligible = clean[:3] + flagged[:max(0, 3 - len(clean))]     # fill with flagged ones only if needed, marked
     out = {"study": study, "title": STUDIES[study]["title"], "exploratory": STUDIES[study]["exploratory"],
            "generated": f"{datetime.now():%Y-%m-%d %H:%M}",
-           "rule": "a flagged design that `verify` reran with stiffer contacts (dt 0.125 ms, timeconst 0.25 ms) with no "
-                   "failed or flagged run counts as clean, ranked by the lower of its two robust scores. "
+           "rule": "ranked by the worst robust score over every check run on the design (full runs; stiff-contact "
+                   "rerun; printer undersize 0.05 / 0.25 mm; stroke reversal 0.005 / 0.02 s for the firmware stroke); "
+                   "stress_tested says whether the stress checks were run. A flagged design that `verify` reran with "
+                   "stiffer contacts (dt 0.125 ms, timeconst 0.25 ms) with no failed or flagged run counts as clean. "
                    f"Otherwise: top 3 by robust full-run score (mean - 1 sd over 3 friction sets x 3 seeds, 30 s) among working "
                    f"sorters (robust >= {MIN_WINNER}, no failed run, meeting today's print constraints) with no penetration-flagged run; if fewer than 3 "
                    "qualify, the rest are the best working flagged ones, marked flagged (see opt/LOG.md for how this "
@@ -1144,6 +1146,7 @@ def winners_json(study, cands, summ):
             "flagged": not trusted(summ[c["id"]]), "flagged_runs": s["flagged"], "gate_clearance_mm": s["clearance"],
             "max_gate_overlap_mm": s["pen"],
             "verified_stiff": verified(summ[c["id"]]),
+            "stress_tested": stressed(summ[c["id"]]), "worst_case_robust": round(win_key(summ[c["id"]]), 4),
             "replay": f"sim/out/opt/{study}/replay/{c['id']}/view.html"})
     out["best_by_drive"] = {}
     for drive, prof in (("firmware (BioKEA's stage)", "constant_speed"), ("vibrating tool (demo rig)", "sine")):
@@ -1177,8 +1180,14 @@ def trusted(sm):
 
 
 def win_key(sm):
-    v = sm.get("stiff")
-    return min(sm["full"]["robust"], v["robust"]) if v else sm["full"]["robust"]
+    """Worst robust score over every check run on the design: friction x seeds at full length, the stiff-contact
+    rerun, and the stress variants (printer undersize, stroke reversal)."""
+    return min([sm["full"]["robust"]] + [v["robust"] for k, v in sm.items()
+                                         if v and (k == "stiff" or k.startswith(("us", "ramp")))])
+
+
+def stressed(sm):
+    return any(k.startswith("us") for k in sm)
 
 
 def log_round(study, rnd, cands, summ, new_ids, meta):

@@ -14,13 +14,19 @@ Seesaw session, 2026-10-25. Task: [docs/SYSTEM.md](../docs/SYSTEM.md) §3 and §
 
 | key | default | meaning |
 |---|---|---|
-| `deg` | 25 | amplitude either side of level, degrees (SYSTEM.md: 20–30, search 10–30) |
+| `deg` | 10 | amplitude either side of level, degrees (SYSTEM.md: ±10° while the user picks from the 5 / 10 / 15° renders; search 5–15°) |
 | `period_s` | 2.0 | one full cycle (the optimizer searches 0.4–6 s) |
 | `shape` | `constant_speed` | constant angular speed with reversals smoothed over `ramp_s`, as the firmware drives its stage; or `sine` |
 | `ramp_s` | 0.02 | reversal time for `constant_speed` |
 | `ramp_in_s` | 0 | ease the amplitude in from zero after the settle (0 starts at full speed, as the firmware does) |
 | `alternate` | 1 | 1: neighbours in opposite phase; 0: all levels in phase |
 | `catch` | 1 | 1: the catch pan rocks as the next level down; 0: it stays level |
+| `vib_mm` | 0 | a small fast buzz on top of the seesaw (the handheld tool's): sine amplitude of the whole tower, mm; 0 is off |
+| `vib_hz` | 40 | its frequency (the puck resonates at 40 Hz). Peak acceleration is vib_mm · (2π vib_hz)²: 0.3 mm at 40 Hz is 1.9 g |
+| `vib_angle_deg` | 90 | its direction: 0 along X (the tilt direction), 90 straight up |
+| `vib_deg` | 0 | a fast angular buzz added to every hinge, degrees, in each level's own phase (same `vib_hz`) |
+
+The buzz shakes every level together, so `sorter.py` applies it the way it applies any translation stroke: a uniform pseudo-force (exact for a shared translation), recorded as `tray_d`, so the viewer draws it with no changes. The hinges turn inside that translating frame. With `vib_mm=0` and `vib_deg=0` a seesaw run is the same as before.
 
 Angle, period and profile are all **assumed** (SYSTEM.md §3). So are the pivot height (half way up the box) and whether the catch pan rocks.
 

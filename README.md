@@ -1,6 +1,22 @@
 # testSieveSorter
 
-Hackathon work on BioKEA's **BugSorter**, the size-sorting module at the front of their insect barcoding line (Physical AI for Science, Track A, Oct 2026).
+Hackathon work on BioKEA's **BugSorter**, the size-sorting module at the front of their insect barcoding line.
+
+## Hackathon
+
+[**Physical AI for Science Hack @ Studio 45 with Claude Community**](https://luma.com/3vc5oeit), Studio 45, San Francisco, Oct 24–25, 2026. Hosted by SF AI Science Studio. Registered as Aufstin Filiko on the ajfiliko account.
+
+- **Track:** BioKEA, environmental sample prep (Track A). BioKEA is a Berkeley wet lab doing DNA barcoding, eDNA and long-read genomics. The brief: learn their soil and water prep workflow for imaging and sequencing, then make it faster or more reliable.
+- **Other tracks:** Opentrons Flex, and an open hardware challenge (a tool someone else could build for under $200).
+- **Deadlines:** final submission Sun Oct 25 at 2:30 PM PT; live demos 3:30–4:30 PM, then demos and pitching 4:30–5:30 PM.
+
+## What this builds on: BioKEA's BugSorter
+
+[BioKEA/BugSorter](https://github.com/BioKEA/BugSorter) is BioKEA's upgrade of the [EntoSieve](https://pubmed.ncbi.nlm.nih.gov/40066677/) automated bug sorter. The original EntoSieve used custom Arduino electronics with analog controls. BugSorter replaces them with an ESP32 (an [M5Stack Core](https://shop.m5stack.com/products/esp32-basic-core-lot-development-kit-v2-7) plus the [M5Stack stepper module](https://shop.m5stack.com/products/stepmotor-driver-module-v1-1-hr8825)), built with PlatformIO. It joins the lab Wi-Fi and serves a web app that sets homing, the top and bottom positions, speed and sieving-cycle duration, and saves those settings. The M5Stack's screen and buttons give local, manual control.
+
+BugSorter changes the electronics and control, not the sieving itself: insects still sort by size through a stack of mesh inserts in a holder tower that the stepper shakes. This repo works on that sieving side:
+- **`cad/`:** printable replacements for the glued-mesh inserts (printed sieves, plinko layers, and the gated container), sized to drop into BugSorter's existing holder.
+- **`sim/`:** a MuJoCo model of the shaken tower, for ranking designs before printing. Its stroke profiles follow the BugSorter firmware's constant-speed stroke.
 
 ## Bottom line
 

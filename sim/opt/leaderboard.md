@@ -1,6 +1,6 @@
 # Leaderboard: Demo set: surrogate grains (pasta + chickpea / rice / quinoa)
 
-Generated 2026-10-25 09:29 by `sim/optimize.py` (study `demo`). 233 candidates, 3114 sim runs so far.
+Generated 2026-10-25 09:36 by `sim/optimize.py` (study `demo`). 233 candidates, 3168 sim runs so far.
 
 **The sim ranks designs; it does not predict real percentages.** It is uncalibrated until `calibrate.py` has bench counts, has no water, rigid particles, and about 80 particles per run. Sizes are simulated at the as-printed opening, nominal - 0.15 mm (ASSUMED until the hole gauge is measured).
 
@@ -48,6 +48,7 @@ Ranked by the robust score (mean - 1 sd) over 3 friction sets x 3 seeds at the f
 
 | id | family | as ranked (ramp 0.01 s, undersize 0.15 mm) | ramp 0.005 s | ramp 0.02 s | undersize 0.05 mm | undersize 0.25 mm | worst | design |
 |---|---|---|---|---|---|---|---|---|
+| P-b192da7c | plinko | 1.000 | - | - | 0.937 | 0.999 | **0.937** | rods L1 gap 4.7 (rod 2.6 wide, 2.2 tall) / L2 gap 1.6 (rod 2.3, 3.2) |
 | P-ae394887 | plinko | 0.999 | - | - | 0.978 | 0.997 | **0.978** | rods L1 gap 3.7 (rod 2.6 wide, 1.6 tall) / L2 gap 1.5 (rod 1.8, 2.4) |
 | P-7dd9222c | plinko | 0.999 | - | - | 0.937 | 0.999 | **0.937** | rods L1 gap 3.6 (rod 2.1 wide, 1.8 tall) / L2 gap 1.6 (rod 2, 2.8) |
 | P-668db784 | plinko | 0.998 | - | - | 0.937 | 0.997 | **0.937** | rods L1 gap 3.5 (rod 3.7 wide, 2 tall) / L2 gap 1.6 (rod 2.9, 2.2) |
@@ -57,6 +58,7 @@ Ranked by the robust score (mean - 1 sd) over 3 friction sets x 3 seeds at the f
 | P-fdf86953 | plinko | 0.937 | - | - | 0.650 | 0.977 | **0.650** | rods L1 gap 5.1 (rod 2.4 wide, 3.4 tall) / L2 gap 1.7 (rod 2.3, 3.2) |
 | P-547508e5 | plinko | 0.937 | - | - | 0.630 | 0.964 | **0.630** | rods L1 gap 3.1 (rod 2.8 wide, 1.8 tall) / L2 gap 1.7 (rod 2.3, 1.8) |
 | P-ba5dd6b3 | plinko | 0.929 | 0.971 | 0.892 | 0.930 | 0.870 | **0.870** | rods L1 gap 5.6 (rod 1.8 wide, 2.6 tall) / L2 gap 1.6 (rod 2.2, 2.8) |
+| P-0fb6775d | plinko | 0.929 | 0.953 | 0.813 | 0.922 | 0.875 | **0.813** | rods L1 gap 4 (rod 2.8 wide, 1.6 tall) / L2 gap 1.6 (rod 2.7, 2.8) |
 | P-cbe7dbec | plinko | 0.891 | 0.938 | 0.681 | 0.654 | 0.852 | **0.654** | rods L1 gap 5.1 (rod 1.4 wide, 1.6 tall) / L2 gap 1.7 (rod 1.9, 3.2) |
 | I-f660966d | inserts | 0.714 | 0.729 | 0.655 | 0.599 | 0.710 | **0.599** | square holes 5 (bar 1.2) / 2 (bar 1) |
 | P-99a23702 | plinko | 0.670 | 0.934 | 0.530 | 0.799 | 0.485 | **0.485** | rods L1 gap 5 (rod 2.4 wide, 3 tall) / L2 gap 1.4 (rod 2, 2.6) |

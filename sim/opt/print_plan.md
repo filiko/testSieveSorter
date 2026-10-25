@@ -77,20 +77,33 @@ The clump breaker for the top of the stack (`docs/sessions/clump-breakup.md`): `
 Checks: valid single solid, watertight mesh, fits the bed. A tower needs one holder box per level plus the catch pan; the holder (`frame_holder`) isn't repeated here.
 
 <!-- hand-written from here on: winners.py keeps it -->
-## Print queue (12:50, Oct 25)
+## Print queue (13:15, Oct 25)
 
 One P1S. **What's on the printer now isn't known to this session.** It's on the main session's list of questions for the user (PLAN.md, decision 2). Update this table when someone says.
 
 | Order | Part | Time | Status | Why |
 |---|---|---|---|---|
-| 1 | `breaker_o8_b1p6_d2p5_h12_p10_round` | 89 min | ready to print, sliced | the clump demo: break-up is the point of the system |
+| 1 | `breaker_o11p4_b2p3_d1p4_h6p8_p8_round` | 48 min | sliced; **send by 13:50** (PLAN.md, 13:05) | the optimizer's malaise leader (B-32a7c82c, round 0; it's rebuilt here if the final round at ~13:40 picks another) |
 | 2 | `sieve_insert_5mm_across` | 47 min | ready to print, sliced | the fix for quinoa and chia stuck on the 5 mm tray; drops into today's holder boxes |
-| 3 | `sieve_insert_2mm_across` | 65 min | ready to print, sliced | the same fix on 2 mm |
-| 4 | `seesaw_holder`, one per level | 60 min each | ready to print, sliced | centre pivot pins, no tab: levels hang about 55 mm apart at ±10° instead of 85–110 |
-| 5 | `seesaw_catch_pan` | 125 min | ready to print, sliced | deeper pan with an inward lip: grains bounced out over the ends |
-| - | winner plates 1–3 (above) | 124–152 min | sliced | translation-stroke winners from before the seesaw; superseded unless the optimizer's seesaw study picks them again |
+| 3 | `breaker_o8_b1p6_d2p5_h12_p10_round` | 89 min | ready to print, sliced | the CAD default breaker; the optimizer scores it below #1 |
+| 4 | `sieve_insert_2mm_across` | 65 min | ready to print, sliced | the same fix on 2 mm |
+| 5 | `seesaw_holder`, one per level | 60 min each | ready to print, sliced | centre pivot pins, no tab: levels hang about 55 mm apart at ±10° instead of 85–110 |
+| 6 | `seesaw_catch_pan` | 125 min | ready to print, sliced | deeper pan with an inward lip: grains bounced out over the ends |
+| - | winner plates 1–3 (above) | 124–152 min | sliced | translation-stroke winners from before the seesaw; superseded |
 
-Started at 13:00, items 1 and 2 finish by about 15:20, before the live demos (15:30). Items 3–5 come after the demo.
+Item 1 sent at 13:50 is done by about 14:40. Item 2 right after it finishes by about 15:30, tight for the live demos. Items 3–6 come after the demo.
+
+## Optimizer's breaker (malaise study, EXPLORATORY)
+
+`sim/opt/winners_malaise.json` #1 at 13:03: `breaker:open=11.4,bar=2.3,pin_d=1.4,pin_h=6.8,pitch=8,tip=round` (B-32a7c82c), built by `cad/breaker_layer.py` with the same keys. The sim ranks designs; it isn't calibrated against bench counts, and the bond strengths and insect bodies are assumed.
+
+| Part | Time | Filament | Checks |
+|---|---|---|---|
+| `breaker_o11p4_b2p3_d1p4_h6p8_p8_round` | 48 min | 20.9 g | ok |
+
+- 8 × 5 openings of 11.4 mm (52% of the box's open bottom), 28 round pins 1.4 mm across, 13.7 mm apart (one on every grid node: the 8 mm pin pitch asked for is less than one grid step), tops 12.2 mm up the box. No printability flags.
+- Stroke to set on the bench: seesaw ±12°, 2.5 s per cycle, constant angular speed, with a 0.35 mm, 40 Hz buzz on top.
+- Preview: `cad/out/breaker_o11p4_b2p3_d1p4_h6p8_p8_round_preview.png`. Sliced file: `cad/out/slice/breaker_o11p4_b2p3_d1p4_h6p8_p8_round.gcode.3mf` (local, not committed). Open it in Bambu Studio and send it to the P1S from there.
 
 ## Seesaw parts (cad/seesaw_holder.py, cad/sieve_insert.py)
 

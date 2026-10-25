@@ -6,6 +6,7 @@ the first reset and record when it happened, in which phase, which warning, and 
 
 Run from sim\\ (WSL venv on this laptop):
     python instab.py [--seeds 8] [--workers 22] [--duration 1] [--out out/instab.jsonl]
+        [--strokes "sine:amp_mm=1.24,freq_hz=20,angle_deg=90;..."] [--designs "a;b"] [--mixes grains76,...]
 """
 import argparse
 import json
@@ -21,11 +22,12 @@ MIXES = {
     "grains76": {"rice": 30, "quinoa": 30, "chickpea": 8, "pasta": 8},
     "insects70": {"rice": 20, "quinoa": 20, "chickpea": 5, "pasta": 5,
                   "insect_compact": 8, "insect_elongate": 8, "insect_longleg": 4},
+    "demo": {"pasta": 15, "rice": 40},
     "mixed120": {"rice": 40, "quinoa": 40, "chickpea": 10, "pasta": 10,
                  "insect_compact": 8, "insect_elongate": 8, "insect_longleg": 4},
 }
 SOLVER = [(5e-4, 2e-3), (2.5e-4, 5e-4), (2.5e-4, 1e-3), (1.25e-4, 5e-4)]     # (dt, timeconst)
-STROKE = {"profile": "constant_speed", "amp_mm": 10.0, "speed_mm_s": 50.0, "ramp_s": 0.01}
+STROKES = ["constant_speed:amp_mm=10,speed_mm_s=50,ramp_s=0.01"]                 # sorter.py --stroke syntax
 
 
 class Unstable(Exception):
@@ -50,7 +52,9 @@ def probe(job):
                                        "body": m.body(body).name if body > 0 else None}))
 
     mujoco.mj_step = checked_step
-    cfg = sorter.RunConfig(design=job["design"], mix=MIXES[job["mix"]], stroke=STROKE, duration_s=job["duration"],
+    profile, _, rest = job["stroke"].partition(":")
+    stroke = {"profile": profile, **sorter.parse_kv(rest)}
+    cfg = sorter.RunConfig(design=job["design"], mix=MIXES[job["mix"]], stroke=stroke, duration_s=job["duration"],
                            settle_s=1.0, seed=job["seed"], dt=job["dt"],
                            contact={"friction": 0.4, "timeconst": job["tc"], "dampratio": 1.0}, record_fps=0)
     t0 = time.perf_counter()
@@ -78,12 +82,13 @@ def main():
     ap.add_argument("--designs", default=";".join(DESIGNS), help="';'-separated design specs")
     ap.add_argument("--mixes", default=",".join(MIXES))
     ap.add_argument("--solver", default=";".join(f"{dt},{tc}" for dt, tc in SOLVER), help="'dt,tc;dt,tc;...'")
+    ap.add_argument("--strokes", default=";".join(STROKES), help="';'-separated sorter.py --stroke specs")
     ap.add_argument("--out", default="out/instab.jsonl")
     args = ap.parse_args()
     solver = [tuple(map(float, s.split(","))) for s in args.solver.split(";")]
-    jobs = [{"design": de, "mix": mx, "dt": dt, "tc": tc, "seed": s, "duration": args.duration}
-            for de, mx, (dt, tc), s in product(args.designs.split(";"), args.mixes.split(","), solver,
-                                               range(args.seeds))]
+    jobs = [{"design": de, "mix": mx, "stroke": st, "dt": dt, "tc": tc, "seed": s, "duration": args.duration}
+            for de, mx, st, (dt, tc), s in product(args.designs.split(";"), args.mixes.split(","),
+                                                   args.strokes.split(";"), solver, range(args.seeds))]
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     print(f"{len(jobs)} runs on {args.workers} workers -> {out}", flush=True)
@@ -95,7 +100,7 @@ def main():
             f.flush()
             tag = "UNSTABLE " + f"t={r['t']} {r['phase']} {r.get('kind')}" if r["unstable"] else \
                 ("ERROR" if "error" in r else "ok")
-            print(f"[{n}/{len(jobs)} {time.time() - t0:5.0f} s] {r['design']} {r['mix']} dt={r['dt']} "
+            print(f"[{n}/{len(jobs)} {time.time() - t0:5.0f} s] {r['design']} {r['mix']} {r['stroke']} dt={r['dt']} "
                   f"tc={r['tc']} seed={r['seed']}: {tag}", flush=True)
 
 

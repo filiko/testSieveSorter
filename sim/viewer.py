@@ -11,6 +11,10 @@ Tray motion: tray_d (frames x 3) is the lab offset of the tray frame. A rocking 
 tray_q (frames x 4, w x y z), the tray frame's orientation in the lab, about the point
 scene["tray"]["pivot"] (mm in the tray frame, default the origin): a tray-frame point x is drawn at
 tray_d + pivot + R(tray_q) (x - pivot). Particles are recorded in the tray frame, so they rock with it.
+A seesaw run (docs/SYSTEM.md section 3: each level rocks about its own pivot, neighbours alternating) runs
+in the lab frame and records level_q (frames x levels x 4, w x y z), each level's orientation in the lab,
+with scene["levels"][k] = {"pivot": [x, y, z] mm, "geoms": [indices into scene["tray"]["geoms"]]}. Those
+geoms are drawn turned by level_q about their level's pivot; the others, and the particles, as recorded.
 
 The trajectory is quantized (positions int16 at 0.01 mm, so +/-327 mm; quaternions int16 at
 1/32767; wetness uint8), delta-coded along time, byte-shuffled, zlib-compressed and base64'd.
@@ -87,6 +91,8 @@ def quantize(traj: dict, step: int) -> tuple[dict, int]:
     }
     if "tray_q" in traj:           # rocking: the tray frame's orientation, w x y z, about scene tray.pivot
         out["tray_q"] = np.nan_to_num(traj["tray_q"][fr]).astype("<f4")
+    if "level_q" in traj:          # seesaw: each level's orientation, frames x levels x 4, about scene levels[k].pivot
+        out["level_q"] = np.nan_to_num(traj["level_q"][fr]).astype("<f4")
     if "zone_counts" in traj:
         out["zone_counts"] = np.clip(traj["zone_counts"][fr], 0, 65535).astype("<u2")
     if "wet" in traj:

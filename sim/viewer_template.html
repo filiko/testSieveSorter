@@ -276,13 +276,18 @@ function geomMesh(g) {
   if (g.type === 'box' || g.type === 'mesh') mesh.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo, 25), edgeMat));
   return mesh;
 }
-for (const g of SCENE.tray?.geoms ?? []) {
-  if (g.role === 'lid') continue;
+// seesaw runs: each level is its own group, turned about its pivot (scene levels[k], recorded level_q)
+const levelGroups = (SCENE.levels ?? []).map(() => { const grp = new THREE.Group(); tray.add(grp); return grp; });
+const levelPivots = (SCENE.levels ?? []).map((lv) => v3(lv.pivot));
+const levelOf = new Map();
+(SCENE.levels ?? []).forEach((lv, k) => (lv.geoms ?? []).forEach((i) => levelOf.set(i, k)));
+(SCENE.tray?.geoms ?? []).forEach((g, i) => {
+  if (g.role === 'lid') return;
   const mesh = geomMesh(g);
-  if (!mesh) continue;
-  tray.add(mesh);
+  if (!mesh) return;
+  (levelOf.has(i) ? levelGroups[levelOf.get(i)] : tray).add(mesh);
   if (g.role === 'wall') wallMeshes.push(mesh);
-}
+});
 const trayBox = new THREE.Box3().setFromObject(tray);
 
 // rig (viewer.py --rig): the bench tower round the tray, display only and fixed in the lab frame
@@ -402,10 +407,10 @@ for (const g of groups.values()) {
 
 // ---------- trajectory ----------
 const loading = $('loading');
-let T, TRAY, TRAYQ, POS, QUAT, ZC, WET;
+let T, TRAY, TRAYQ, LEVELQ, POS, QUAT, ZC, WET;
 try {
-  [T, TRAY, TRAYQ, POS, QUAT, ZC, WET] = await Promise.all(
-    ['t', 'tray_d', 'tray_q', 'pos', 'quat', 'zone_counts', 'wet'].map(decode));
+  [T, TRAY, TRAYQ, LEVELQ, POS, QUAT, ZC, WET] = await Promise.all(
+    ['t', 'tray_d', 'tray_q', 'level_q', 'pos', 'quat', 'zone_counts', 'wet'].map(decode));
 } catch (err) {
   loading.textContent = 'Could not decode the recording: ' + err + '. This page needs a current Chrome, Edge or Firefox.';
   throw err;
@@ -505,6 +510,16 @@ function apply() {
     qb.set(TRAYQ[4 * i1 + 1], TRAYQ[4 * i1 + 2], TRAYQ[4 * i1 + 3], TRAYQ[4 * i1]);
     tray.quaternion.slerpQuaternions(qa, qb, a).normalize();
     tray.position.add(PIVOT).sub(PIVOT.clone().applyQuaternion(tray.quaternion));
+  }
+  if (LEVELQ) {
+    const nl = levelGroups.length;
+    levelGroups.forEach((grp, k) => {
+      const o0 = 4 * (i0 * nl + k), o1 = 4 * (i1 * nl + k);
+      qa.set(LEVELQ[o0 + 1], LEVELQ[o0 + 2], LEVELQ[o0 + 3], LEVELQ[o0]);
+      qb.set(LEVELQ[o1 + 1], LEVELQ[o1 + 2], LEVELQ[o1 + 3], LEVELQ[o1]);
+      grp.quaternion.slerpQuaternions(qa, qb, a).normalize();
+      grp.position.copy(levelPivots[k]).sub(levelPivots[k].clone().applyQuaternion(grp.quaternion));
+    });
   }
   if ($('lock').checked) {             // carry the camera along with the tray
     const d = tray.position.clone().sub(lastTray);

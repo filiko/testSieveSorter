@@ -510,3 +510,59 @@ All three current winners meet this: **0 jammed and 0 lost in all 9 runs each**.
 
 Today's glued mesh, by contrast, jams 3.2 grains and 17 insects per run in its mesh. Those are exactly the specimens that don't come out when the tray is lifted.
 
+## demo round 5 (2026-10-25 09:28, auto)
+
+**Tried:** gated: 12 (ce); gated_mid: 10 (ce); plinko: 8 (ce); inserts: 2 (ce). 360 runs, 13 min wall.
+
+**Leader so far:** P-b192da7c (plinko, round 5) rods L1 gap 4.7 (rod 2.6 wide, 2.2 tall) / L2 gap 1.6 (rod 2.3, 3.2), stroke tool sine 37 Hz, 2.1 g (0.38 mm), 25 deg up: robust 1.000 (mean 1.000 +/- 0.000); big (pasta, chickpea) 100% pure / 100% recovered, rice 100% pure / 100% recovered, quinoa 100% pure / 100% recovered; ok.
+
+**Screen results this round (8 s, progress score), best per family:**
+
+- gated: best G-d726c2e8 screen robust 0.792; median 0.341; failures in 0 of 12 candidates
+- gated_mid: best G-ebdca794 screen robust 0.802; median 0.416; failures in 0 of 10 candidates
+- plinko: best P-b192da7c screen robust 1.000; median 0.898; failures in 0 of 8 candidates
+- inserts: best I-111ae925 screen robust 0.808; median 0.751; failures in 0 of 2 candidates
+
+**Why the losers failed** (particles per run, over this round's screened candidates in the bottom half of each family; the most common modes):
+
+- gated: quinoa: held upstream -> L1 on the floor (27.4 in 6 cands); rice: held upstream -> L1 on the floor (23.1 in 6 cands); rice: held upstream -> L1 at the gate (within 10 mm) (4.4 in 6 cands); quinoa: held upstream -> L1 at the gate (within 10 mm) (1.2 in 6 cands); quinoa: held upstream -> L2 on the floor (0.8 in 5 cands); rice: between -> L1 in the strip (0.6 in 6 cands)
+- gated_mid: rice: held upstream -> L1 on the floor (13.4 in 5 cands); quinoa: held upstream -> L1 on the floor (12.8 in 5 cands); rice: held upstream -> L1 at the gate (within 10 mm) (9.7 in 4 cands); quinoa: held upstream -> L2 on the floor (7.1 in 4 cands); rice: leaked downstream -> catch (7.9 in 3 cands); quinoa: held upstream -> L2 at the gate (within 10 mm) (4.0 in 5 cands)
+- plinko: quinoa: held upstream -> layer_2_rods (4.3 in 4 cands); quinoa: held upstream -> layer_1_rods (2.1 in 4 cands); rice: leaked downstream -> layer_3_catch (0.6 in 3 cands); rice: held upstream -> layer_1_rods (0.4 in 3 cands)
+- inserts: quinoa: held upstream -> on_h1p75b1p15 (9.7 in 1 cands); quinoa: held upstream -> on_h4p75b1p45 (8.2 in 1 cands); rice: held upstream -> on_h4p75b1p45 (4.9 in 1 cands); quinoa: between -> in the floor of on_h4p75b1p45 (0.1 in 1 cands); rice: between -> in the floor of on_h4p75b1p45 (0.1 in 1 cands)
+
+**Leaders' remaining losses** (full runs, top 3):
+
+- P-b192da7c: none
+- P-ae394887: none
+- P-7dd9222c: none
+
+**Parameters at a bound among each family's elite** (the range may be too narrow):
+
+- gated: k1 w 0.26/t 0.74, drive firmware 0.53/tool 0.47, angle low (8.35)
+- gated_mid: k1 w 0.30/t 0.70, drive firmware 0.14/tool 0.86
+- plinko: drive firmware 0.56/tool 0.44, angle low (8.78)
+- inserts: drive firmware 0.86/tool 0.14, accel low (1.08), angle low (1.74)
+
+**Next hypothesis (auto):** the leader sorts cleanly; refine for robustness and throughput.
+
+
+## demo round 5: reading (notes, 2026-10-25 09:40)
+
+**New leader: P-b192da7c, plinko 4.7 / 1.6**, sine 37 Hz at 2.1 g, 25 deg up: **1.000**, no flags (gate overlap 0.084 / 0.24 clearance), 684 / 684 particles on their own trays, t90 0.2 s. It is in the stress test running now.
+
+**Today's gated tower works too, on a strong horizontal vibration.** G-d726c2e8 is the standard, **flipped** gated tower that `gated_container.py` builds today:
+- tunnels t4.4 / t1.8, tunnel width 8 (as today), tooth 1.1, slot 6, 2.4 deg floor;
+- sine 26 Hz at 3.8 g (1.4 mm), **along the tray** (0 deg);
+- score 0.946: rice 268/270 and quinoa 269/270 in their bins, t90 11 s.
+
+A symmetric shake along the tray has no preferred direction, so flipping the levels costs nothing. At 3.8 g grains skate freely and the 2.4 deg slope walks them to the gates. The firmware's ~1 g jolts can't do that, and an angled throw conveys a flipped L2 the wrong way. So the flipped/unflipped question is really a stroke question: an **angled throw needs the unflipped mid-slot tower; a strong flat shake works with today's tower.**
+
+Caveat: it is flagged in 9 of 9 runs. Its L2 tunnel is 1.65 mm as printed, 0.04 mm under the rice's thickness, the same near-size fragility as the 1.7 mm plinko gaps. It's queued for `verify` and the stress test. Expect it to fail the loose-printer variant unless the L2 tunnel comes down to t1.6-1.7 nominal.
+
+**Losers:**
+- **gated:** the usual firmware-stroke transport failure (23-27 grains on L1's floor).
+- **gated_mid:** rice held at L1 and quinoa on L2 at the wrong strokes.
+- **plinko:** quinoa held on layer 2 when the gap runs tight.
+
+**Next:** verify and stress the new ones (queued), replays of the winners, then insect round 1 if time remains.
+

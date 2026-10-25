@@ -30,9 +30,9 @@ Angle, period and profile are all **assumed** (SYSTEM.md §3). So are the pivot 
 - `scene.json` → `levels[k]`, top to bottom: `name`, `zone`, `pivot` (mm), `axis`, `sign`, `amp_deg`, `body_id`, `mj_geom_ids` (MuJoCo geom ids), and `geoms` (indices into `scene["tray"]["geoms"]`, which leaves the invisible lids out).
 - `results.json` → `seesaw`: the stroke options, the levels, the pitch and the clearance check.
 
-### Viewer (Bambu's; edits kept small)
+### Viewer
 
-`viewer.py` passes `level_q` through, like `tray_q` (2 lines). In `viewer_template.html`, each `scene.levels[k]` gets a group holding its geoms, its zone box and its zone label. Each frame, the group turns by `level_q[k]` about its pivot. A run without `levels` draws exactly as before. The bench tower (`--rig bugsorter`) still hangs the boxes from rods through their +X tabs, which doesn't match pivots across the middle, so the seesaw replay is drawn without it.
+There are no viewer edits on this branch. Bambu's viewer (PR #13) already reads `level_q` and each level's `pivot` and `geoms`, and ignores the extra keys. `--rig bugsorter` draws the axles at the recorded level pivots. One difference: the replay draws the zone boxes level, while the sim tests each zone in its level's frame.
 
 ## Do neighbouring trays touch? The level pitch they need
 
@@ -46,7 +46,7 @@ The worst point is the **+X mounting tab.** It sticks 22 mm past the end, so it 
 | ±25° | 100.4 mm | 105.5 mm | 81.9 mm | 86.9 mm |
 | ±30° | 113.7 mm | 118.7 mm | 91.7 mm | 96.7 mm |
 
-These match the closed form pitch = 2 (a sin θ + (H/2) cos θ) + clearance. Here a = 92 mm with the tab and 70 mm without, and H = 25 mm. **The 65 mm pitch the replay assumed is too tight at any amplitude in this range.** At 65 mm the boxes touch from ±12.8° with the tab (±17.1° without). For the default ±25°, a pitch of **110 mm** leaves 9.6 mm between the tabs. If the seesaw's pivot pins replace the +X tab, about 87 mm will do. That's for Bambu's CAD and rig.
+These match the closed form pitch = 2 (a sin θ + (H/2) cos θ) + clearance. Here a = 92 mm with the tab and 70 mm without, and H = 25 mm. At 3 mm clearance the sim gives 89.4 / 103.5 / 116.8 mm with the tab and 74.4 / 84.9 / 94.7 mm without. Bambu measured the real holder solids in `cad/seesaw_tower.py` (PR #14, SYSTEM.md §3) and got the same to within 0.1 mm. **The 65 mm pitch the replay assumed is too tight at any amplitude in this range.** At 65 mm the boxes touch from ±12.8° with the tab (±17.1° without). For the default ±25°, a pitch of **110 mm** leaves 9.6 mm between the tabs. If the seesaw's pivot pins replace the +X tab, about 87 mm will do. That's for Bambu's CAD and rig.
 
 ```
 wsl: python rocking.py inserts:5mm,2mm,pitch=110 --deg 20,25,30 --clear 5
@@ -56,7 +56,7 @@ wsl: python rocking.py inserts:5mm,2mm,pitch=110 --deg 20,25,30 --clear 5
 
 ```
 wsl: python sorter.py --design inserts:5mm,2mm,pitch=110 --mix pasta=15,rice=40,quinoa=40 --stroke seesaw:deg=25,period_s=2,shape=constant_speed --duration 10 --dt 0.000125 --timeconst 0.00025 --fps 60 --out out/runs/seesaw_tower
-python viewer.py out/runs/seesaw_tower
+python viewer.py out/runs/seesaw_tower                 # add --rig bugsorter for the tower frame and the axles
 ```
 
 The setup: 5 mm over 2 mm over the catch pan, 110 mm apart (9.6 mm between the tabs at full tilt). The grains are poured in and settle for 1 s, then 10 s of seesaw follow (5 cycles). Each tray swings ±25° at constant angular speed, 2 s per cycle, and neighbours run in opposite phase. It took 285 s of wall time on one core for 11 s simulated (88,000 steps). The largest overlap was 0.18 mm on the trays and 0.06 mm between particles, with no unstable resets. The replay is `sim/out/runs/seesaw_tower/view.html` (2 MB, gitignored).

@@ -1,4 +1,10 @@
-# testSieveSorter
+<p align="center">
+  <img src="docs/assets/mascot.png" alt="Bugs poured from a Malaise sample jar into a three-tier sieve tower" width="280">
+</p>
+
+<h1 align="center">testSieveSorter</h1>
+
+<p align="center"><b>Break up a Malaise clump, then sort the insects by size, using printed sieves designed in simulation.</b></p>
 
 Hackathon work on BioKEA's **BugSorter**, the size-sorting module at the front of their insect barcoding line.
 
@@ -24,20 +30,41 @@ The design for that is a **breaker layer** on top of the sorting stack: a printe
 
 BugSorter changes the electronics and control, not the sieving itself: insects still sort by size through a stack of mesh inserts in a holder tower that the stepper shakes. This repo works on that sieving side:
 - **`cad/`:** printable replacements for the glued-mesh inserts (printed sieves, plinko layers, and the gated container), sized to drop into BugSorter's existing holder.
-- **`sim/`:** a MuJoCo model of the shaken tower, for ranking designs before printing. Its stroke profiles follow the BugSorter firmware's constant-speed stroke.
+- **`sim/`:** a MuJoCo model of the tower, for ranking designs before printing. It covers the per-level seesaw, the firmware's constant-speed stroke and vibration, clumps of specimens with breakable bonds, and debris.
 
-## Bottom line
+## How it works
 
-**Gates are a reasonable experiment, not the backbone.**
-- **Build first:** removable perforated inserts over sealed collectors on BioKEA's existing actuator, coarse insert above fine. Run a small gate coupon beside it for comparison.
-- **What decides it:** whether water moves through the openings in one direction. Put a drop into an isolated collector after every separator, so nothing gets carried back on the return stroke.
-- **Before building:** check on the bench which firmware and which stroke direction the unit really has. The public firmware is a constant-speed vertical top/bottom stroke capped at 5 cm/s, with an uncalibrated steps-per-cm value. The team was told the motion is horizontal with water jets.
+1. **Break up the clump.**
+   - A printed **breaker layer** sits on top of the stack: an 8 mm grid with 77 blunt pins (`cad/breaker_layer.py`, 89 min on the P1S). It works with the rig's motion and spray.
+   - In the sim (`sim/clumps.py`), a clump is specimens held together by bonds that snap under load and weaken when wet, with leaves, twigs and dirt mixed in. It's measured by how fast specimens come free, the largest piece left, and how hard each specimen gets hit.
+2. **Sort on a seesawing stack.**
+   - **Separate trays, one above the other:** coarse on top, finer below, a catch pan at the bottom.
+   - **Each tray seesaws** about its own pivot across its middle, so its ends tip up and down, and **neighbouring trays rock in opposite directions**. Whatever falls from one level lands on a tray tilted the other way.
+   - Sim: `sim/rocking.py`. CAD: `cad/seesaw_holder.py`, the ribs-across inserts in `cad/sieve_insert.py`, and the lipped catch pan.
+3. **Let the simulation design the parts.**
+   - `sim/optimize.py` proposes printable variants, runs each across 3 friction sets × 3 seeds, and ranks them by the worst class's purity and recovery.
+   - It writes down why the losers failed (`sim/opt/LOG.md`) and adds new design families when parameters run out.
+   - The winners are built and sliced for the P1S (`cad/winners.py`, `sim/opt/print_plan.md`).
+4. **Keep the numbers honest.** The sim ranks designs; it doesn't predict real percentages until it's calibrated against bench counts (`sim/BENCH.md`).
 
-Full reasoning, tests and targets: [docs/gates-verdict.md](docs/gates-verdict.md)
+The one-page system description is [docs/SYSTEM.md](docs/SYSTEM.md), the work plan is [docs/sessions/PLAN.md](docs/sessions/PLAN.md), and the 5-minute demo script is [docs/PITCH.md](docs/PITCH.md).
 
-### Demo rig and next step
+## Results so far (MuJoCo sim, uncalibrated)
 
-The sorter is a **stack of separate trays, one above the other**: coarse on top, finer below, and a catch pan at the bottom. The whole stack shakes together. Each box is held only by its tab on one short end and overhangs, so it **rocks** about that end rather than moving as a rigid block ([docs/SYSTEM.md](docs/SYSTEM.md) §3). In the team's photos, one of those trays (a white 3D-printed square-grid sieve) is bolted onto a **handheld DeWalt 20V MAX cordless tool**, sorting tube pasta from rice and grains. The next big improvement is **shaking it up and down**, not only side to side. The sim models just the stacked trays, the grains and the shaking motion, not the tool (`inserts:5mm,2mm`: each tray in its own holder box, stacked straight up). It gets vertical and angled strokes, then a direct comparison against horizontal shaking on the stack ([docs/sessions/demo-rig.md](docs/sessions/demo-rig.md)). The photos are local reference only (`media/`, gitignored).
+- **The seesaw tower with all nine modelled grains** (±5 / 10 / 15°, `sim/GRAINS.md`):
+  - pasta and chickpea stay on 5 mm every time, and the rice kinds mostly end on 2 mm;
+  - **half the quinoa and chia got stranded on the 5 mm tray's ribs**, because a gentle rock is below the ~22° at which grains slide;
+  - that led to the **ribs-across inserts** and a **small vibration on top of the seesaw** (`seesaw:...,vib_mm,vib_hz`).
+- **Clump break-up** (first run, at ±25°):
+  - 84% of the specimens are free within 0.4 s;
+  - the hardest hits on specimens come from **the drops between levels**, not from the break-up;
+  - so the centre-pivot holder brings the level spacing down to about 54 mm at ±10°, about half the drop.
+- **The design optimizer:**
+  - On a vibrating-tool shake, plinko rod layers (3.7 / 1.5 mm and 4.7 / 1.6 mm) sort the demo grains at about 100%, against 0.52 for today's glued mesh.
+  - **On a symmetric seesaw, gated containers can't sort at all.** Plinko is the only style that does, so the seesaw and Malaise studies are running on plinko and inserts now.
+- **Bench prototype** (Forum's photos): a printed 5 mm square-grid tray on a handheld DeWalt 20V MAX tool, sorting ditalini from rice. The photos are kept locally, not in the repo (`media/`).
+
+The earlier verdict on gates ([docs/gates-verdict.md](docs/gates-verdict.md)) predates the seesaw.
 
 ## Repository layout
 

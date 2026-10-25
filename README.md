@@ -49,30 +49,63 @@ BugSorter changes the electronics and control, not the sieving itself: insects s
 
 The one-page system description is [docs/SYSTEM.md](docs/SYSTEM.md), the work plan is [docs/sessions/PLAN.md](docs/sessions/PLAN.md), and the 5-minute demo script is [docs/PITCH.md](docs/PITCH.md).
 
-## Results so far (MuJoCo sim, uncalibrated)
+## Results (MuJoCo sim, uncalibrated)
 
-- **The seesaw tower with all nine modelled grains** (±5 / 10 / 15°, `sim/GRAINS.md`):
-  - pasta and chickpea stay on 5 mm every time, and the rice kinds mostly end on 2 mm;
-  - **half the quinoa and chia got stranded on the 5 mm tray's ribs**, because a gentle rock is below the ~22° at which grains slide;
-  - that led to the **ribs-across inserts** and a **small vibration on top of the seesaw** (`seesaw:...,vib_mm,vib_hz`).
-- **The system designed a breaker that frees the clump** (`sim/opt/leaderboard_malaise.md`, EXPLORATORY, grain-surrogate clump, scored across weak / medium / strong bonds):
+Watch the replays in the **Sieve Render Lab**: the viewer with a Run menu covering every run below (published privately, shared from its Share menu). The sim **ranks** designs; it doesn't predict real percentages until it's calibrated against bench counts.
 
-  | Setup | Robust score | Freed | Sorted |
-  |---|---|---|---|
-  | Optimizer's breaker: 11.4 mm grid, 1.4 × 6.8 mm pins every 8 mm, ±12° seesaw + 0.35 mm 40 Hz buzz | **0.638** | **97%** | **85%** |
-  | The CAD default breaker + buzz | 0.479 | 85% | 75% |
-  | The CAD default breaker, no buzz | 0.287 | 65% | 22% |
-  | No breaker | 0.217 | 31% | 17% |
+**1. A clump that holds together, and a breaker that frees it.** The clump is 35 Malaise-size insects (2–6 mm and over 6 mm) with a leaf, a twig and dirt, held by 155 medium bonds:
 
-  Without a breaker, a medium clump stays whole (2% freed). The buzz is the strongest single factor.
-- **Clump break-up** (first run, at ±25°):
-  - 84% of the specimens are free within 0.4 s;
-  - the hardest hits on specimens come from **the drops between levels**, not from the break-up;
-  - so the centre-pivot holder brings the level spacing down to about 54 mm at ±10°, about half the drop.
-- **The design optimizer:**
-  - On a vibrating-tool shake, plinko rod layers (3.7 / 1.5 mm and 4.7 / 1.6 mm) sort the demo grains at about 100%, against 0.52 for today's glued mesh.
-  - **On a symmetric seesaw, gated containers can't sort at all.** Plinko is the only style that does, so the seesaw and Malaise studies are running on plinko and inserts now.
-- **Bench prototype** (Forum's photos): a printed 5 mm square-grid tray on a handheld DeWalt 20V MAX tool, sorting ditalini from rice. The photos are kept locally, not in the repo (`media/`).
+| Top level | Freed | Half / 90% freed by | Largest piece left |
+|---|---|---|---|
+| No breaker, ±10° seesaw | **9%** | never | 32 of 35 |
+| **Optimizer's breaker** B-164f355a + buzz + spray, ±7° seesaw | **100%** | 3.5 s / 5.0 s | 1 |
+
+With the real Malaise size mix (57% under 1.5 mm), the default breaker + buzz frees 35% with the spray off and 60% with it on, still rising at 4 s (`sim/CLUMPS.md`). **The breaker and the buzz do the breaking, and the spray finishes it.**
+
+**2. The system designed that breaker** (`sim/opt/leaderboard_malaise.md`, EXPLORATORY, grain-surrogate clump, weak / medium / strong bonds, **checked on freshly packed clumps**):
+
+| Breaker (prints as is with `cad/breaker_layer.py`) | Motion | Score | Freed (fresh clumps) |
+|---|---|---|---|
+| **B-164f355a**: 11.3 mm grid, round pins 3.1 × 8 mm | ±7°, 1.1 s + 0.35 mm 40 Hz buzz | **0.630** | **94%** |
+| B-87f42099: 8.9 mm grid, flat pins 2 × 7.6 mm | ±8°, 3.5 s + 0.35 mm buzz | 0.605 | 94% |
+| CAD default (8 mm grid, 2.5 × 12 mm pins) + buzz | ±10°, 2 s + 0.3 mm | 0.452 | 84% |
+| CAD default, no buzz | ±10°, 2 s | 0.216 | 34% |
+| No breaker | ±10°, 2 s | 0.229 | 48% |
+
+Round 2's apparent leader (0.700) fell to 0.42 on fresh clumps, so winners must now pass that check. Short pins (6–8 mm) beat the hand-picked 12 mm. **B-164f355a is sliced for the P1S: 57 min, 19.6 g** (`sim/opt/print_plan_malaise.md`).
+
+**3. Sorting on the seesaw: before and after the fixes the sim found.** 125 grains of all 10 modelled kinds, ±10° alternating seesaw, 12 s:
+
+| Where grains ended | Before: old inserts, 85 mm apart, seesaw only | After: ribs-across inserts, centre-pivot holder 55 mm apart, + 0.3 mm 40 Hz buzz |
+|---|---|---|
+| Pasta, chickpea on 5 mm | 15 / 15 | 15 / 15 |
+| Quinoa, couscous, chia in the catch | 30 / 45 (12 stuck on the 5 mm ribs) | **44 / 45** |
+| Black and wild rice on 2 mm | 16 / 22 | 20 / 22 |
+| Plain and white rice on 2 mm | 11 / 24 | 1 / 24 (the buzz shakes them through) |
+
+The fixes came from the sim:
+- grains rode ribs that ran along the tilt, which gave the **ribs-across inserts**;
+- a gentle seesaw is below the ~22° slide angle, which gave **the buzz**;
+- the drops between levels hit specimens hardest, which gave **the centre-pivot holder**, about half the drop.
+
+The buzz trades plain-rice retention for clearing the fine grains. Tune its amplitude on the bench.
+
+**4. Sorting on the seesaw, designed by the optimizer** (`sim/opt/leaderboard_seesaw.md`, alternating seesaw, ends tip):
+
+| Design | Motion | Score |
+|---|---|---|
+| **Plinko rods 4.7 / 1.5 mm** (one box, three layers) | ±14°, 1.9 s + 0.35 mm 40 Hz buzz | **0.998**: every class 100% pure and recovered, t90 0.6 s |
+| Plinko rods 4.5 / 1.4 mm | ±10.5°, 1.5 s + 0.2 mm buzz | 0.997 |
+| Best separate-trays design (inserts 5.2 / 1.8 mm) | + buzz | 0.63 |
+| Seesaw alone, best of any design | no buzz | 0.345 |
+
+The buzz is what makes the seesaw sort. With separate 5 / 2 mm trays the buzz also pushes rice through 2 mm, while rod layers keep the classes clean.
+
+**5. What the optimizer learned along the way** (`sim/opt/LOG.md`):
+- On a symmetric seesaw, gated containers can't sort at all, and plinko rods are the only style that does.
+- On a vibrating-tool shake, plinko rod layers sort the demo grains at about 100%, against 0.52 for today's glued mesh.
+
+**Bench prototype** (Forum's photos): a printed 5 mm square-grid tray on a handheld DeWalt 20V MAX tool, sorting ditalini from rice. The photos are kept locally (`media/`).
 
 The earlier verdict on gates ([docs/gates-verdict.md](docs/gates-verdict.md)) predates the seesaw.
 

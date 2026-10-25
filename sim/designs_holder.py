@@ -7,6 +7,11 @@
                           e.g. inserts:mesh5,mesh2 (current) vs inserts:5mm,2mm (future); mixing works.
                           pitch=<mm> spaces the boxes (bottom to bottom) instead of rim on rim, as on the
                           bench tower frame: inserts:5mm,2mm,pitch=65
+                          5mm_across, 2mm_across  the ribs-across inserts for the seesaw (sieve_insert.py
+                                          ACROSS): 45 deg border ramps, ridges along Y only
+                          holder=seesaw   cad/seesaw_holder.py: boxes with no +X tab and no finger notches
+                                          (pivot pins in the middle), over the deep catch pan with its lip:
+                                          inserts:5mm_across,2mm_across,pitch=55,holder=seesaw
     plinko                the plinko layers (cad/plinko_layers.py LAYERS) stacked in one holder box
 
 Tray frame: origin at the holder's centre in XY, z = 0 under the lowest part, x along the holder's
@@ -81,6 +86,14 @@ def cad():
     return frame_holder, sieve_insert, plinko_layers
 
 
+@functools.cache
+def seesaw_cad():
+    """cad/seesaw_holder.py (the seesaw holder and deep catch pan)."""
+    cad()
+    import seesaw_holder
+    return seesaw_holder
+
+
 def box(x0, x1, y0, y1, z0, z1, rgba, role):
     return {"type": "box", "size": [(x1 - x0) / 2, (y1 - y0) / 2, (z1 - z0) / 2],
             "pos": [(x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2], "quat": [1.0, 0.0, 0.0, 0.0],
@@ -101,7 +114,7 @@ def capsule(axis, a0, a1, u, z, r, rgba, role):
             "quat": CAPSULE_QUAT[axis], "rgba": rgba, "role": role}
 
 
-def lid(hx, hy, z0, z1, t):
+def lid(hx, hy, z0, z1, t, floor_z=0.0):
     """Invisible walls around the rectangle |x| <= hx, |y| <= hy from z0 to z1, a lid on top, and a
     plate under the holder footprint at z < 0, so a particle forced through the thin bottom floor
     by a soft-contact impact stays in the scene (as "between") instead of falling out."""
@@ -111,16 +124,23 @@ def lid(hx, hy, z0, z1, t):
             box(-hx, hx, hy, hy + t, z0, z1, LID_RGBA, "lid"),
             box(-hx, hx, -hy - t, -hy, z0, z1, LID_RGBA, "lid"),
             box(-hx - t, hx + t, -hy - t, hy + t, z1, z1 + t, LID_RGBA, "lid"),
-            box(-fh.L / 2, fh.L / 2, -fh.W / 2, fh.W / 2, -t, 0.0, LID_RGBA, "lid")]
+            box(-fh.L / 2, fh.L / 2, -fh.W / 2, fh.W / 2, floor_z - t, floor_z, LID_RGBA, "lid")]
 
 
-def holder(z0, solid_base=False, close_notches=False):
+def holder(z0, solid_base=False, close_notches=False, seesaw=False):
     """frame_holder.py's box standing at z0: the ledge round the open centre (or a solid base for
     the catch pan), walls with the U finger notch in each long wall, and the +X mounting tab
-    (its bolt hole left out). close_notches adds invisible lids over the notches."""
+    (its bolt hole left out). close_notches adds invisible lids over the notches. seesaw: the
+    seesaw_holder.py box instead, with no tab and no notches (its pivot lugs stand outside the
+    walls and are left out)."""
     fh = cad()[0]
     hx, hy, ix, iy = fh.L / 2, fh.W / 2, fh.L / 2 - fh.WALL, fh.W / 2 - fh.WALL
     ox, oy, zl, zt = fh.OPEN_L / 2, fh.OPEN_W / 2, z0 + fh.LEDGE_T, z0 + fh.H
+    if seesaw:
+        return [box(-hx, -ox, -hy, hy, z0, zl, HOLDER_RGBA, "frame"), box(ox, hx, -hy, hy, z0, zl, HOLDER_RGBA, "frame"),
+                box(-ox, ox, -hy, -oy, z0, zl, HOLDER_RGBA, "frame"), box(-ox, ox, oy, hy, z0, zl, HOLDER_RGBA, "frame"),
+                box(-hx, -ix, -hy, hy, zl, zt, HOLDER_RGBA, "wall"), box(ix, hx, -hy, hy, zl, zt, HOLDER_RGBA, "wall"),
+                box(-ix, ix, -hy, -iy, zl, zt, HOLDER_RGBA, "wall"), box(-ix, ix, iy, hy, zl, zt, HOLDER_RGBA, "wall")]
     if solid_base:
         g = [box(-hx, hx, -hy, hy, z0, zl, HOLDER_RGBA, "floor")]
     else:
@@ -139,6 +159,25 @@ def holder(z0, solid_base=False, close_notches=False):
             g.append(box(-r, r, y0, y1, zl, zt, LID_RGBA, "lid"))
     g.append(box(hx, hx + fh.TAB_L, -fh.TAB_T / 2, fh.TAB_T / 2, z0, zt, HOLDER_RGBA, "frame"))
     return g
+
+
+def seesaw_pan():
+    """seesaw_holder.py's catch pan with its rim at z = H, like a box standing at 0, reaching CATCH_DEPTH
+    below 0: walls, the solid floor and the inward lip (a convex prism per side, 45 deg underside).
+    Returns geoms and the floor top z."""
+    fh, sh = cad()[0], seesaw_cad()
+    hx, hy, ix, iy = fh.L / 2, fh.W / 2, fh.L / 2 - fh.WALL, fh.W / 2 - fh.WALL
+    zb, zt = -sh.CATCH_DEPTH, fh.H
+    zf = zb + sh.FLOOR_T
+    g = [box(-hx, hx, -hy, hy, zb, zf, HOLDER_RGBA, "floor"),
+         box(-hx, -ix, -hy, hy, zf, zt, HOLDER_RGBA, "wall"), box(ix, hx, -hy, hy, zf, zt, HOLDER_RGBA, "wall"),
+         box(-ix, ix, -hy, -iy, zf, zt, HOLDER_RGBA, "wall"), box(-ix, ix, iy, hy, zf, zt, HOLDER_RGBA, "wall")]
+    for axis, i_half, o_half, along in (("y", ix, fh.OPEN_L / 2, iy), ("x", iy, fh.OPEN_W / 2, ix)):
+        d = i_half - o_half                         # 5 at the ends, 7 along the sides
+        for sgn in (1, -1):
+            sec = [(sgn * o_half, zt), (sgn * i_half, zt), (sgn * i_half, zt - sh.LIP_T - d), (sgn * o_half, zt - sh.LIP_T)]
+            g.append(prism(sec, axis, -along, along, HOLDER_RGBA, "wall"))
+    return g, zf
 
 
 def solid_runs(w0, w1, centres, hole):
@@ -164,15 +203,38 @@ def insert_frame(z0):
     return g
 
 
+def insert_frame_across(z0, name):
+    """sieve_insert.py's ribs-across frame standing at z0: the four 45 deg border ramps (solid from z0, so
+    they cover the screen's border too), the ridges along Y (solid down to z0) and the two pull tabs."""
+    si = cad()[1]
+    st = si.ACROSS[name][2]
+    hx, hy, (bx, by) = si.L / 2, si.W / 2, si.ACROSS_BORDER
+    g = []
+    for axis, half, b, along in (("y", hx, bx, hy), ("x", hy, by, hx)):
+        e, top = half - b, z0 + st + b - si.RAMP_FLAT
+        for sgn in (1, -1):
+            sec = [(sgn * e, z0), (sgn * half, z0), (sgn * half, top), (sgn * (half - si.RAMP_FLAT), top), (sgn * e, z0 + st)]
+            g.append(prism(sec, axis, -along, along, INSERT_RGBA, "frame"))
+    rw, sy = si.RIDGE_W / 2, hy - by
+    for cx, _cy, wl, _ww in si.across_windows()[:-1]:
+        x = cx + wl / 2 + rw
+        sec = [(x - rw, z0), (x + rw, z0), (x + rw, z0 + st), (x, z0 + st + rw), (x - rw, z0 + st)]
+        g.append(prism(sec, "y", -sy, sy, INSERT_RGBA, "frame"))
+    for y0, y1 in ((hy - si.TAB_T, hy), (-hy, -hy + si.TAB_T)):
+        g.append(box(-si.TAB_W / 2, si.TAB_W / 2, y0, y1, z0, z0 + si.FRAME_T + si.TAB_H, INSERT_RGBA, "frame"))
+    return g
+
+
 def printed_screen(name, z0):
     """The square-hole screen at the bottom of every window, as tapered bars (convex prisms) that
     leave the exact hole size at the top surface and widen RELIEF_DEG downward, as the CAD cuts it.
     Bars along Y run through both window rows, bars along X through all three columns (the ribs
     cover the joins). Returns geoms, hole count, open area at the top surface."""
     si = cad()[1]
-    hole, bar, screen_t = si.INSERTS[name]
+    across = name in getattr(si, "ACROSS", {})
+    hole, bar, screen_t = (si.ACROSS if across else si.INSERTS)[name]
     pitch, z1, taper = hole + bar, z0 + screen_t, screen_t * math.tan(math.radians(si.RELIEF_DEG))
-    win = si.windows()
+    win, rows = (si.across_windows(), 1) if across else (si.windows(), si.ROWS)
     g, n_holes = [], 0
     for cx, cy, wl, ww in win:
         n_holes += int((wl - bar) // pitch) * int((ww - bar) // pitch)
@@ -183,10 +245,13 @@ def printed_screen(name, z0):
             section = [(a + taper * ah, z0), (b - taper * bh, z0), (b, z1), (a, z1)]
             g.append(prism(section, axis, a0, a1, SCREEN_RGBA, "screen"))
 
-    ib_x, ib_y = si.L / 2 - si.BORDER, si.W / 2 - si.BORDER
-    for cx, _cy, wl, _ww in win[::si.ROWS]:          # one per column: bars along Y
+    if across:
+        ib_x, ib_y = si.L / 2 - si.ACROSS_BORDER[0], si.W / 2 - si.ACROSS_BORDER[1]
+    else:
+        ib_x, ib_y = si.L / 2 - si.BORDER, si.W / 2 - si.BORDER
+    for cx, _cy, wl, _ww in win[::rows]:             # one per column: bars along Y
         bars("y", cx - wl / 2, cx + wl / 2, int((wl - bar) // pitch), -ib_y, ib_y)
-    for _cx, cy, _wl, ww in win[:si.ROWS]:           # one per row: bars along X
+    for _cx, cy, _wl, ww in win[:rows]:              # one per row: bars along X
         bars("x", cy - ww / 2, cy + ww / 2, int((ww - bar) // pitch), -ib_x, ib_x)
     return g, n_holes, n_holes * hole * hole
 
@@ -219,6 +284,8 @@ def insert_spec(arg):
     short = arg.removeprefix("sieve_insert_")
     if f"sieve_insert_{short}" in si.INSERTS:
         return short, "printed", f"sieve_insert_{short}"
+    if f"sieve_insert_{short}" in getattr(si, "ACROSS", {}):
+        return short, "across", f"sieve_insert_{short}"
     if arg in MESHES:
         return arg, "mesh", arg
     raise ValueError(f"unknown insert {arg!r}: use one of {[n.removeprefix('sieve_insert_') for n in si.INSERTS]}"
@@ -229,11 +296,11 @@ def insert(arg, z_seat, drain_area):
     """Geoms of one insert seated on a ledge top at z_seat, and its layer record."""
     si = cad()[1]
     short, kind, name = insert_spec(arg)
-    win_area = sum(wl * ww for _, _, wl, ww in si.windows())
-    if kind == "printed":
+    win_area = sum(wl * ww for _, _, wl, ww in (si.across_windows() if kind == "across" else si.windows()))
+    if kind in ("printed", "across"):
         z0 = z_seat
         screen, n_holes, open_area = printed_screen(name, z0)
-        s, bar, screen_t = si.INSERTS[name]
+        s, bar, screen_t = (si.ACROSS if kind == "across" else si.INSERTS)[name]
         surface, opening = (z0, z0 + screen_t), f"{s:g} mm square holes ({n_holes}), bars {bar:g} mm"
         extra = {"holes": n_holes}
     else:
@@ -246,7 +313,7 @@ def insert(arg, z_seat, drain_area):
                         for cx, cy, wl, ww in si.windows())
         surface, opening = (z_mesh, z_mesh + 2 * d), f"{s:g} mm woven mesh, {d:g} mm wire, glued {spec['side']}"
         extra = {"mesh": {**spec, "status": MESH_STATUS}, "wires": len(screen)}
-    geoms = insert_frame(z0) + screen
+    geoms = (insert_frame_across(z0, name) if kind == "across" else insert_frame(z0)) + screen
     layer = {"zone": f"on_{short}", "insert": name, "opening": opening, "rule": "square", "opening_mm": s,
              "insert_bottom_z_mm": round(z0, 3), "surface_z_mm": [round(v, 3) for v in surface],
              "open_area_mm2": round(open_area, 1), "open_pct_of_drainable": round(100 * open_area / drain_area, 1),
@@ -284,8 +351,12 @@ def build_inserts(args):
     bounces out through a gap falls to an invisible tub floor and counts as lost."""
     opts = dict(a.split("=", 1) for a in args if "=" in a)
     args = [a for a in args if "=" not in a]
-    if set(opts) - {"pitch"}:
-        raise ValueError(f"unknown inserts option(s) {sorted(set(opts) - {'pitch'})}: use pitch=<mm>")
+    if set(opts) - {"pitch", "holder"}:
+        raise ValueError(f"unknown inserts option(s) {sorted(set(opts) - {'pitch', 'holder'})}: use pitch=<mm>, "
+                         "holder=seesaw")
+    if opts.get("holder", "frame") not in ("frame", "seesaw"):
+        raise ValueError(f"holder={opts['holder']}: use holder=seesaw (or leave it out for frame_holder.py's box)")
+    seesaw = opts.get("holder") == "seesaw"
     if not args:
         raise ValueError("inserts needs insert names, e.g. inserts:5mm,2mm or inserts:mesh5,mesh2")
     fh = cad()[0]
@@ -294,12 +365,15 @@ def build_inserts(args):
     if pitch < H:
         raise ValueError(f"pitch {pitch:g} mm is less than the box height ({H:g} mm)")
     drain_area = fh.OPEN_L * fh.OPEN_W
-    geoms = holder(0.0, solid_base=True, close_notches=True)
+    if seesaw:
+        geoms, catch_floor = seesaw_pan()
+    else:
+        geoms, catch_floor = holder(0.0, solid_base=True, close_notches=True), fh.LEDGE_T
     layers = []
     for k, arg in enumerate(reversed(args)):          # bottom box first
         z0 = (k + 1) * pitch
         g, layer = insert(arg, z0 + fh.LEDGE_T, drain_area)
-        geoms += holder(z0, close_notches=True) + g
+        geoms += holder(z0, close_notches=True, seesaw=seesaw) + g
         layer["holder_z_mm"] = [z0, z0 + H]
         layers.insert(0, layer)
     names = [layer["zone"] for layer in layers]
@@ -308,7 +382,7 @@ def build_inserts(args):
             layer["zone"] += f"_{k + 1}"
     top = layers[0]["surface_z_mm"][1]
     z_lid = top + LID_ABOVE
-    geoms += lid(ix, iy, len(args) * pitch + H, z_lid, fh.WALL)
+    geoms += lid(ix, iy, len(args) * pitch + H, z_lid, fh.WALL, catch_floor - fh.LEDGE_T)
     if pitch > H:
         geoms.append(box(-TUB_HALF, TUB_HALF, -TUB_HALF, TUB_HALF, -TUB_FLOOR - fh.WALL, -TUB_FLOOR, LID_RGBA, "lid"))
     spaced = "" if pitch == H else f", {pitch - H:g} mm of open air between boxes (pitch {pitch:g} mm)"
@@ -317,21 +391,24 @@ def build_inserts(args):
     for layer in layers:
         zones.append({"name": layer["zone"], "box": [-ix, ix, -iy, iy, layer["surface_z_mm"][1], z_above]})
         z_above = layer["surface_z_mm"][0]
-    zones.append({"name": "catch", "box": [-ix, ix, -iy, iy, fh.LEDGE_T, z_above]})
+    zones.append({"name": "catch", "box": [-ix, ix, -iy, iy, catch_floor, z_above]})
     rules = tuple((layer["zone"], layer["rule"], layer["opening_mm"]) for layer in layers)
     return Design(
-        name="inserts:" + ",".join(args) + ("" if pitch == H else f",pitch={pitch:g}"), geoms=geoms, zones=zones,
+        name="inserts:" + ",".join(args) + ("" if pitch == H else f",pitch={pitch:g}") + (",holder=seesaw" if seesaw else ""),
+        geoms=geoms, zones=zones,
         spawn=[-ix + SPAWN_INSET, ix - SPAWN_INSET, -iy + SPAWN_INSET, iy - SPAWN_INSET, top + SPAWN_Z[0], top + SPAWN_Z[1]],
         ideal_zone=functools.partial(ideal_zone, layers=rules, last="catch"),
         jets_default=jets(top, ix),
         info={"stacking": "tower of holder boxes (confirmed by the user), one insert per box, top to bottom in spec "
                           "order, " + (f"each box hanging {pitch:g} mm above the one below{spaced}" if spaced else
                                        "each box on the rim of the one below") +
-                          "; catch pan under the bottom box = the holder with its open centre filled solid. Finger "
-                          "notches closed by invisible lids.", "pitch_mm": pitch,
+                          ("; seesaw holders (cad/seesaw_holder.py: no tab, no notches, pivot pins in the middle) over "
+                           "its deep catch pan (rim and pivot as on a box, floor CATCH_DEPTH lower, inward lip)" if seesaw else
+                           "; catch pan under the bottom box = the holder with its open centre filled solid. Finger "
+                           "notches closed by invisible lids."), "pitch_mm": pitch, "holder": "seesaw" if seesaw else "frame",
               "open_area_note": "printed: holes x hole^2 at the top surface; mesh: wire-free area inside the six "
                                 "windows (the frame blocks the rest)",
-              "layers": layers, "catch_z_mm": [fh.LEDGE_T, z_above], "top_surface_z_mm": top, "lid_z_mm": z_lid,
+              "layers": layers, "catch_z_mm": [catch_floor, z_above], "top_surface_z_mm": top, "lid_z_mm": z_lid,
               "drainable_area_mm2": drain_area, "drainable_note": f"only the {fh.OPEN_L:g} x {fh.OPEN_W:g} open bottom "
                                                                   "drains; the windows lie entirely over it",
               "geom_count": geom_count(geoms),

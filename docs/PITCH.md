@@ -9,7 +9,7 @@ Physical AI for Science Hack, BioKEA track. Live demos 15:30–16:30, then demos
 
 ## 0:30 What we built (60 s)
 Show the CAD previews (`cad/out/*.png`) and the printed parts on the table.
-1. **The breaker layer** goes on top: blunt pins on an 8 mm grid. The motion throws the clump onto the pins and the spray loosens it. Leaves stay on top, and freed specimens fall through.
+1. **The breaker layer** goes on top: blunt 8 mm pins on an 11.3 mm grid (the optimizer's design). The motion throws the clump onto the pins and the spray loosens it. Leaves stay on top, and freed specimens fall through.
 2. **The seesaw stack:** separate trays one above the other (5 mm, 2 mm, catch). Each one seesaws about its own centre pivot, and neighbours rock in opposite directions, so whatever drops lands on a tray tilted the other way.
 3. **Fixes the sim found before we printed:**
    - inserts with **ribs across the tilt**, because small grains rode ribs that ran along it;
@@ -50,4 +50,4 @@ Show `sim/opt/leaderboard_malaise.md` and `sim/opt/LOG.md`.
 | CAD previews | `cad/out/breaker_*.png`, `cad/out/seesaw_*.png`, `cad/out/sieve_insert_*_across.png`, `cad/out/win*_tower.png` |
 | Replays | **Sieve Render Lab**, a private artifact with 10 runs in one viewer and a Run menu: https://claude.ai/artifact/4KRY8zRw61tjvsagchb9Wx. Share it from its Share menu before the demo if teammates present. |
 | Clips (local `media/`, never committed) | `hero_forum_vs_sim.mp4`, `hero_clump_breaker.mp4`, `hero_optimizer_breaker.mp4` and the tower clips, all captioned "MuJoCo sim, uncalibrated" |
-| Leaderboards | `sim/opt/leaderboard.md`, and `leaderboard_malaise.md` when it exists |
+| Leaderboards | `sim/opt/leaderboard_malaise.md` (the breaker), `sim/opt/leaderboard_seesaw.md`, `sim/opt/leaderboard.md` |

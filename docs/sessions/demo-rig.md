@@ -1,4 +1,6 @@
-# Task: simulate the demo tray, with up-and-down shaking
+# Task: simulate the demo rig, with up-and-down shaking
+
+> **Correction (06:20, from the user): the rig is separate trays stacked one above the other**, not one tray. Coarse is on top and finer below, with a catch pan at the bottom; the whole stack shakes up and down together. Forum's photo shows one of those trays. In the sim, that's the holder tower: **`inserts:5mm,2mm`** (one insert per holder box, the boxes stacked straight up, the catch pan under them; see `sim/designs_holder.py`). Use a 3-class mix so each level holds one class: pasta stays on 5 mm, rice on 2 mm, quinoa in the catch. `inserts:5mm` (one tray plus the catch pan) is just a single level of it. The VERTICAL.md results so far are on that single level only.
 
 **What the user wants (Oct 25, ~05:50 PT).** This replaces the stroke-measurement idea in `forum-footage.md`.
 1. **Forum's photos are the demo example.** The rig: a white 3D-printed square-grid sieve tray, with ribbed windows and a pull tab (it looks like `cad/sieve_insert.py`'s 5 mm insert), bolted onto a handheld DeWalt 20V MAX cordless tool. It sorts tube pasta (ditalini) from rice and darker grains.
@@ -26,7 +28,7 @@ Photos: `C:\Users\ajfil\Documents\Github\testSieveSorter\media\forum-2026-10-24\
 ## D. Demo visual (bambu session, `bambu-viz`)
 > **06:15:** A is on `main` (PRs #2 and #3). The up-and-down demo-tray run for the viewer is in `sim/VERTICAL.md` under Reproduce: `sorter.py --design inserts:5mm --mix pasta=15,rice=40 --stroke sine:amp_mm=1.24,freq_hz=20,angle_deg=90 --duration 10 ...`. The sim says vertical sorts the demo mix fine, just 2-3x slower than shaking along the tray.
 
-- In the sim viewer: the demo tray only (5 mm square-grid insert, no tool) with the pasta + rice mix, shaken **up and down** once A lands. Until then, use the horizontal run.
+- In the sim viewer: **the stack of separate trays** (`inserts:5mm,2mm`: 5 mm tray above the 2 mm tray above the catch pan, no tool) with pasta + rice + quinoa, the whole stack shaken **up and down**. The physics session is rerunning the vertical comparison on the stack (physics-handoff.md step 2). Until that lands, make the run yourself with the command above, using `--design inserts:5mm,2mm --mix pasta=15,rice=40,quinoa=40`.
 - Viewer work as before: camera from URL params, a **Copy camera** button, and a **Record** button (`canvas.captureStream()` + `MediaRecorder`) in `sim/viewer_template.html`.
 - Match the viewer camera to one of Forum's photos (`IMG_1316.JPG` shows the tray on the tool from the side; `IMG_1318.JPG` is top-down).
 - **Side-by-side:** Forum's photo (a still) next to the sim replay, labelled "Bench prototype" and "MuJoCo sim, uncalibrated". Write it to `media/demo_side_by_side.mp4` in the main checkout. It's local only and never committed.

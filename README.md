@@ -30,7 +30,7 @@ The design for that is a **breaker layer** on top of the sorting stack: a printe
 
 BugSorter changes the electronics and control, not the sieving itself: insects still sort by size through a stack of mesh inserts in a holder tower that the stepper shakes. This repo works on that sieving side:
 - **`cad/`:** printable replacements for the glued-mesh inserts (printed sieves, plinko layers, and the gated container), sized to drop into BugSorter's existing holder.
-- **`sim/`:** a MuJoCo model of the shaken tower, for ranking designs before printing. Its stroke profiles follow the BugSorter firmware's constant-speed stroke.
+- **`sim/`:** a MuJoCo model of the tower, for ranking designs before printing. It covers the per-level seesaw, the firmware's constant-speed stroke and vibration, clumps of specimens with breakable bonds, and debris.
 
 ## How it works
 
@@ -47,7 +47,7 @@ BugSorter changes the electronics and control, not the sieving itself: insects s
    - The winners are built and sliced for the P1S (`cad/winners.py`, `sim/opt/print_plan.md`).
 4. **Keep the numbers honest.** The sim ranks designs; it doesn't predict real percentages until it's calibrated against bench counts (`sim/BENCH.md`).
 
-The one-page system description is [docs/SYSTEM.md](docs/SYSTEM.md), and the work plan is [docs/sessions/PLAN.md](docs/sessions/PLAN.md).
+The one-page system description is [docs/SYSTEM.md](docs/SYSTEM.md), the work plan is [docs/sessions/PLAN.md](docs/sessions/PLAN.md), and the 5-minute demo script is [docs/PITCH.md](docs/PITCH.md).
 
 ## Results so far (MuJoCo sim, uncalibrated)
 

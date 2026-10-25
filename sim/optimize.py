@@ -883,8 +883,9 @@ def locate(p, info):
                 return f"in the floor of {layer['zone']}"
         return f"z {z:.0f} mm"
     from designs_gated import gc
-    gate_x = info["gate_x_mm"]
     for lv in levels:
+        gate_x = lv.get("gate_x_mm", info["gate_x_mm"])        # per level: mid-slot towers differ by level
+        slot_end = lv.get("slot_end_mm", gc.OPEN_X)
         z_c = lv["container_bottom_z_mm"]
         if z_c - 3.0 <= z < z_c + 22.0:
             s = 1.0 if lv["gate_end"] == "+X" else -1.0
@@ -896,9 +897,9 @@ def locate(p, info):
                 where = "at the gate (within 10 mm)"
             elif xl < dn:
                 where = "in the strip"
-            elif xl < gc.OPEN_X and abs(y) < gc.OPEN_Y:
+            elif xl < slot_end and abs(y) < gc.OPEN_Y:
                 where = "in the drop slot"
-            elif xl < gc.OPEN_X + 0.5:
+            elif xl < slot_end + 0.5:
                 where = "on the ledge beside the slot"
             else:
                 where = "on the ramp"

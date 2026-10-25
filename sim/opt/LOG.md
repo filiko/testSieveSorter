@@ -327,3 +327,63 @@ Best per drive: firmware P-ba5dd6b3 (0.929), vibrating tool P-ae394887 (1.000 ve
 
 **Next:** demo round 3 (running); then the stress test of these winners (reversal time 0.005 / 0.02 s for the firmware one, printer undersize 0.05 / 0.25 mm for all); then round 4.
 
+## demo round 3 (2026-10-25 08:18, auto)
+
+**Tried:** gated: 12 (ce); gated_mid: 10 (ce); plinko: 8 (ce); inserts: 2 (ce). 360 runs, 14 min wall.
+
+**Leader so far:** P-ae394887 (plinko, round 2) rods L1 gap 3.7 (rod 2.6 wide, 1.6 tall) / L2 gap 1.5 (rod 1.8, 2.4), stroke tool sine 48 Hz, 2.2 g (0.24 mm), 20 deg up: robust 0.999 (mean 0.999 +/- 0.000); big (pasta, chickpea) 100% pure / 100% recovered, rice 100% pure / 100% recovered, quinoa 100% pure / 100% recovered; PEN 1/9 (clr 0.26, pen 0.153).
+
+**Screen results this round (8 s, progress score), best per family:**
+
+- gated: best G-cb487448 screen robust 0.667; median 0.351; failures in 0 of 12 candidates
+- gated_mid: best G-a1ecf9bb screen robust 0.900; median 0.472; failures in 0 of 10 candidates
+- plinko: best P-fdf86953 screen robust 0.930; median 0.900; failures in 0 of 8 candidates
+- inserts: best I-062c2244 screen robust 0.778; median 0.712; failures in 0 of 2 candidates
+
+**Why the losers failed** (particles per run, over this round's screened candidates in the bottom half of each family; the most common modes):
+
+- gated: quinoa: held upstream -> L1 on the floor (26.7 in 6 cands); rice: held upstream -> L1 on the floor (23.2 in 6 cands); rice: held upstream -> L1 at the gate (within 10 mm) (3.8 in 6 cands); quinoa: held upstream -> L1 at the gate (within 10 mm) (1.3 in 6 cands); quinoa: held upstream -> L2 on the floor (1.1 in 6 cands); quinoa: held upstream -> L2 at the gate (within 10 mm) (0.6 in 6 cands)
+- gated_mid: rice: held upstream -> L1 on the floor (12.2 in 5 cands); quinoa: held upstream -> L2 in the drop slot (9.8 in 5 cands); rice: held upstream -> L1 at the gate (within 10 mm) (6.4 in 5 cands); quinoa: held upstream -> L1 on the floor (5.9 in 4 cands); quinoa: held upstream -> L2 on the ledge beside the slot (2.8 in 5 cands); rice: leaked downstream -> catch (4.4 in 3 cands)
+- plinko: quinoa: held upstream -> layer_2_rods (2.1 in 4 cands); rice: leaked downstream -> layer_3_catch (2.6 in 3 cands); quinoa: held upstream -> layer_1_rods (1.3 in 4 cands); rice: held upstream -> layer_1_rods (0.3 in 1 cands)
+- inserts: quinoa: held upstream -> on_h1p75b1p15 (13.9 in 1 cands); quinoa: held upstream -> on_h5p05b1p55 (8.1 in 1 cands); rice: held upstream -> on_h5p05b1p55 (5.2 in 1 cands); rice: leaked downstream -> catch (0.3 in 1 cands); quinoa: between -> in the floor of on_h1p75b1p15 (0.1 in 1 cands)
+
+**Leaders' remaining losses** (full runs, top 3):
+
+- P-ae394887: none
+- P-668db784: none
+- G-a1ecf9bb: none
+
+**Parameters at a bound among each family's elite** (the range may be too narrow):
+
+- gated: k1 w 0.22/t 0.78, drive firmware 0.71/tool 0.29, angle low (6.56)
+- gated_mid: k1 w 0.46/t 0.54, drive firmware 0.14/tool 0.86
+- plinko: drive firmware 0.61/tool 0.39, angle low (6.89)
+- inserts: drive firmware 0.86/tool 0.14, accel low (1.05), angle low (1.04)
+
+**Next hypothesis (auto):** the leader's near-size results are flagged (overlap vs clearance): check it at a smaller dt or stiffer contacts before trusting it
+
+
+## demo round 3: reading (notes, 2026-10-25 08:25)
+
+**The gated container is a winner again: the unflipped mid-slot tower with an angled vibration.** G-a1ecf9bb scores **0.985**, every class 100% pure and recovered in all 9 runs, no jams, no flags (gate overlap 0.090 mm against a 0.24 mm clearance), t90 7.1 s. It is winner #2.
+- **Strips:** L1 tunnel t3.5, L2 tunnel t1.6, both tunnels 5.0 wide, tooth 0.8. That is exactly bambu's two-line minimum; the elite pushes the tooth thin to fit more openings.
+- **Floor:** 2.7 deg.
+- **L1 gate:** at x 22.2 with an 8.1 mm drop slot, then the wedge. L2 is the standard container, and the levels are **not** flipped.
+- **Stroke:** sine 48 Hz, 3.7 g (0.40 mm), 30 deg up.
+
+Two structural steps got here: the README's gated container (-0.07), then the unflipped mid-slot layout (useless on the firmware stroke), then the angled throw that layout was built for. Both L1 and L2 cut by thickness (tunnels). That matches gatecalc's L1 pick and the elite's 78-85% tunnel share since round 0: a width gap lets pasta roll through on edge.
+
+**For the bambu session: this winner needs new CAD before it can be built** (`cad.buildable_with_todays_cad: false`). `gated_container.py` needs three things:
+- a per-container `GATE_X`, here L1 22.2 and L2 53 as today;
+- a drop slot `slot` mm long from the strip's downstream face (8.1 for L1), instead of always ending at OPEN_X;
+- beyond L1's slot, a solid wedge to the +X wall, rising 30 deg from a 0.4 mm lip and capped 2 mm under the wall top.
+
+The tower is built without the 180 deg flip. The sim geometry is `designs_gated.py` with `gx=22.2/53,slot=8.1/7,flip=0`. The strip and its rails must stay clear of the pull tabs (|x| >= 13.15). Until then, winners #1 and #3 (plinko) and the firmware-stroke plinko (best per drive) build with today's scripts.
+
+**Losers (auto section, read; the location labels were fixed this round).**
+- **gated (flipped):** 23-27 grains still on L1's floor. Its elite stays firmware-heavy and never gets a working throw.
+- **gated_mid** bottom half: rice held at or before L1 (12 + 6 per run), quinoa held on L2's floor (10 per run, previously mislabelled "in the drop slot": `locate()` used L1's gate position for every level), and some rice leaking to the catch. That's wrong strokes and gap sizes, the cross-entropy spread.
+- **plinko:** the same small rice-leak / quinoa-hold trade (about 2 per run).
+
+**Next hypothesis.** The top 3 are all vibrating-tool designs, and two are verified clean. What's left to learn is robustness: does the ranking hold if the printer makes openings 0.1 mm tighter or looser, or if the stage reverses faster or slower? The stress test is running now on the winners, the best per drive and the references. After it: round 4, with the stacked demo rig on its up-and-down stroke as a reference.
+

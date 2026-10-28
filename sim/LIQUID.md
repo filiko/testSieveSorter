@@ -213,7 +213,7 @@ So under liquid, how hard a shaken box agitates its specimens is set by `entrain
 - **No new resets**, and the worst overlaps are no larger than dry (the liquid slows impacts).
 - **The liquid costs about 0.8 ms per step** for 60 specimens (933 elements) on an idle core, and 0.9-1.2 ms when 6-8 runs share the machine (memory bandwidth); 0.3 ms for 12 specimens. It is pure numpy and doesn't depend on the scene. Relative to MuJoCo that is +50-67 % on the buzzed tower and +85-150 % on the seesaw, whose MuJoCo step is cheap. In the EntoSieve runs (22,892 plate geoms) a wet run costs about what a dry one does (3.0 against 3.5 ms per step on the 1.5 mm plate), because suspended specimens make fewer contacts.
 - The EntoSieve work adds 90 wet runs of about 193,000 steps and 6 of 920,000, all without a reset (ENTOSIEVE.md).
-- A caution found on the way: sorter.py counts a reset when `d.time` goes backwards, so a state that blows up on **every** step (time stuck at 0.0001 s) is never counted. A bug in an early version of `liquid.py` did exactly that. Every run above reached its full simulated time, so none was affected; a cheap guard would be to also check `results["sim_s"]` against the run's length.
+- A caution found on the way: sorter.py counts a reset when `d.time` goes backwards, so a state that blows up on **every** step (time stuck at 0.0001 s) is never counted. A bug in an early version of `liquid.py` did exactly that. Every run above reached its full simulated time, so none was affected. sorter.py now counts a step that doesn't advance the clock by a full step as a reset too.
 
 ### 8. A Malaise clump, dry against wet (`liquid_check.py clump`)
 

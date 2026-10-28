@@ -331,7 +331,8 @@ def run(cfg: RunConfig) -> dict:
     settle_keep = np.exp(-SETTLE_DAMPING * cfg.dt)
     # MuJoCo answers a NaN/Inf/huge QPOS, QVEL or QACC by resetting mjData and carrying on, so an unstable
     # run would still finish with plausible-looking results. Record each reset (step time) instead of hiding it.
-    # The reset also clears the warning counters, so it is detected by d.time going backwards.
+    # The reset also clears the warning counters, so it is detected by d.time not advancing a full step: going
+    # backwards, or stuck at one step when the state blows up on every step (LIQUID.md section 7).
     resets = []
     if cl:
         cl.bind(m, d, design, rock, wet_src, every, n_settle)
@@ -350,7 +351,7 @@ def run(cfg: RunConfig) -> dict:
             rock.drive(d, i)
         t_before = d.time
         mujoco.mj_step(m, d)
-        if d.time < t_before:
+        if d.time < t_before + 0.5 * m.opt.timestep:
             resets.append(round((i + 1) * cfg.dt, 5))
         if cl:
             cl.step(m, d, i)                         # break overloaded bonds, log peak contact forces

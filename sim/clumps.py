@@ -276,18 +276,22 @@ def _rot(q):
 # ---------- screens, for leaf blinding ----------
 def screen_holes(design):
     """[(zone, top surface z, hole centres (n x 2, tray frame))] for each layer of the design with known holes:
-    a layer's own "hole_centres_mm" if it has them, else the printed square-hole inserts (designs_holder.py)."""
+    a layer's own "hole_centres_mm" if it has them, else the printed square-hole inserts, flat or ribs-across
+    (designs_holder.py). Round-hole and slot screens (screens.py) don't record theirs and are skipped."""
     out = []
     for L in design.info.get("layers", []):
         if "hole_centres_mm" in L:
             xy = np.array(L["hole_centres_mm"], float)
-        elif str(L.get("insert", "")).startswith("sieve_insert_"):
+        elif str(L.get("insert", "")).startswith("sieve_insert_") and L.get("rule", "square") == "square":
             import designs_holder
             si = designs_holder.cad()[1]
-            hole, bar, _t = si.INSERTS[L["insert"]]
+            across = L["insert"] in getattr(si, "ACROSS", {})
+            if not across and L["insert"] not in si.INSERTS:
+                continue
+            hole, bar, _t = (si.ACROSS if across else si.INSERTS)[L["insert"]]
             pitch = hole + bar
             xy = []
-            for cx, cy, wl, ww in si.windows():
+            for cx, cy, wl, ww in (si.across_windows() if across else si.windows()):
                 nx, ny = int((wl - bar) // pitch), int((ww - bar) // pitch)
                 xs = cx + (np.arange(nx) - (nx - 1) / 2) * pitch
                 ys = cy + (np.arange(ny) - (ny - 1) / 2) * pitch

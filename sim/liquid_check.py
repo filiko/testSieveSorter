@@ -8,6 +8,7 @@
     <venv python> liquid_check.py all         all of the above
     <venv python> liquid_check.py cost        resets and wall time per step, dry vs wet: buzzed tower and seesaw (6 workers)
     <venv python> liquid_check.py clump       a Malaise insect clump on the seesaw, dry vs in ethanol (4 workers)
+    <venv python> liquid_check.py sink        how fast the generated Malaise specimens sink in still ethanol and water
 
 References (sources in LIQUID.md): Clift, Grace & Weber 1978 standard sphere curve (Table 5.2); Stokes; exact Stokes
 drag of spheroids (Happel & Brenner 1983 / Chwang & Wu 1975); Hoelzer & Sommerfeld 2008 (orientation-specific);
@@ -445,6 +446,36 @@ def cmd_clump(seeds=(0, 1), workers=4):
         print("    " + clumps.summary(c).strip(), flush=True)
 
 
+def cmd_sink(n=12, seed=0, t_end=3.0, dt=1e-4):
+    """Generated Malaise specimens (n per class, one seed), each released alone in a still, unbounded bath, free to
+    turn: the sinking speed over the last 0.5 s of t_end."""
+    import sorter
+    print("\n| liquid | class | length mm | sinking speed mm/s: min | median | max | 110 mm at the median takes |")
+    print("|---|---|---|---|---|---|---|")
+    for fluid in ("ethanol", "water"):
+        for kind in ("insect_malaise_lt2", "insect_malaise_2to6", "insect_malaise_gt6"):
+            rng = np.random.default_rng(seed)
+            parts = [sorter.make_particle(kind, rng) for _ in range(n)]
+            names = [f"p{i:03d}" for i in range(n)]
+            body = "".join(f'<body name="{nm}" pos="{30 * i} 0 0"><freejoint/>{p.xml}</body>'
+                           for i, (nm, p) in enumerate(zip(names, parts)))
+            m = mujoco.MjModel.from_xml_string(f'<mujoco><option timestep="{dt}" gravity="0 0 {-G}" '
+                                               f'integrator="implicitfast"/><worldbody>{body}</worldbody></mujoco>')
+            d = mujoco.MjData(m)
+            lq = liquid.Liquid({"liquid": fluid}).bind(m, d, parts, names)
+            n_end, n_mark = int(t_end / dt), int((t_end - 0.5) / dt)
+            for i in range(n_end):
+                d.xfrc_applied[:] = 0.0
+                lq.step(m, d, i)
+                mujoco.mj_step(m, d)
+                if i == n_mark:
+                    z0 = d.xpos[1:, 2].copy()
+            v = (z0 - d.xpos[1:, 2]) / (dt * (n_end - 1 - n_mark))
+            L = [p.dims["length"] for p in parts]
+            print(f"| {fluid} | {kind.removeprefix('insect_malaise_')} | {min(L):.2f}-{max(L):.2f} | {v.min():.1f} | "
+                  f"{np.median(v):.1f} | {v.max():.1f} | {110 / np.median(v):.0f} s |", flush=True)
+
+
 if __name__ == "__main__":
     what = sys.argv[1] if len(sys.argv) > 1 else "all"
     nw = int(sys.argv[2]) if len(sys.argv) > 2 else None        # workers for cost / clump
@@ -452,6 +483,8 @@ if __name__ == "__main__":
         cmd_cost(workers=nw or 6)
     if what == "clump":
         cmd_clump(workers=nw or 4)
+    if what == "sink":
+        cmd_sink()
     if what in ("stokes", "all"):
         cmd_stokes()
     if what in ("settle", "all"):

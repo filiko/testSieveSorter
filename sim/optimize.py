@@ -135,16 +135,18 @@ STUDIES["seesaw"] = dict(STUDIES["demo"], seesaw=True,
 # sifting". Separate trays, each box on its own actuator (boxes.py: a tilt and a vibration per level, kinematic, lab
 # frame); the real Malaise mix, stratified so the rare > 6 mm class has 12 specimens, scores weighted back to the real
 # class shares. Insects need the stiff contacts (LAYERS.md). Wet (the user, same day: "actually have wet insects
-# simulated through"): the whole tower under ethanol, the samples' own liquid, as EntoSieve sorts under water
-# (liquid.py, LIQUID.md). How much of the liquid in a shaken box moves with it (entrain) is unknown and decides whether
-# a box agitates its specimens at all, so every candidate runs at entrain 0, 0.5 and 1 (LIQUID.md's range for open
-# perforated trays under the surface) and is scored on all three. Ethanol viscosity stays at the table's 1.4 mPa s
-# (ASSUMED, 1.2-1.6: a smaller effect than entrain). liquid_sets: each entry is (label, RunConfig.liquid or None), and
-# every candidate runs on every friction set x liquid set x seed. Override with run --liquid-sets '<json list of
-# [label, dict or null]>' (pass it on every command of a study); the keys of the dict are sim/liquid.py's.
-SIFT_WET = [("ethanol, still", {"liquid": "ethanol", "entrain": 0.0}),
-            ("ethanol, half moves", {"liquid": "ethanol", "entrain": 0.5}),
-            ("ethanol, moves with box", {"liquid": "ethanol", "entrain": 1.0})]
+# simulated through"), the way BugSorter runs: the trays in air, the specimens straight out of the sample's ethanol
+# (spray.py wet0 = 1), and its fixed jets spraying ethanol from above (push, wetting, capillary cling). Not under a
+# bath: submerged in ethanol, liquid.py sinks the < 2 mm specimens at a median 1.4 mm/s (0.4-8.4), so a tower 110-220
+# mm deep needs minutes per sort, as EntoSieve's 6 min per plate does, and a 12 s run would only measure sinking
+# (LIQUID.md, "A bath is slow"). How hard a wet specimen clings (adhesion_scale) is the big unknown, so every candidate
+# runs at a light and a strong cling (ASSUMED until BENCH.md's wet tilt test). liquid_sets: each entry is (label,
+# RunConfig.liquid or None, or {"cfg": RunConfig fields}), and every candidate runs on every friction set x liquid
+# set x seed. Override with run --liquid-sets '<json list of [label, dict or null]>' (pass it on every command of a
+# study).
+SIFT_SPRAY = {"jets": "default", "liquid": "ethanol"}
+SIFT_WET = [("sprayed, light cling", {"cfg": {"spray": {**SIFT_SPRAY, "params": {"wet0": 1.0, "adhesion_scale": 0.1}}}}),
+            ("sprayed, strong cling", {"cfg": {"spray": {**SIFT_SPRAY, "params": {"wet0": 1.0, "adhesion_scale": 0.5}}}})]
 STUDIES["sift"] = {
     "title": "EXPLORATORY: the real Malaise mix on separate trays, each box moving on its own (boxes.py)",
     "mix": dict(insects.MALAISE_MIX_STRATIFIED),
@@ -152,8 +154,8 @@ STUDIES["sift"] = {
     "boxes": True, "families": ("sift",), "dt": 1.25e-4, "timeconst": 2.5e-4,
     "screen_s": 6.0, "full_s": 12.0, "screen_seeds": 1, "full_seeds": 2,
     "liquid_sets": SIFT_WET,
-    "wall_per_sim_s": 11.5,      # the dry pilot's 7.2 s on 8 workers (5.1-10.8; round holes cost the most), plus the
-                                 # liquid's +50-67 % (LIQUID.md section 7); for `plan`
+    "wall_per_sim_s": 16.5,      # sprayed and wet: 2.2x the dry pilot's 7.2 s on 8 workers (5.1-10.8; round holes cost the most)
+                                 # (the jets and the cling, measured 4 at a time in a 10 s run); for `plan`
     "notes": ["**Separate trays, each moving on its own** (`boxes.py`, `sim/BOXES.md`): each box has its own tilt and "
               "vibration, prescribed kinematically (no actuator dynamics), and each seed draws its own phase for "
               "every box, since independent actuators don't hold a phase. The catch pan stays still.",
@@ -540,9 +542,9 @@ FAMILIES = {
         "spec": inserts_spec, "inject": inserts_inject, "ok": inserts_ok, "cad": inserts_cad, "show": inserts_show,
     },
     "sift": {
-        "params": [P("shape1", 0, 0, 0, ("square", "round", "slot")), P("a1", 1.8, 4.5, XY_STEP),
+        "params": [P("shape1", 0, 0, 0, ("square", "round", "slot")), P("a1", 1.8, 7.0, XY_STEP),
                    P("bar1", 0.8, 2.0, XY_STEP), P("shape2", 0, 0, 0, ("square", "round", "slot")),
-                   P("a2", 0.7, 1.9, XY_STEP), P("bar2", 0.8, 1.6, XY_STEP), P("pitch", 55.0, 110.0, 5.0),
+                   P("a2", 0.7, 2.6, XY_STEP), P("bar2", 0.8, 1.6, XY_STEP), P("pitch", 55.0, 110.0, 5.0),
                    P("tshape", 0, 0, 0, ("constant_speed", "sine")),
                    *[q for k in SIFT_LEVELS for q in (
                        P(f"tilt{k}", 0, 0, 0, ("none", "tilt")), P(f"deg{k}", 2.0, 12.0, 0.5),
@@ -634,6 +636,8 @@ BASELINES["sift"] = [
                                                  **_SIFT_BUZZ}),
     ("sift", "the same trays with round holes (3.0 / 1.6), rocking and buzzing",
      {**_SIFT_TRAYS, "shape1": "round", "shape2": "round", **_SIFT_ROCK, **_SIFT_BUZZ}),
+    ("sift", "round holes at the body-length cuts, as EntoSieve's plates (5.0 / 2.0), rocking and buzzing",
+     {**_SIFT_TRAYS, "shape1": "round", "a1": 5.0, "shape2": "round", "a2": 2.0, **_SIFT_ROCK, **_SIFT_BUZZ}),
 ]
 BASELINES["sift_pilot"] = BASELINES["sift"][:2]
 COUPLED = {"family": "coupled", "label": "COUPLED, the old seesaw: the same insect-cut trays 55 mm apart on rocking.py's "
@@ -846,13 +850,16 @@ def with_phases(stroke, seed):
 
 
 def liquid_sets(study, base):
-    """[(label or None, extra cfg)]: the study's liquid sets, or one no-op entry. A wet set needs RunConfig.liquid
-    (the liquid branch); a dry one (None) is passed only if the field exists."""
+    """[(label or None, extra cfg)]: the study's liquid sets, or one no-op entry. A set is a RunConfig.liquid dict,
+    None (dry; passed only if the field exists) or {"cfg": {RunConfig fields}}, e.g. a spray."""
     sets = STUDIES[study].get("liquid_sets")
     if not sets:
         return [(None, {})]
     out = []
     for label, liq in sets:
+        if isinstance(liq, dict) and "cfg" in liq:   # RunConfig fields, e.g. a spray
+            out.append((label, dict(liq["cfg"])))
+            continue
         if liq is not None and "liquid" not in base:
             raise SystemExit(f"liquid set {label!r} needs sorter.RunConfig.liquid, which isn't there yet: merge the "
                              "liquid branch first")
@@ -1383,15 +1390,20 @@ def leaderboard_md(study, cands, summ, meta):
                   "sizes (`sim/insects.py`), and the classes use body length, which no gate cuts directly.", ""]
     for note in st.get("notes", []):
         lines += [note, ""]
+    wet_sets = [liq for _, liq in st.get("liquid_sets") or [] if liq is not None]
     if st.get("liquid_sets"):
         lines += ["Robustness sets: every friction set x every liquid set ("
                   + ", ".join(f"{lab}: {liq if liq is not None else 'none'}" for lab, liq in st["liquid_sets"])
                   + f") x {len(FULL_SEEDS)} seeds.", ""]
     lines += ["**The sim ranks designs; it does not predict real percentages.** It is uncalibrated until "
-              "`calibrate.py` has bench counts, has no water, rigid particles, and about 80 particles per run. "
+              "`calibrate.py` has bench counts, "
+              + ("has no flowing liquid (LIQUID.md)" if wet_sets else "has no water")
+              + ", rigid particles, and about 80 particles per run. "
               "Sizes are simulated at the as-printed opening, nominal - "
               f"{UNDERSIZE_MM} mm (ASSUMED until the hole gauge is measured).", "",
-              f"Ranked by the robust score (mean - 1 sd) over 3 friction sets x {len(FULL_SEEDS)} seeds at the full "
+              f"Ranked by the robust score (mean - 1 sd) over 3 friction sets x "
+              + (f"{len(st['liquid_sets'])} liquid sets x " if st.get("liquid_sets") and len(st["liquid_sets"]) > 1 else "")
+              + f"{len(FULL_SEEDS)} seeds at the full "
               f"{FULL_S:g} s run. Score per run = min over classes of min(purity, recovery), minus {W_JAM} x jammed "
               f"share, {W_LOST} x lost share and {W_T90} x t90/duration. Failed (unstable) runs score {FAIL_SCORE:g}. "
               "Only candidates promoted to the full run are ranked; screened-only ones are in the log. "

@@ -93,6 +93,7 @@ PARAMS = {
     "wet_damping_per_s": 0.0,   # 1/s, drag on a wet body's velocity relative to the tray, F = -m c w v
     "shadow": False,            # bool, a geom hidden from the nozzle by another particle body gets no push or wetting
     "ramp_s": 0.01,             # s, a jet's flux ramps up linearly over this after it switches on (travel, valve)
+    "wet0": 0.0,                # -, every particle's wetness at the start; 1 = straight out of the sample's ethanol
 }
 LIQUIDS = {"water": {"rho": 1.0e-3, "gamma": 72.0},     # g/mm^3, g/s^2 (= mN/m)
            "ethanol": {"rho": 0.79e-3, "gamma": 22.0}}
@@ -221,7 +222,8 @@ class Spray:
                                             model.geom_aabb[self.pg, 3:])
         self.mu_dry = model.geom_friction[self.pg, 0].copy()
         self.wet = np.zeros(model.nbody)
-        self._w = np.zeros(len(self.ub))
+        self._w = np.full(len(self.ub), float(self.p["wet0"]))
+        self.wet[self.ub] = self._w
         self._gamma = np.full(len(self.ub), self._J["gamma"][0, 0] if self.jets else LIQUIDS["water"]["gamma"])
         self._t_prev = None
         if self.p["adhesion_scale"] > 0 and len(self.pg):

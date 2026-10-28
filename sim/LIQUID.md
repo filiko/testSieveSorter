@@ -9,6 +9,7 @@ Malaise samples sit in ethanol, and BugSorter sorts wet. In liquid a specimen we
 - No new MuJoCo resets at the insect time step; the liquid costs about 0.8-1.2 ms per step for 60 specimens (+50-150 %).
 - Wet, a Malaise clump on the seesaw doesn't break up (dry: 80 of 190 bonds in 4 s), because it loses three quarters of its weight in ethanol.
 - EntoSieve: the length cut comes out, the efficiencies don't (no stirring or jets in a uniformly moving liquid).
+- A bath is slow. In still ethanol the < 2 mm specimens sink at a median 1.4 mm/s, so 110 mm of tower takes them over a minute (water: four minutes). A sorter that runs submerged needs minutes per sort, as EntoSieve's 6 min per plate does. The `sift` study therefore sorts wet the way BugSorter does: the trays in air, the specimens wet, the jets spraying ethanol.
 
 ## Use
 
@@ -232,6 +233,23 @@ A clump of 40 `insect_malaise` specimens with a leaf, two twigs and 10 dirt grai
 - This matches the direction the literature reports (clumping is more common in wet sieving, [Elbrecht et al. 2021](https://pmc.ncbi.nlm.nih.gov/articles/PMC8500090)), but the bond strengths themselves were set from **dry** loads (CLUMPS.md) and k_wet is ASSUMED. Under liquid a capillary bond has no meniscus at all, so only entanglement holds; nobody has measured it.
 - For design: a breaker that relies on the clump's weight (tumbling, dropping) does far less in liquid. Under liquid, flow (jets, the spray, a draining stroke) has to do the work, and the sim models flow only crudely (Limits).
 - The wet runs had no resets. One dry run had 4 (at the insect-clump time step clumps.py asks for), so its numbers are not valid: a reset sets the clock back, which is also why 39 of its bond breaks are logged "in the settle". The other dry run is clean.
+
+## A bath is slow: how fast the Malaise mix sinks (`liquid_check.py sink`)
+
+Twelve generated specimens per class (`sorter.make_particle`, seed 0), each released alone in a still, unbounded bath and free to turn; the speed over the last 0.5 s of 3 s.
+
+| Liquid | Class | Length mm | Sinking speed mm/s: min | median | max | 110 mm at the median takes |
+|---|---|---|---|---|---|---|
+| ethanol | < 2 mm | 0.42-1.95 | 0.4 | 1.4 | 8.4 | 79 s |
+| ethanol | 2-6 mm | 2.00-4.29 | 2.0 | 8.9 | 21.4 | 12 s |
+| ethanol | > 6 mm | 6.06-14.45 | 10.4 | 22.7 | 69.9 | 5 s |
+| water | < 2 mm | 0.42-1.95 | 0.1 | 0.4 | 2.7 | 253 s |
+| water | 2-6 mm | 2.00-4.29 | 0.6 | 2.8 | 7.9 | 39 s |
+| water | > 6 mm | 6.06-14.45 | 3.7 | 8.5 | 27.3 | 13 s |
+
+- **What it means for a design.** Two screens over a catch pan, 55-110 mm apart, put 110-220 mm of liquid between the top screen and the catch. Under ethanol the smallest class needs one to three minutes just to sink that far, whatever the screens do; under water, four to eight. EntoSieve runs 6 minutes per plate for the same reason, and its smallest class is the one it loses most (paper, test 2: floating leafhoppers).
+- **What it means for the sim.** A 12 s optimizer run of a submerged tower would score how fast things sink, not how well the screens sort, and simulating minutes per run is out of the optimizer's budget. So the `sift` study (`optimize.py`, BOXES.md) runs wet in air, as BugSorter does: specimens start fully wet (`spray.py` `wet0` = 1), the jets spray ethanol, and wet specimens cling to the screens and to each other (capillary adhesion, at a light and a strong setting).
+- **Caveats.** Drag uses the clamped leg radius (0.06 mm), which overstates leg drag by 10-15 % (Limits), so the real small specimens may sink a little faster. Nobody has timed a real Malaise specimen sinking; two hours of video would (ENTOSIEVE.md section 7).
 
 ## Limits
 

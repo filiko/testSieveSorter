@@ -130,8 +130,8 @@ Every level's opening is free, so a tower of 3–5 levels (2–4 screens and the
 | parameter | range | step | note |
 |---|---|---|---|
 | `shape1`, `shape2` | square / round / slot | | |
-| `a1` | 1.8–4.5 mm | 0.1 | nominal; the sim builds nominal − 0.15 |
-| `a2` | 0.7–1.9 mm | 0.1 | |
+| `a1` | 1.8–7.0 mm | 0.1 | nominal; the sim builds nominal − 0.15. Widened from 1.8–4.5 on Oct 27: wet specimens lie flat and holes cut by body length (ENTOSIEVE.md), so the > 6 mm cut can need a hole near 5–6 mm |
+| `a2` | 0.7–2.6 mm | 0.1 | widened from 0.7–1.9, for the same reason (the 2 mm cut) |
 | `bar1`, `bar2` | 0.8–2.0, 0.8–1.6 mm | 0.1 | nominal; the sim builds + 0.15 |
 | `pitch` | 55–110 mm | 5 | |
 | `tshape` | constant_speed / sine | | one tilt profile for both boxes |
@@ -149,8 +149,8 @@ Every level's opening is free, so a tower of 3–5 levels (2–4 screens and the
   - peak acceleration ≤ 10 g. ASSUMED: what one small actuator gives a box. Searching vib_mm and vib_hz on their own put 60% of draws over it, hence the vib_g parameter;
   - neighbouring boxes at least 3 mm apart at every phase combination (`boxes.clearance`, ASSUMED margin). A run whose boxes can touch also fails in the child.
 - **Robustness.** Every candidate runs on every friction set (0.3 / 0.4 / 0.5) × every liquid set × the seeds; ranked by mean − sd, as the other studies. **Each seed draws its own phase for every box's tilt and vibration** (fixed by the seed, so runs repeat): independent actuators don't hold a phase, so a design must sift whatever the phases.
-- **The liquid slot.** `STUDIES["sift"]["liquid_sets"]` is `[("dry", None)]` today: a no-op, and `RunConfig.liquid` is only passed when the field exists. Once the liquid branch merges, put its uncertain parameters there (e.g. two bath levels × two `entrain` values), or pass `--liquid-sets '<json>'`; each set multiplies the runs. Cache keys leave out a `liquid` of None, so the merge doesn't invalidate any earlier study's cache.
-- **References.** LAYERS.md's insect-cut trays (square 3.0 / 1.6 nominal, 55 mm apart) with each box rocking ±10° at 2 s plus its own 1.9 g, 40 Hz buzz; the same with no tilt; the same with round holes; and **COUPLED**: the same trays on `rocking.py`'s seesaw (neighbours locked, catch pan rocking, one shared buzz).
+- **Wet, the way BugSorter runs.** The trays are in air. The specimens start fully wet, straight out of the sample's ethanol (`spray.py` `wet0` = 1), and the design's two fixed jets spray ethanol from 60 mm above the top screen. Wet specimens cling to the screens and to each other (capillary adhesion), and how hard is unknown, so every candidate runs at a light cling (`adhesion_scale` 0.1) and a strong one (0.5): `STUDIES["sift"]["liquid_sets"]`, each set multiplying the runs. Not under a bath: submerged, the < 2 mm specimens sink at about 1.4 mm/s and a 12 s run would only measure sinking ([LIQUID.md](LIQUID.md), "A bath is slow"). A set can be a `RunConfig.liquid` dict, None (dry) or `{"cfg": {RunConfig fields}}`; override with `--liquid-sets '<json>'`. Cache keys leave out a `liquid` of None, so no earlier study's cache changed. Wet runs cost about 2.2× a dry one (16 s of wall per simulated second, 4 at a time).
+- **References.** LAYERS.md's insect-cut trays (square 3.0 / 1.6 nominal, 55 mm apart) with each box rocking ±10° at 2 s plus its own 1.9 g, 40 Hz buzz; the same with no tilt; the same with round holes; round holes at the body-length cuts, as EntoSieve's plates (5.0 / 2.0); and **COUPLED**: the same trays on `rocking.py`'s seesaw (neighbours locked, catch pan rocking, one shared buzz).
 - **Budget.** Screen 6 s on 1 seed, full 12 s on 2 seeds, at dt 0.125 ms and contact time constant 0.25 ms (insects need the stiff contacts). Round 0: 16 Latin-hypercube candidates and 4 references; later rounds 10 cross-entropy candidates.
 
 ## The dry pilot

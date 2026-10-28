@@ -72,7 +72,7 @@ class RunConfig:
     seed: int = 0
     dt: float = 5e-4
     contact: dict = field(default_factory=lambda: {"friction": 0.4, "timeconst": 0.002, "dampratio": 1.0})
-    spray: dict | None = None
+    spray: dict | None = None        # spray.py: {"jets": "default" | "bench" | [Jet kwargs], "liquid": the jets', "params"}
     clump: dict | None = None        # clumps.py: a clump of specimens and debris joined by breakable bonds
     liquid: dict | None = None       # liquid.py: a bath (buoyancy, drag, added mass, wetting); None = dry
     record_fps: float = 30.0
@@ -290,7 +290,7 @@ def run(cfg: RunConfig) -> dict:
             jets = design.jets_default
         elif jets == "bench":                       # the nozzles the team measured (BENCH.md step 7)
             jets = spray.jets_from_csv(Path(__file__).resolve().parent / "bench" / "jets.csv")
-        jets = [spray.Jet(**j) for j in jets]
+        jets = [spray.Jet(**{**j, **({"liquid": cfg.spray["liquid"]} if "liquid" in cfg.spray else {})}) for j in jets]
         extras = spray.Spray.mjcf_extras(names, cfg.spray.get("params"))
     m = build_model(cfg, design, particles, rng, extras, rock, cl)
     d = mujoco.MjData(m)

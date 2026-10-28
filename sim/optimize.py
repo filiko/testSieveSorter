@@ -134,18 +134,26 @@ STUDIES["seesaw"] = dict(STUDIES["demo"], seesaw=True,
 # The user (2026-10-27): "the boxes are individually shaking it doesnt matter that theyre synced what matters is the
 # sifting". Separate trays, each box on its own actuator (boxes.py: a tilt and a vibration per level, kinematic, lab
 # frame); the real Malaise mix, stratified so the rare > 6 mm class has 12 specimens, scores weighted back to the real
-# class shares. Insects need the stiff contacts (LAYERS.md). liquid_sets: the slot for the liquid branch's uncertain
-# parameters (bath level, entrain); each entry is (label, RunConfig.liquid or None), and every candidate runs on every
-# friction set x liquid set x seed. None (dry) is a no-op, also before RunConfig has a liquid field. Override with
-# run --liquid-sets '<json list of [label, dict or null]>'; the keys of the dict are sim/liquid.py's.
+# class shares. Insects need the stiff contacts (LAYERS.md). Wet (the user, same day: "actually have wet insects
+# simulated through"): the whole tower under ethanol, the samples' own liquid, as EntoSieve sorts under water
+# (liquid.py, LIQUID.md). How much of the liquid in a shaken box moves with it (entrain) is unknown and decides whether
+# a box agitates its specimens at all, so every candidate runs at entrain 0, 0.5 and 1 (LIQUID.md's range for open
+# perforated trays under the surface) and is scored on all three. Ethanol viscosity stays at the table's 1.4 mPa s
+# (ASSUMED, 1.2-1.6: a smaller effect than entrain). liquid_sets: each entry is (label, RunConfig.liquid or None), and
+# every candidate runs on every friction set x liquid set x seed. Override with run --liquid-sets '<json list of
+# [label, dict or null]>' (pass it on every command of a study); the keys of the dict are sim/liquid.py's.
+SIFT_WET = [("ethanol, still", {"liquid": "ethanol", "entrain": 0.0}),
+            ("ethanol, half moves", {"liquid": "ethanol", "entrain": 0.5}),
+            ("ethanol, moves with box", {"liquid": "ethanol", "entrain": 1.0})]
 STUDIES["sift"] = {
     "title": "EXPLORATORY: the real Malaise mix on separate trays, each box moving on its own (boxes.py)",
     "mix": dict(insects.MALAISE_MIX_STRATIFIED),
     "classes": STUDIES["insects"]["classes"], "shares": dict(insects.MALAISE_SHARES), "exploratory": True,
     "boxes": True, "families": ("sift",), "dt": 1.25e-4, "timeconst": 2.5e-4,
     "screen_s": 6.0, "full_s": 12.0, "screen_seeds": 1, "full_seeds": 2,
-    "liquid_sets": [("dry", None)],
-    "wall_per_sim_s": 7.2,       # the dry pilot's mean on 8 workers (5.1-10.8; round holes cost the most); for `plan`
+    "liquid_sets": SIFT_WET,
+    "wall_per_sim_s": 11.5,      # the dry pilot's 7.2 s on 8 workers (5.1-10.8; round holes cost the most), plus the
+                                 # liquid's +50-67 % (LIQUID.md section 7); for `plan`
     "notes": ["**Separate trays, each moving on its own** (`boxes.py`, `sim/BOXES.md`): each box has its own tilt and "
               "vibration, prescribed kinematically (no actuator dynamics), and each seed draws its own phase for "
               "every box, since independent actuators don't hold a phase. The catch pan stays still.",
@@ -156,7 +164,8 @@ STUDIES["sift"] = {
 }
 # A short dry pilot of the same study: proves the machinery end to end. Not a result.
 STUDIES["sift_pilot"] = dict(STUDIES["sift"], title="PILOT (dry, short, not a result): the sift study's machinery",
-                             screen_s=2.0, full_s=4.0, screen_seeds=1, full_seeds=1)
+                             screen_s=2.0, full_s=4.0, screen_seeds=1, full_seeds=1, liquid_sets=[("dry", None)],
+                             wall_per_sim_s=7.2)
 
 # ---------------------------------------------------------------- families
 

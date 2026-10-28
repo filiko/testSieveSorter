@@ -14,9 +14,11 @@ Details: [docs/sessions/clump-breakup.md](sessions/clump-breakup.md).
 - **The stack:** separate holder boxes (about 140 × 104 × 25 mm), each holding one sieve insert (131.4 × 95.4 mm). Coarse is on top, finer below, and a catch pan at the bottom. The breaker layer (step 1) goes on top.
 - **The boxes are separate**, stacked one above the other. They aren't one block, and they aren't side by side.
 
-## 3. The motion: each tray seesaws, neighbours alternate (confirmed by the user)
-- **Seesaw, ends tip.** Each tray rocks about **its own pivot across its middle**: a horizontal axis along the tray's width (Y), through its centre. The two short ends (−X and +X) go up and down in turn. **The angle:** **±10° is the default; sweep 5–15°.** ±25° looked too wide in the replays, so don't use 20–30°. Grains slide end to end across the sieve, as in a gold pan; rice on plastic starts sliding at about 22°.
-- **Each level has its own pivot, and neighbours alternate:** opposite phase, so when one tray tips its −X end down, the trays above and below tip it up. The user chose this so material doesn't fly off. Whatever drops from a level lands on a tray tilted the other way.
+## 3. The motion: each box shakes on its own; sifting is what counts
+- **Updated by the user, Oct 27:** "the boxes are individually shaking, it doesn't matter that they're synced, what matters is the sifting." Each box can have its own motion: tilt, vibration, direction, phase. Syncing and alternating aren't requirements. The optimizer picks each box's motion for the best sifting (`sim/BOXES.md`, the `sift` study), with the insects wet (`sim/LIQUID.md`). The hardware then follows the winning motion: one small actuator per box, or a shared drive if the winner allows it.
+- **The seesaw below is one option it can choose,** not a constraint. It was the hackathon's working model:
+  - **Seesaw, ends tip.** Each tray rocks about **its own pivot across its middle**: a horizontal axis along the tray's width (Y), through its centre. The two short ends (−X and +X) go up and down in turn. **The angle:** **±10° is the default; sweep 5–15°.** ±25° looked too wide in the replays, so don't use 20–30°. Grains slide end to end across the sieve, as in a gold pan; rice on plastic starts sliding at about 22°.
+  - **Each level has its own pivot, and neighbours alternate:** opposite phase, so when one tray tips its −X end down, the trays above and below tip it up. The user chose this so material doesn't fly off. Whatever drops from a level lands on a tray tilted the other way.
 - **Consequence for the hardware:** when neighbours tilt opposite ways, their facing ends close in by about L·sin θ (L ≈ 140 mm: 48 mm at 20°, 59 mm at 25°, 70 mm at 30°). Measured on the real holder solid (`cad/seesaw_tower.py`, PR #14, 3 mm clearance, pivot assumed at the box centre). The **+X mounting tab** decides the spacing:
 
   | Tilt | Pitch with the tab | Tab cut off |
@@ -32,7 +34,8 @@ Details: [docs/sessions/clump-breakup.md](sessions/clump-breakup.md).
   - the motion profile: constant angular speed with hard reversals (as the firmware drives its stage) or a smooth sine.
 - **Superseded:** earlier notes in this file (rigid up-and-down translation, then "yaw about the +X tab") and the optimizer's default `rock_axis: x` (long sides tipping). The axis is **Y** (the ends tip). The pure translation strokes (`angle_deg`, the firmware stroke, VERTICAL.md, the leaderboards before 10:50) are simplifications; re-check them under the seesaw before the pitch quotes them.
 
-## 3b. The drive (proposed, not built)
+## 3b. The drive for the alternating seesaw (proposed, not built)
+This drive only fits the alternating seesaw. If the `sift` study's winning motions differ per box, each box gets its own actuator instead.
 - **Two push rods hang from BugSorter's one linear stage.** Rod A, at x = +R, drives levels 0 and 2; rod B, at x = −R, drives levels 1 and 3. Both run on the +Y side, outside the boxes.
 - **Why they alternate:** when the stage rises, the levels on rod A lift their +X ends and the levels on rod B lift their −X ends, so neighbours tilt opposite ways.
 - **The angle comes from the stroke:** θ = atan(stroke / 2R). It's atan because each rod's cross-pin rides a slot fixed in the box while the rod stays vertical. With R = 56.7 mm, the firmware's default 2 cm stroke gives ±10°. The web app's top and bottom positions set the angle, and its speed sets the period (2 × stroke / speed).
@@ -41,7 +44,7 @@ Details: [docs/sessions/clump-breakup.md](sessions/clump-breakup.md).
 - Geometry, parts and assumptions: [cad/PRODUCT.md](../cad/PRODUCT.md). The sim doesn't model the drive: it prescribes each level's angle directly (section 5).
 
 ## 4. Liquid
-Samples are in ethanol, and the rig sprays from fixed jets above. `sim/spray.py` models push, wetting and capillary adhesion. Wetting should also weaken clump bonds. `sim/liquid.py` puts the sorter in a bath with a lab-fixed surface (buoyancy, drag, added mass, wetting; `--liquid`); how much of the liquid moves with each shaken box (`entrain`) is unknown and swept ([sim/LIQUID.md](../sim/LIQUID.md)).
+Samples are in ethanol, and the rig sprays from fixed jets above. `sim/spray.py` models push, wetting and capillary adhesion. Wetting should also weaken clump bonds. `sim/liquid.py` puts the sorter in a bath with a lab-fixed surface (buoyancy, drag, added mass, wetting; `--liquid`); how much of the liquid moves with each shaken box (`entrain`) is unknown and swept ([sim/LIQUID.md](../sim/LIQUID.md)). The `sift` study sorts with the whole tower under ethanol and scores every candidate at entrain 0, 0.5 and 1. Spraying in air, the bench rig's way, is the other wet mode; it isn't in the study yet.
 
 ## 5. What the sim models, and what it doesn't
 - **Modelled:** the trays (with their real mount point and rocking), the particles (specimens, grains, clumps, debris), the stroke, the spray and, optionally, the liquid bath (no flow solver).

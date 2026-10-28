@@ -6,6 +6,8 @@
     plinko                 plinko layers in the holder box (designs_holder.py)
     gated:<slope>,<strips> the gated container tower, one strip per level (designs_gated.py),
                            e.g. gated:2,w5p0,t1p4
+    entosieve:<screen>     EntoSieve's sieve container with a round-hole plate (designs_entosieve.py),
+                           e.g. entosieve:r1p5b1p5
 
 Geometry is computed from the CAD parameters, so the sim follows the CAD when it changes.
 The pool's rounded corners and the gate grooves a strip fills are left out; the empty cover
@@ -149,6 +151,9 @@ def build(spec):
     if kind == "breaker":
         import designs_breaker
         return designs_breaker.build(args)
+    if kind == "entosieve":
+        import designs_entosieve
+        return designs_entosieve.build(args)
     raise ValueError(f"unknown design {spec!r}: use pool:<g1>,<g2>, inserts:<a>,<b>, plinko, gated:<slope>,<strips> "
                      f"or breaker:<key>=<value>,...")
 

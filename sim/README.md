@@ -8,6 +8,7 @@ Status: first build, 2026-10-24. Nothing here is calibrated yet. Until the bench
 
 - **Engine.** MuJoCo 3.17 on the CPU. Units are mm, g and s.
 - **Shaking.** The sim runs in the tray's own frame. The shake is applied as an extra force on every particle: gravity minus the tray's acceleration. This is exact for a tray that slides without rotating. Jets stay fixed in the lab while the tray moves under them.
+- **Liquid.** Dry by default. `--liquid ethanol:level_mm=...,entrain=...` puts the sorter in a bath whose surface is fixed in the lab: every particle gets buoyancy, drag against the local liquid, added mass and wetting ([LIQUID.md](LIQUID.md)). In ethanol a specimen weighs about a quarter of its dry weight, in water a twentieth, so insect results from dry runs don't carry over.
 - **Geometry.** Built from the same parameters as the CAD in `..\cad\`, so the sim follows the CAD when it changes.
 - **Contacts.** Soft: a pressed grain sinks a little into the tray, and the tightest gates leave only 0.15–0.3 mm of room (quinoa in a 1.4 mm tunnel). `RunConfig`'s default (2 ms contact time constant at a 0.5 ms step) lets grains sink about 0.5 mm, so pass the settings from [PERF.md](PERF.md) explicitly, or let `contact_rule.py` pick them from the design's tightest clearance and the stroke (see [VERTICAL.md](VERTICAL.md), Contact rule). Each run reports its worst overlap, so you can check it against the clearance.
 
@@ -20,7 +21,7 @@ Status: first build, 2026-10-24. Nothing here is calibrated yet. Until the bench
 | `clumps.py` | The real input: a clump of specimens (or grain surrogates) with leaves, twigs and dirt, packed into a ball and held by breakable bonds that weaken when wet; break-up, damage and leaf-blinding metrics ([CLUMPS.md](CLUMPS.md)) |
 | `clump_study.py` | A clump across bond sets x spray on/off x seeds, in parallel, with a summary table |
 | `designs.py` | Pool sorter, plus the registry for every design spec |
-| `designs_holder.py` | BioKEA's holder tower with sieve inserts (glued mesh or printed), and the plinko layers |
+| `designs_holder.py` | BioKEA's holder tower with sieve inserts (glued mesh, printed square holes, or round holes `r<hole>b<bar>`), and the plinko layers |
 | `designs_gated.py` | The gated container tower (`cad/gated_container.py`): sloped floors, swappable gate strips, levels spaced with `pitch=` |
 | `designs_breaker.py` | The breaker layer on top of a seesaw tower (`cad/breaker_layer.py`), taking the same spec string as the CAD |
 | `grains.py` | Rice, quinoa, chickpeas, pasta (frozen for the optimizer), plus white rice as photographed, brown rice, black rice, wild rice, chia and couscous |
@@ -28,6 +29,12 @@ Status: first build, 2026-10-24. Nothing here is calibrated yet. Until the bench
 | `insects.py` | Generated preserved specimens: compact, elongate, long-legged |
 | [INSECT_AUDIT.md](INSECT_AUDIT.md) | What `insects.py` gets right and wrong against real Malaise samples, and six ranked proposals |
 | `spray.py` | Fixed jets: push, wetting, wet friction and capillary cling |
+| `liquid.py` | A liquid bath (water or 96 % ethanol) with a lab-fixed surface: buoyancy, orientation-aware drag, added mass, wetting; `--liquid ethanol:level_mm=...,entrain=...` ([LIQUID.md](LIQUID.md)) |
+| `liquid_check.py` | The liquid model's validation: settling against published correlations, floating, frames, a shaken box, cost, a wet clump |
+| [LIQUID.md](LIQUID.md) | How the liquid is modelled, the validation tables, the limits, and what the optimizer should treat as uncertain |
+| `designs_entosieve.py` | EntoSieve's sieve container with a round-hole plate (`entosieve:r1p5b1p5`), for the replication |
+| `entosieve.py` | The EntoSieve replication: the firmware's stroke (`--stroke flexy:...`), the batch, and the per-class report ([ENTOSIEVE.md](ENTOSIEVE.md)) |
+| [ENTOSIEVE.md](ENTOSIEVE.md) | EntoSieve (Ascenzi et al. 2025) rebuilt in the sim, dry and wet, against the paper's per-class efficiencies |
 | `viewer.py` | Builds a standalone three.js replay page for a run |
 | `record_view.py` | Renders a run's replay page to a frame-exact MP4 through headless Chrome |
 | `side_by_side.py` | Real footage next to a sim clip, scaled, labelled and synced, for the demo |
@@ -53,6 +60,13 @@ From `sim\`, in the WSL venv (`~/venvs/sieve`; see the main README's *Running th
 python sorter.py --design inserts:5mm_across,2mm_across,pitch=55,holder=seesaw --mix pasta=10,rice=12,quinoa=15 \
     --stroke seesaw:deg=10,period_s=2,vib_mm=0.3,vib_hz=40 --duration 12 --dt 0.000125 --timeconst 0.00025 --out out/runs/stack
 python viewer.py out/runs/stack --open
+```
+
+The same tower wet, the whole stack under ethanol, the liquid in each box moving half with it ([LIQUID.md](LIQUID.md)):
+
+```
+python sorter.py --design inserts:5mm_across,2mm_across,pitch=55,holder=seesaw --mix insect_malaise_lt2=24,insect_malaise_2to6=24,insect_malaise_gt6=12 \
+    --stroke seesaw:deg=10,period_s=2,vib_mm=0.3,vib_hz=40 --liquid ethanol:level_mm=300,entrain=0.5 --duration 12 --dt 0.000125 --timeconst 0.00025 --out out/runs/stack_wet
 ```
 
 Outputs go in `sim\out\`, which is not committed.

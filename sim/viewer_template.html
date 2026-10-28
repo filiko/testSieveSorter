@@ -215,6 +215,8 @@ function fillHeader(nFrames) {
     ['Stroke', strokeText(cfg.stroke)],
     ['Duration', `${num(cfg.duration_s)} s, settle ${num(cfg.settle_s)} s, seed ${cfg.seed ?? '?'}`],
     ['Spray', spray],
+    ...(cfg.liquid ? [['Liquid', `${cfg.liquid.liquid ?? 'ethanol'}, surface ${cfg.liquid.level_mm ?? 'above all'} mm (lab), ` +
+      `entrain ${cfg.liquid.entrain ?? 0}`]] : []),
     ['Sim / wall', `${fmt(res.sim_s, 2)} s sim in ${wallText(res.wall_s)} wall` +
       (res.sim_s && res.wall_s ? ` (${fmt(res.sim_s / res.wall_s, 3)}x)` : '')],
     ['Recording', `${nFrames} frames at ${fmt(META.fps ?? SCENE.fps, 1)} fps` + (META.step > 1 ? ` (every ${META.step}th kept)` : '') +
@@ -340,6 +342,17 @@ for (const j of SCENE.jets ?? []) {
   cone.quaternion.setFromUnitVectors(new THREE.Vector3(0, -1, 0), v3(j.dir).normalize());
   cone.add(new THREE.Mesh(new THREE.SphereGeometry(Math.max(1, h / 80), 12, 8), nozzleMat));
   jetGroup.add(cone);
+}
+
+// liquid (liquid.py): the bath's free surface, a translucent plane fixed in the lab frame (above the tray when
+// the run is fully immersed)
+if (SCENE.liquid && !trayBox.isEmpty()) {
+  const lz = SCENE.liquid.level_mm ?? trayBox.max.z + 2;
+  const sx = trayBox.max.x - trayBox.min.x + 40, sy = trayBox.max.y - trayBox.min.y + 40;
+  const surf = new THREE.Mesh(new THREE.PlaneGeometry(sx, sy),
+    new THREE.MeshBasicMaterial({ color: 0x4f9bd9, transparent: true, opacity: 0.18, depthWrite: false, side: THREE.DoubleSide }));
+  surf.position.set((trayBox.min.x + trayBox.max.x) / 2, (trayBox.min.y + trayBox.max.y) / 2, lz);
+  world.add(surf);
 }
 
 // ---------- particles: one InstancedMesh per (shape, alpha) ----------

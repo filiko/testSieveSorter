@@ -33,6 +33,8 @@ can't pass, else it ends in the catch.
     square hole or mesh aperture s   passes if its width x thickness cross-section fits the s x s
                                      square at some tilt (common.ellipse_fits): a flat grain goes
                                      through corner to corner, so 2.0 x 1.7 mm rice passes a 2 mm hole
+    round hole of diameter s         passes if the cross-section fits the modelled octagon at some
+                                     turn (screens.fits_round; r<hole>b<bar> inserts)
     rod gap g (a long slot)          passes if thickness <= g
     solid floor                      passes nothing
 
@@ -264,6 +266,68 @@ def printed_screen(name, z0):
     return g, n_holes, n_holes * hole * hole
 
 
+# ---------- EntoSieve's round-hole plates (ENTOSIEVE.md, designs_entosieve.py): r<hole>b<bar>, e.g. r1p5b1p0 ----------
+# An inserts: tower's r<hole>b<bar> screen is screens.py's octagon grid instead: insert() hands it off first.
+# MuJoCo collides convex geoms only, so a plate with round holes is cut into convex pieces: a solid strip between
+# neighbouring rows of holes, a box between neighbouring holes in a row, and round each hole four corner fans of
+# triangular prisms (the square around the hole minus the hole, fanned from the square's corner). Each hole is a
+# regular ROUND_SIDES-gon of the circle's area: its narrowest width is 1.2 % under the nominal diameter and its widest
+# 2.3 % over. Holes sit on a 60 deg staggered grid, rows along X, pitch = hole + bar (the usual punched-plate layout).
+# Cost: ROUND_SIDES + 1 geoms per hole, so keep plates small (an EntoSieve 1.5 mm plate is about 22,000 geoms).
+ROUND_INSERT = re.compile(r"^r(\d+(?:p\d+)?)b(\d+(?:p\d+)?)$")
+ROUND_SIDES = 12
+
+
+def round_circumradius(hole, sides=ROUND_SIDES):
+    """Circumradius of the regular polygon with the area of a circle of diameter `hole`."""
+    return hole / 2 * math.sqrt(2 * math.pi / (sides * math.sin(2 * math.pi / sides)))
+
+
+def tri_prism(pts, z0, z1, rgba, role):
+    return {"type": "mesh", "vertices": [[x, y, z] for z in (z0, z1) for x, y in pts], "rgba": rgba, "role": role}
+
+
+def round_screen(hole, bar, x0, x1, y0, y1, z0, t, rgba=SCREEN_RGBA, role="screen", keep=None, sides=ROUND_SIDES):
+    """A plate z0..z0+t over the rectangle x0..x1, y0..y1 with round holes (see above). Only whole holes are cut,
+    each at least one bar from the rectangle's edge; keep(x, y, r) -> bool can veto more (a round plate's rim).
+    Returns geoms and hole centres [(x, y)]."""
+    if sides % 4:
+        raise ValueError("round holes need a number of sides divisible by 4")
+    rho, pitch = round_circumradius(hole, sides), hole + bar
+    dy = pitch * math.sqrt(3) / 2
+    if dy <= 2 * rho or pitch <= 2 * rho:
+        raise ValueError(f"round holes {hole:g} mm with {bar:g} mm bars are too close for the strip decomposition")
+    z1 = z0 + t
+    ny = int((y1 - y0 - 2 * bar - 2 * rho) // dy) + 1
+    yc = (y0 + y1) / 2
+    rows = [yc + (j - (ny - 1) / 2) * dy for j in range(ny)]
+    g, centres, y_prev = [], [], y0
+    for j, y in enumerate(rows):
+        off = 0.0 if j % 2 == 0 else pitch / 2
+        nx = int((x1 - x0) // pitch) + 2
+        xs = [(x0 + x1) / 2 + off + (k - nx // 2) * pitch for k in range(nx)]
+        xs = [x for x in xs if x - rho >= x0 + bar and x + rho <= x1 - bar and (keep is None or keep(x, y, rho))]
+        if y - rho > y_prev:                                    # strip under this row
+            g.append(box(x0, x1, y_prev, y - rho, z0, z1, rgba, role))
+        y_prev = y + rho
+        edges = [x0] + [e for x in xs for e in (x - rho, x + rho)] + [x1]
+        for a, b in zip(edges[::2], edges[1::2]):               # solid between holes in this row
+            if b > a:
+                g.append(box(a, b, y - rho, y + rho, z0, z1, rgba, role))
+        for x in xs:
+            centres.append((x, y))
+            ang = [2 * math.pi * k / sides for k in range(sides + 1)]
+            ring = [(x + rho * math.cos(a), y + rho * math.sin(a)) for a in ang]
+            q = sides // 4
+            for quad, (sx, sy) in enumerate(((1, 1), (-1, 1), (-1, -1), (1, -1))):
+                corner = (x + sx * rho, y + sy * rho)
+                for k in range(quad * q, (quad + 1) * q):
+                    g.append(tri_prism([corner, ring[k], ring[k + 1]], z0, z1, rgba, role))
+    if y1 > y_prev:
+        g.append(box(x0, x1, y_prev, y1, z0, z1, rgba, role))
+    return g, centres
+
+
 def mesh_wires(spec, z0):
     """Woven mesh as wires over the whole insert outline, X wires below, Y wires on top, starting
     at height z0. Apertures are centred on the insert. Returns geoms, wire centres along x and y."""
@@ -332,7 +396,8 @@ def insert(arg, z_seat, drain_area):
         surface, opening = (z_mesh, z_mesh + 2 * d), f"{s:g} mm woven mesh, {d:g} mm wire, glued {spec['side']}"
         extra = {"mesh": {**spec, "status": MESH_STATUS}, "wires": len(screen)}
     geoms = (insert_frame_across(z0, name) if kind == "across" else insert_frame(z0)) + screen
-    layer = {"zone": f"on_{short}", "insert": name, "opening": opening, "rule": "square", "opening_mm": s,
+    layer = {"zone": f"on_{short}", "insert": name, "opening": opening, "rule": "square",
+             "opening_mm": s,
              "insert_bottom_z_mm": round(z0, 3), "surface_z_mm": [round(v, 3) for v in surface],
              "open_area_mm2": round(open_area, 1), "open_pct_of_drainable": round(100 * open_area / drain_area, 1),
              "open_pct_of_windows": round(100 * open_area / win_area, 1), "geoms": len(geoms), **extra}

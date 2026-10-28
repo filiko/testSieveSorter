@@ -41,10 +41,10 @@ Details: [docs/sessions/clump-breakup.md](sessions/clump-breakup.md).
 - Geometry, parts and assumptions: [cad/PRODUCT.md](../cad/PRODUCT.md). The sim doesn't model the drive: it prescribes each level's angle directly (section 5).
 
 ## 4. Liquid
-Samples are in ethanol, and the rig sprays from fixed jets above. `sim/spray.py` models push, wetting and capillary adhesion. Wetting should also weaken clump bonds.
+Samples are in ethanol, and the rig sprays from fixed jets above. `sim/spray.py` models push, wetting and capillary adhesion. Wetting should also weaken clump bonds. `sim/liquid.py` puts the sorter in a bath with a lab-fixed surface (buoyancy, drag, added mass, wetting; `--liquid`); how much of the liquid moves with each shaken box (`entrain`) is unknown and swept ([sim/LIQUID.md](../sim/LIQUID.md)).
 
 ## 5. What the sim models, and what it doesn't
-- **Modelled:** the trays (with their real mount point and rocking), the particles (specimens, grains, clumps, debris), the stroke and the spray.
+- **Modelled:** the trays (with their real mount point and rocking), the particles (specimens, grains, clumps, debris), the stroke, the spray and, optionally, the liquid bath (no flow solver).
 - **Not modelled:** the tool, the motor, the frame, the hand. The frame in the replay (`sim/rig.py`) is display only.
 - **The seesaw in the sim:** levels rock **differently** (alternating), so one shared non-inertial tray frame can't do it, and neither can the optimizer's current `rocking()` wrapper, which turns every particle in phase.
   - Run seesaw cases in the **lab frame**, with **each level its own body on a hinge** (axis Y through the level's centre).

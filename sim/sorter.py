@@ -23,6 +23,10 @@ Stroke profiles:
     boxes           deg, period_s, phase, vib_mm, vib_hz, vib_angle_deg, ...: each level of an inserts: tower moves
                     on its own (a tilt about Y plus its own vibration), per-level values as slash lists, e.g.
                     deg=8/6/0; kinematic, in the lab frame (boxes.py, BOXES.md)
+    flexy           stroke_mm, speed_mm_s, accel_mm_s2: EntoSieve's firmware, 0 -> stroke_mm -> 0 (entosieve.py)
+
+Liquid (liquid.py, LIQUID.md): --liquid ethanol:level_mm=200,entrain=0.5 puts the run in a bath whose surface is fixed
+in the lab (buoyancy, drag, added mass, wetting); dry by default.
 
 Run from sim\\:
     <venv python> sorter.py --design pool:w5p0,t1p4 --mix rice=30,quinoa=30,chickpea=8,pasta=8 \\
@@ -70,6 +74,7 @@ class RunConfig:
     contact: dict = field(default_factory=lambda: {"friction": 0.4, "timeconst": 0.002, "dampratio": 1.0})
     spray: dict | None = None
     clump: dict | None = None        # clumps.py: a clump of specimens and debris joined by breakable bonds
+    liquid: dict | None = None       # liquid.py: a bath (buoyancy, drag, added mass, wetting); None = dry
     record_fps: float = 30.0
     out_dir: str | None = None
 
@@ -109,6 +114,9 @@ def stroke_profile(stroke, n, dt):
     t = np.arange(n) * dt
     if p == "none":
         return np.zeros(n), np.zeros(n), np.zeros(n)
+    if p == "flexy":                                 # EntoSieve's firmware: 0 -> stroke_mm -> 0 (entosieve.py)
+        import entosieve
+        return entosieve.flexy(stroke, n, dt)
     amp, f = stroke.get("amp_mm", 3.0), stroke.get("freq_hz", 10.0)
     if "speed_mm_s" in stroke:                       # constant_speed by firmware settings: speed and stroke length
         f = stroke["speed_mm_s"] / (4 * amp)
@@ -294,6 +302,11 @@ def run(cfg: RunConfig) -> dict:
     tray_body = np.isin(np.arange(m.nbody), [0, *(rock.bind(m).body if rock else [])])
     if cfg.spray:
         sp = spray.Spray(m, d, jets, list(pbodies), cfg.spray.get("params"))
+    lq = None
+    if cfg.liquid:                                   # liquid.py: the bath, lab-fixed surface
+        import liquid
+        lq = liquid.Liquid.of(cfg, design, rock).bind(m, d, particles, names, sp)
+    wet_src = lq or sp                               # who knows each body's wetness (clumps, the replay)
 
     axis = rock.vib_axis() if rock else stroke_axis(cfg.stroke, design)
     n_settle, n_shake = round(cfg.settle_s / cfg.dt), round(cfg.duration_s / cfg.dt)
@@ -321,15 +334,18 @@ def run(cfg: RunConfig) -> dict:
     # The reset also clears the warning counters, so it is detected by d.time going backwards.
     resets = []
     if cl:
-        cl.bind(m, d, design, rock, sp, every, n_settle)
+        cl.bind(m, d, design, rock, wet_src, every, n_settle)
     for i in range(steps):
         m.opt.gravity[:] = -a[i] * axis
         m.opt.gravity[2] -= G
         if i < n_settle:
             d.qvel *= settle_keep
-        if sp is not None:
+        if wet_src is not None:                      # spray and liquid add to xfrc_applied: clear it once
             d.xfrc_applied[:] = 0.0
+        if sp is not None:
             sp.step(m, d, d.time, x[i] * axis, v[i] * axis)
+        if lq is not None:
+            lq.step(m, d, i, x[i] * axis, v[i] * axis, a[i] * axis)
         if rock:
             rock.drive(d, i)
         t_before = d.time
@@ -355,8 +371,8 @@ def run(cfg: RunConfig) -> dict:
             if recording:
                 rec["pos"].append(d.xpos[pbodies].astype(np.float32))
                 rec["quat"].append(d.xquat[pbodies].astype(np.float32))
-                if sp is not None:
-                    rec["wet"].append(np.asarray(sp.wet)[pbodies].astype(np.float32))
+                if wet_src is not None:
+                    rec["wet"].append(np.asarray(wet_src.wet)[pbodies].astype(np.float32))
                 if rock:
                     rec["level_q"].append(rock.quats(d))
                 if hasattr(rock, "positions"):           # boxes.py: the levels translate too
@@ -369,7 +385,7 @@ def run(cfg: RunConfig) -> dict:
              for n, p, z in zip(names, particles, final)]
     zc = np.array(rec["zone_counts"])
     results = {
-        "config": asdict(cfg), "design": design.name, "design_info": design.info,
+        "config": config_dict(cfg), "design": design.name, "design_info": design.info,
         "zones": zone_names, "kinds": kinds,
         "counts": {k: {zn: int(zc[-1, ki, zi]) for zi, zn in enumerate(zone_names)} for ki, k in enumerate(kinds)},
         "recovery": {k: round(float(np.mean([p["final_zone"] == p["ideal_zone"] for p in plist if p["kind"] == k])), 4)
@@ -385,12 +401,23 @@ def run(cfg: RunConfig) -> dict:
         results[getattr(rock, "result_key", "seesaw")] = rock.summary()
     if cl:
         results["clumps"] = cl.metrics(plist, d)
+    if lq:
+        results["liquid"] = lq.summary()
     if cfg.out_dir:
-        write_recording(Path(cfg.out_dir), cfg, design, m, results, rec, kinds, zone_names, particles, names, sp, rock)
+        write_recording(Path(cfg.out_dir), cfg, design, m, results, rec, kinds, zone_names, particles, names, sp, rock,
+                        lq)
     return results
 
 
-def write_recording(out, cfg, design, m, results, rec, kinds, zone_names, particles, names, sp, rock=None):
+def config_dict(cfg):
+    """asdict(cfg), without liquid when the run is dry, so a dry run writes the results.json it wrote before."""
+    c = asdict(cfg)
+    if c.get("liquid") is None:
+        c.pop("liquid", None)
+    return c
+
+
+def write_recording(out, cfg, design, m, results, rec, kinds, zone_names, particles, names, sp, rock=None, lq=None):
     out.mkdir(parents=True, exist_ok=True)
     by_name = dict(zip(names, particles))
     bodies = []
@@ -404,12 +431,14 @@ def write_recording(out, cfg, design, m, results, rec, kinds, zone_names, partic
         jets = [{"pos_lab": list(map(float, j.pos_lab)), "dir": list(map(float, j.dir)),
                  "half_angle_deg": j.half_angle_deg, "range_mm": j.range_mm} for j in sp.jets]
     scene = {"units": "mm", "fps": cfg.record_fps, "dt": cfg.dt, "n_frames": len(rec["t"]),
-             "config": asdict(cfg), "design": design.name,
+             "config": config_dict(cfg), "design": design.name,
              "tray": {"geoms": scene_geoms(design, m)}, "bodies": bodies, "kinds": kinds,
              "zones": [*design.zones, {"name": "between"}, {"name": "lost"}], "jets": jets,
              "results": {k: v for k, v in results.items() if k != "timeseries"}}
     if rock:                                         # per level: pivot, axis, geoms (rocking.py)
         scene["levels"] = rock.scene_levels(m)
+    if lq:                                           # the bath's free surface, lab z (liquid.py)
+        scene["liquid"] = lq.scene()
     (out / "scene.json").write_text(json.dumps(scene, default=float))
     arrays = {"t": np.array(rec["t"]), "tray_d": np.array(rec["tray_d"], dtype=np.float32),
               "zone_counts": np.array(rec["zone_counts"], dtype=np.int32)}
@@ -455,15 +484,21 @@ def main():
                     help="default: the design's placeholder jets; bench: bench/jets.csv")
     ap.add_argument("--clump", default=None, help="clumps.py: kinds and options, e.g. rice=50,quinoa=50,pasta=6,"
                     "leaf=1,twig=2,dirt=10,bond=medium (weak|medium|strong)")
+    ap.add_argument("--liquid", default=None, help="liquid.py: a bath, e.g. ethanol:level_mm=200,entrain=0.5 (water or "
+                    "ethanol; level_mm is the lab-fixed surface, omitted = fully immersed; entrain 0 = still bath, "
+                    "1 = liquid moves with each box)")
     ap.add_argument("--fps", type=float, default=30.0)
     ap.add_argument("--out", default=None, help="run dir for scene.json, traj.npz, results.json")
     args = ap.parse_args()
+    if args.liquid:
+        import liquid
     profile, _, rest = args.stroke.partition(":")
     cfg = RunConfig(design=args.design, mix=parse_kv(args.mix), stroke={"profile": profile, **parse_kv(rest)},
                     duration_s=args.duration, settle_s=args.settle, seed=args.seed, dt=args.dt,
                     contact={"friction": args.friction, "timeconst": args.timeconst, "dampratio": 1.0},
                     spray=None if args.spray == "none" else {"jets": args.spray},
                     clump=clumps.parse(args.clump) if args.clump else None,
+                    liquid=liquid.parse(args.liquid) if args.liquid else None,
                     record_fps=args.fps, out_dir=args.out)
     r = run(cfg)
     print(f"{r['design']}: {r['sim_s']} s simulated in {r['wall_s']} s wall, {r['steps']} steps, "
@@ -478,6 +513,10 @@ def main():
               "phases" + ("  TOUCHING: raise pitch= (boxes.py)" if c["touching"] else ""))
     if "clumps" in r:
         print(clumps.summary(r["clumps"]))
+    if "liquid" in r:
+        lq = r["liquid"]
+        print(f"  liquid: {lq['spec']['liquid']}, surface {lq['level_mm'] if lq['level_mm'] is not None else 'above all'}"
+              f" mm, entrain {lq['entrain']:g}; mean submerged {lq['mean_submerged']:.0%}; {lq['ms_per_step']} ms/step")
     if r["unstable_resets"]:
         print(f"UNSTABLE: MuJoCo reset the state {len(r['unstable_resets'])} times (at {r['unstable_resets'][:5]} s); "
               "the results are not valid")

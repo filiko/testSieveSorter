@@ -10,6 +10,10 @@ Physics session, 2026-10-25, from the agent swarm that also built GRAINS.md. Not
 - **Use the stiff contacts** (`--dt 0.000125 --timeconst 0.00025`, as the seesaw tower runs already do). At dt 0.5 ms, 8 of 40 specimens passed through the trays in 1 s; at 0.125 ms none did (0.2 mm worst overlap).
 - **Still ASSUMED:** the plan weights and per-plan sizes (they set shape, not size), the 0.3 mm floor, and legs at the radius floor below about 0.8 mm. Not done: the EntoSieve replication, liquid, per-taxon kinds.
 
+## Applied on 2026-10-27: liquid (proposal 3) and the EntoSieve replication (proposal 2)
+- **Liquid:** `liquid.py` adds a bath with a lab-fixed surface: buoyancy, orientation-aware drag, added mass, wetting ([LIQUID.md](LIQUID.md)). Settling speeds are within 4 % of the standard sphere curve and within 12.5 % of Hölzer & Sommerfeld for ellipsoids. How much of the liquid moves with a shaken box (`entrain`) is unknown and swept.
+- **EntoSieve:** rebuilt with round-hole plates and its firmware's stroke, run dry and wet ([ENTOSIEVE.md](ENTOSIEVE.md)). The open question below gets a first answer: in that gentle wet regime the holes cut by body length, because specimens lie flat (83-90 % within 20° of the plate). Of 567 specimen-plate pairs narrower than the hole but longer than it, none passed dry and 1-1.6 % passed wet. The efficiencies don't match: after 40 strokes the sim levels off at A 28 / B 56 / C 40 / D 81 % against the paper's 96 / 98 / 98 / 100 %, because its liquid has no jets or stirring through the holes, slow-settling specimens never leave the plate's sweep, and legs are rigid.
+
 ## Summary
 
 - **"We haven't modeled the bugs yet" is half true.** `insects.py` generates detailed rigid specimens in 3 lumped kinds and 8 body plans, with poses and damage. But every number in it is an assumption, nothing in it has been compared with a real specimen, and the sim has no liquid.

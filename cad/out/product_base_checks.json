@@ -1,0 +1,14 @@
+{
+  "valid_solid": true,
+  "single_solid": true,
+  "watertight_mesh": true,
+  "bbox_mm": [
+    160.0,
+    172.0,
+    34.0
+  ],
+  "fits_bed": true,
+  "volume_cm3": 183.88,
+  "print": "plate on the bed, pedestals up",
+  "count": 1
+}

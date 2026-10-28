@@ -1,0 +1,43 @@
+{
+  "valid_solid": true,
+  "single_solid": true,
+  "watertight_mesh": true,
+  "bbox_mm": [
+    140.0,
+    116.0,
+    25.0
+  ],
+  "fits_bed": true,
+  "volume_cm3": 59.99,
+  "pivot_mm": [
+    0.0,
+    0.0,
+    12.5
+  ],
+  "pin_hole_mm": {
+    "d": 6.2,
+    "depth_from_lug_face": 8.0
+  },
+  "lug_mm": {
+    "w": 16.0,
+    "out_from_wall": 6.0
+  },
+  "tab": false,
+  "finger_notches": false,
+  "overall_y_mm": 116.0,
+  "same_as_frame_holder": "body, pocket, ledge, open bottom",
+  "drive_lug": {
+    "wall": "+Y",
+    "pin_x_at_rest_mm": -56.71,
+    "slot_x_mm": [
+      -60.85,
+      -56.21
+    ],
+    "slot_z_mm": 12.5,
+    "slot_w_mm": 3.3,
+    "slot_depth_mm": 6.0,
+    "pin_d_mm": 3.0,
+    "slot_covers_tilt_deg": 20.0,
+    "tilt_law": "theta = atan(u / DRIVE_R), u = rod travel from the level pose"
+  }
+}

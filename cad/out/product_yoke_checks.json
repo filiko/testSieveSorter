@@ -1,0 +1,20 @@
+{
+  "valid_solid": true,
+  "single_solid": true,
+  "watertight_mesh": true,
+  "bbox_mm": [
+    151.43,
+    82.51,
+    26.01
+  ],
+  "fits_bed": true,
+  "volume_cm3": 39.69,
+  "print": "plate on the bed",
+  "count": 1,
+  "stage_bolt_at_rest_mm": [
+    79.21,
+    90.0,
+    46.5
+  ],
+  "stage_interface": "ASSUMED"
+}

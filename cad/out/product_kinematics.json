@@ -1,0 +1,146 @@
+{
+  "units": "mm (CAD, Z up); the GLB is in metres, Y up",
+  "R_mm": 56.713,
+  "pitch_mm": 55.0,
+  "default_stroke_mm": 20.0,
+  "default_tilt_deg": 10.0,
+  "stage_u": "u = stage position above mid-stroke, mm; the firmware's default stroke runs u = -10 .. +10",
+  "tilt_cad": "level k turns by phi_k = -sign_k * atan(u / R) (radians) about +Y through pivot_mm (right-handed; phi > 0 tips +X down, as sim/rocking.py). Equivalently phi_k = -atan(u / drive_x_k).",
+  "sign": "sim/rocking.py's sign_k: +1, -1, +1, -1 from the top. drive_x_mm = sign * R.",
+  "drive": {
+    "node": "drive",
+    "moves": "translates by u along +Z (CAD) = +Y (glTF); u in mm, so u / 1000 m in the GLB"
+  },
+  "frame": {
+    "node": "frame",
+    "moves": "static"
+  },
+  "levels": [
+    {
+      "node": "level0",
+      "holder": "seesaw_holder_drive_a",
+      "insert": "breaker",
+      "pivot_mm": [
+        0.0,
+        0.0,
+        223.0
+      ],
+      "sign": 1,
+      "drive_x_mm": 56.713,
+      "rod": "A",
+      "pivot_gltf_m": [
+        0.0,
+        0.223,
+        0.0
+      ]
+    },
+    {
+      "node": "level1",
+      "holder": "seesaw_holder_drive_b",
+      "insert": "sieve_insert_5mm_across",
+      "pivot_mm": [
+        0.0,
+        0.0,
+        168.0
+      ],
+      "sign": -1,
+      "drive_x_mm": -56.713,
+      "rod": "B",
+      "pivot_gltf_m": [
+        0.0,
+        0.168,
+        0.0
+      ]
+    },
+    {
+      "node": "level2",
+      "holder": "seesaw_holder_drive_a",
+      "insert": "sieve_insert_2mm_across",
+      "pivot_mm": [
+        0.0,
+        0.0,
+        113.0
+      ],
+      "sign": 1,
+      "drive_x_mm": 56.713,
+      "rod": "A",
+      "pivot_gltf_m": [
+        0.0,
+        0.113,
+        0.0
+      ]
+    },
+    {
+      "node": "level3",
+      "holder": "seesaw_catch_pan_drive_b",
+      "insert": "none (catch pan)",
+      "pivot_mm": [
+        0.0,
+        0.0,
+        58.0
+      ],
+      "sign": -1,
+      "drive_x_mm": -56.713,
+      "rod": "B",
+      "pivot_gltf_m": [
+        0.0,
+        0.058,
+        0.0
+      ]
+    }
+  ],
+  "glb": {
+    "file": "product.glb",
+    "units": "m",
+    "up": "+Y",
+    "pose": "rest (u = 0, every box level)",
+    "mapping": "gltf = (x, z, -y) / 1000 from CAD (x, y, z) in mm, Z up",
+    "level_rotation": "rotate the level node about +Z (glTF) through pivot_gltf_m by sign_k * atan(u / R) radians: positive lifts the +X end",
+    "nodes": [
+      "frame",
+      "level0",
+      "level1",
+      "level2",
+      "level3",
+      "drive"
+    ],
+    "children": "<group>_<role>: one mesh per role, material named by the role",
+    "materials": {
+      "frame": [
+        0.56,
+        0.58,
+        0.61
+      ],
+      "steel": [
+        0.8,
+        0.81,
+        0.84
+      ],
+      "holder": [
+        0.4,
+        0.55,
+        0.73
+      ],
+      "screen": [
+        0.96,
+        0.66,
+        0.2
+      ],
+      "breaker": [
+        0.27,
+        0.66,
+        0.42
+      ],
+      "drive": [
+        0.88,
+        0.27,
+        0.2
+      ],
+      "puck": [
+        0.17,
+        0.17,
+        0.19
+      ]
+    }
+  }
+}

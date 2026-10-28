@@ -1,0 +1,2 @@
+run_id,breaker,spray,motion,clump_source,n_specimens,t_s,n_free,largest_piece,n_checked,n_damaged,note
+#example k01,B-164f355a,on,seesaw 7 deg 1.1 s + buzz 0.35 mm 40 Hz,malaise sample A,40,30,31,4,20,1,packed wet by hand to 18 mm

@@ -1,0 +1,170 @@
+{
+  "units": "mm, deg",
+  "pitch_mm": 55.0,
+  "R_mm": 56.71,
+  "default_stroke_mm": 20.0,
+  "tilt_law": "phi = atan((stroke / 2) / R): the pin rides a slot fixed in the box, the rod stays vertical",
+  "tilt_per_stroke": [
+    {
+      "stroke_mm": 20.0,
+      "tilt_deg": 10.0,
+      "asin_formula_deg_for_reference": 10.16,
+      "min_neighbour_gap_mm": 6.07,
+      "neighbours_collide": false
+    },
+    {
+      "stroke_mm": 30.0,
+      "tilt_deg": 14.81,
+      "asin_formula_deg_for_reference": 15.34,
+      "min_neighbour_gap_mm": 0.0,
+      "neighbours_collide": true
+    },
+    {
+      "stroke_mm": 40.0,
+      "tilt_deg": 19.43,
+      "asin_formula_deg_for_reference": 20.65,
+      "min_neighbour_gap_mm": 0.0,
+      "neighbours_collide": true
+    }
+  ],
+  "neighbour_gap_at_default_stroke_mm": {
+    "level0-level1": 6.07,
+    "level1-level2": 6.07,
+    "level2-level3": 6.07
+  },
+  "stroke_limit": {
+    "max_stroke_with_3mm_gap_mm": 22.7,
+    "tilt_deg": 11.31,
+    "stroke_where_boxes_touch_mm": 25.39,
+    "tilt_where_boxes_touch_deg": 12.62
+  },
+  "rod_to_box_mm": {
+    "rod_a-level0": 1.5,
+    "rod_a-level1": 7.5,
+    "rod_a-level2": 1.5,
+    "rod_a-level3": 7.5,
+    "rod_b-level0": 15.2,
+    "rod_b-level1": 1.5,
+    "rod_b-level2": 7.5,
+    "rod_b-level3": 1.5
+  },
+  "cross_pin_in_slot_mm": {
+    "drive_cross_pin_0-level0": 0.15,
+    "drive_cross_pin_1-level2": 0.15,
+    "drive_cross_pin_2-level1": 0.15,
+    "drive_cross_pin_3-level3": 0.15
+  },
+  "post_to_box_mm": {
+    "post_py-level0": 8.0,
+    "post_py-level1": 8.0,
+    "post_py-level2": 8.0,
+    "post_py-level3": 8.0,
+    "post_my-level0": 8.0,
+    "post_my-level1": 8.0,
+    "post_my-level2": 8.0,
+    "post_my-level3": 8.0
+  },
+  "base_and_posts_to_drive_mm": 2.0,
+  "pivot_pins_to_drive_mm": 5.0,
+  "base_and_pedestals_to_catch_pan_mm": 4.0,
+  "yoke_and_puck_to_boxes_mm": {
+    "level0": 128.76,
+    "level1": 73.92,
+    "level2": 20.02,
+    "level3": 1.5
+  },
+  "base_plate_under_pan_closed_form": {
+    "at_10deg_mm": 7.84,
+    "at_15deg_mm": 2.49
+  },
+  "inserts_below_rim": {
+    "level0_breaker": -1.0,
+    "level1_sieve_insert_5mm_across": -1.0,
+    "level2_sieve_insert_2mm_across": -1.0
+  },
+  "inserts_below_rim_note": "insert top minus box rim at rest; negative = below the rim, inside the box",
+  "envelope_at_rest_mm": {
+    "x": [
+      -80.0,
+      85.71
+    ],
+    "y": [
+      -86.0,
+      142.0
+    ],
+    "z": [
+      0.0,
+      235.5
+    ],
+    "size": [
+      165.71,
+      228.0,
+      235.5
+    ]
+  },
+  "envelope_swept_default_stroke_mm": {
+    "x": [
+      -80.0,
+      85.71
+    ],
+    "y": [
+      -86.0,
+      142.0
+    ],
+    "z": [
+      0.0,
+      247.47
+    ],
+    "size": [
+      165.71,
+      228.0,
+      247.47
+    ]
+  },
+  "stage_bolt_at_rest_mm": {
+    "xyz": [
+      79.21,
+      90.0,
+      46.5
+    ],
+    "axis": "Y",
+    "hole_d": 6.0,
+    "status": "ASSUMED: stage not measured"
+  },
+  "pivot_z_mm": {
+    "level0": 223.0,
+    "level1": 168.0,
+    "level2": 113.0,
+    "level3": 58.0
+  },
+  "files_bytes": {
+    "product.glb": 3792092,
+    "docs/assets/product.stl": 4804784
+  },
+  "triangles": {
+    "frame": {
+      "frame": 2140,
+      "steel": 800
+    },
+    "level0": {
+      "holder": 560,
+      "breaker": 8978
+    },
+    "level1": {
+      "holder": 560,
+      "screen": 14996
+    },
+    "level2": {
+      "holder": 560,
+      "screen": 63952
+    },
+    "level3": {
+      "holder": 572
+    },
+    "drive": {
+      "drive": 1636,
+      "puck": 940,
+      "steel": 400
+    }
+  }
+}

@@ -1,6 +1,6 @@
-# Bench protocol for tonight
+# Bench protocol
 
-The sim gets tuned on what you measure tonight, then has to predict a run it never saw. Every number goes in a CSV in `sim\bench\`. Copy the template and keep its header row. Rows starting with `#` are examples and are ignored. Units are mm, g and s.
+The sim gets tuned on what you measure on the bench, then has to predict a run it never saw. Every number goes in a CSV in `sim\bench\`. Copy the template and keep its header row. Rows starting with `#` are examples and are ignored. Units are mm, g and s.
 
 ## Kit
 
@@ -138,6 +138,19 @@ How the sim uses it: friction = tan(angle). The dry value centres the fit grid; 
 3. Run a few through the unit and count them as in step 4. Note any snagging and damage.
 
 How the sim uses it: the sizes in `insects.py`. Without real specimens, insect results are labelled exploratory.
+
+## 10. Clump break-up (the go / no-go for the breaker)
+
+Goes into `clump_breakup.csv`. It's the test that decides whether the system's main job works ([docs/EVIDENCE.md](../docs/EVIDENCE.md), step 3).
+
+1. **Make the clumps.** Use a real Malaise sample if you can. If not, use preserved specimens with a pinch of leaf litter and soil, packed wet by hand into a ball about 15–20 mm across. Make each clump the same way and write how in `note`.
+2. **Count what goes in.** Photograph each clump on mm paper and estimate `n_specimens`. Exact counts come at the end.
+3. **Run it.** Put the clump on the top level, start the motion and the spray, and film from above. Use a normal frame rate; a second phone filming the side helps.
+4. **Count from the video.** Record how many specimens are free (not touching the clump) at 10, 30 and 60 s, one row per time, and the largest piece left at 60 s.
+5. **Check the damage.** Afterwards, look at 20 freed specimens under a loupe and count those with a missing or broken leg, antenna or wing. Do the same for 20 specimens teased apart by hand from a clump made the same way: `breaker=hand`.
+6. **Configurations:** at least `breaker=none` and `breaker=B-164f355a`, each with the spray on and off, 3 clumps each.
+
+How the sim uses it: the free fraction over time is what `clumps.py` predicts with its bond sets. Fitting `sigma` and `k_wet` to these rows replaces the assumed weak, medium and strong bonds.
 
 ## Then
 

@@ -1,0 +1,342 @@
+<title>BugSorter Seesaw Stack</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500&display=swap">
+<style>
+/* Layout: an instrument page. The model fills a stage; the controls under it mirror BugSorter's web app (stroke, speed). */
+:root {
+  --paper: #f1f4f2;
+  --stage: #e3e9e6;
+  --ink: #17211d;
+  --muted: #56645e;
+  --line: #cfd8d3;
+  --accent: #1b6a87;
+  --ok: #2f7d4f;
+  --warn: #a8571c;
+  --bad: #b3261e;
+  --display: "IBM Plex Sans Condensed", "Arial Narrow", system-ui, sans-serif;
+  --body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #111715; --stage: #0b100e; --ink: #e2e9e5; --muted: #93a29b; --line: #26322d;
+    --accent: #62b6d3; --ok: #6cc58f; --warn: #e3955c; --bad: #f08a80; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #111715; --stage: #0b100e; --ink: #e2e9e5; --muted: #93a29b; --line: #26322d;
+  --accent: #62b6d3; --ok: #6cc58f; --warn: #e3955c; --bad: #f08a80; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  background: var(--paper); color: var(--ink); font: 15px/1.55 var(--body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 40px;
+}
+.wrap { max-width: 1080px; margin: 0 auto; display: grid; gap: 18px; }
+header { display: grid; gap: 6px; }
+h1 { font: 600 clamp(1.7rem, 4vw, 2.4rem)/1.1 var(--display); letter-spacing: 0.005em; margin: 0; text-wrap: balance; }
+.lede { margin: 0; color: var(--muted); max-width: 64ch; }
+.chip {
+  justify-self: start; font: 500 12px/1 var(--mono); letter-spacing: 0.04em; text-transform: uppercase;
+  color: var(--warn); border: 1px solid currentColor; border-radius: 3px; padding: 5px 7px;
+}
+.stage { position: relative; background: var(--stage); border: 1px solid var(--line); border-radius: 4px; overflow: hidden;
+  aspect-ratio: 16 / 10; max-height: 72vh; width: 100%; max-width: 100%; }
+@media (max-width: 640px) { .stage { aspect-ratio: 4 / 5; } }
+#view { display: block; width: 100%; height: 100%; touch-action: none; }
+.hud { position: absolute; left: 12px; top: 10px; font: 12px/1.5 var(--mono); color: var(--muted); pointer-events: none; }
+.hud b { color: var(--ink); font-weight: 500; }
+.loading { position: absolute; inset: 0; display: grid; place-items: center; font: 13px var(--mono); color: var(--muted); }
+.controls { display: flex; flex-wrap: wrap; gap: 14px 22px; align-items: end; }
+.field { display: grid; gap: 4px; min-width: 0; }
+.field label, .label { font: 500 11px/1 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.field output { font: 500 14px var(--mono); font-variant-numeric: tabular-nums; }
+.field .row { display: flex; align-items: center; gap: 10px; }
+input[type="range"] { width: min(220px, 60vw); accent-color: var(--accent); }
+button {
+  font: 500 13px var(--body); color: var(--ink); background: transparent; border: 1px solid var(--line);
+  border-radius: 3px; padding: 7px 12px; cursor: pointer;
+}
+button:hover { border-color: var(--accent); }
+button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--paper); }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.seg { display: flex; gap: 0; }
+.seg button { border-radius: 0; margin-left: -1px; }
+.seg button:first-child { border-radius: 3px 0 0 3px; margin-left: 0; }
+.seg button:last-child { border-radius: 0 3px 3px 0; }
+.check { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.readouts { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.readout { padding: 12px 14px 12px 0; display: grid; gap: 4px; }
+.readout + .readout { padding-left: 14px; border-left: 1px solid var(--line); }
+@media (max-width: 560px) { .readout + .readout { border-left: 0; padding-left: 0; border-top: 1px solid var(--line); } }
+.big { font: 600 1.6rem/1 var(--display); font-variant-numeric: tabular-nums; }
+.note { font-size: 13px; color: var(--muted); }
+.state-ok { color: var(--ok); } .state-warn { color: var(--warn); } .state-bad { color: var(--bad); }
+.cols { display: grid; grid-template-columns: 1.1fr 1fr; gap: 28px; }
+@media (max-width: 760px) { .cols { grid-template-columns: 1fr; } }
+.cols > section { min-width: 0; display: grid; gap: 10px; align-content: start; }
+h2 { font: 600 1.15rem/1.2 var(--display); margin: 0; letter-spacing: 0.01em; }
+ol.stack { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
+ol.stack li { display: grid; grid-template-columns: 16px 1fr; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--line); }
+ol.stack li:last-child { border-bottom: 0; }
+.sw { width: 14px; height: 14px; border-radius: 2px; margin-top: 4px; border: 1px solid var(--line); }
+ol.stack b { font-weight: 500; }
+ol.stack span { display: block; font-size: 13px; color: var(--muted); }
+ul.plain { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
+code, .mono { font-family: var(--mono); font-size: 0.92em; }
+.formula { font: 500 15px var(--mono); padding: 10px 12px; border-left: 2px solid var(--accent); background: var(--stage); }
+footer { font-size: 12.5px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 12px; }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <span class="chip">Design stage · not yet printed and tested</span>
+    <h1>BugSorter seesaw stack</h1>
+    <p class="lede">A breaker layer, two sieve levels and a catch pan for BioKEA's BugSorter. Each level tips about its own centre, neighbours tip opposite ways, and two push rods from the BugSorter's existing stage drive them all. Drag to turn the model; set the stroke and speed as you would in BugSorter's web app.</p>
+  </header>
+
+  <div class="stage">
+    <canvas id="view" aria-label="3D model of the seesaw stack, animated"></canvas>
+    <div class="hud" id="hud" aria-hidden="true"></div>
+    <div class="loading" id="loading">Loading the model…</div>
+  </div>
+
+  <div class="controls">
+    <button id="play" aria-pressed="true">Pause</button>
+    <div class="field">
+      <label for="stroke">Stroke (top to bottom)</label>
+      <div class="row"><input id="stroke" type="range" min="0.5" max="4" step="0.1" value="2"><output id="strokeOut" for="stroke">2.0 cm</output></div>
+    </div>
+    <div class="field">
+      <label for="speed">Speed</label>
+      <div class="row"><input id="speed" type="range" min="0.5" max="5" step="0.1" value="2"><output id="speedOut" for="speed">2.0 cm/s</output></div>
+    </div>
+    <div class="field">
+      <span class="label">View</span>
+      <div class="seg" role="group" aria-label="Camera">
+        <button data-view="iso" aria-pressed="true">3/4</button>
+        <button data-view="side" aria-pressed="false">Side</button>
+        <button data-view="end" aria-pressed="false">End</button>
+      </div>
+    </div>
+    <label class="check"><input id="frame" type="checkbox" checked> Frame</label>
+  </div>
+
+  <div class="readouts" aria-live="polite">
+    <div class="readout"><span class="label">Tilt each way</span><span class="big" id="rTilt">±10.0°</span><span class="note">θ = atan(stroke / 2R)</span></div>
+    <div class="readout"><span class="label">One rock, there and back</span><span class="big" id="rPeriod">2.0 s</span><span class="note">2 × stroke / speed, constant speed</span></div>
+    <div class="readout"><span class="label">Closest gap between levels</span><span class="big" id="rGap">6 mm</span><span class="note" id="rGapNote">at full tilt</span></div>
+  </div>
+
+  <div class="cols">
+    <section>
+      <h2>In the stack, top to bottom</h2>
+      <ol class="stack" id="legend"></ol>
+    </section>
+    <section>
+      <h2>How the stage drives it</h2>
+      <ul class="plain">
+        <li>BugSorter moves one stage between its top and bottom limit switches at constant speed. Its default stroke is 2 cm.</li>
+        <li>Rod A hangs from that stage at <span class="mono">x = +R</span> and pins levels 1 and 3. Rod B at <span class="mono">x = −R</span> pins levels 2 and 4. When the stage rises, levels on rod A lift their right ends and levels on rod B lift their left ends, so neighbours tilt opposite ways.</li>
+        <li>Each rod's cross-pin rides a short slot in its level's drive lug. The rod stays vertical and the slot turns with the box, so the tilt is θ = atan(stroke / 2R).</li>
+      </ul>
+      <div class="formula" id="formula">R = 56.7 mm · 2.0 cm stroke → ±10.0°</div>
+      <p class="note">At 55 mm spacing, neighbouring boxes touch at a 2.5 cm stroke (±12.6°). Keep the stroke at or under 2.3 cm in the web app. Wider angles need the levels hung further apart.</p>
+    </section>
+  </div>
+
+  <footer>Geometry from <code>cad/product.py</code> in the testSieveSorter repo. The holder box is rebuilt from a drawing, not measured, and the linkage hasn't been built. Sim results that guided the parts are uncalibrated.</footer>
+</div>
+
+<script type="application/json" id="kin">__KIN_JSON__</script>
+<script type="application/octet-stream" id="glb">__GLB_B64__</script>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.min.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+
+const KIN = JSON.parse(document.getElementById("kin").textContent);
+const LEGEND = __LEGEND_JSON__;
+const $ = (id) => document.getElementById(id);
+const canvas = $("view");
+
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(32, 1, 0.001, 100);   // the GLB is in metres
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true;
+
+scene.add(new THREE.HemisphereLight(0xffffff, 0x8a9690, 1.6));
+const key = new THREE.DirectionalLight(0xffffff, 1.9); key.position.set(1, 1.6, 1.2); scene.add(key);
+const rim = new THREE.DirectionalLight(0xffffff, 0.7); rim.position.set(-1.2, 0.6, -1); scene.add(rim);
+
+function themeColor() {
+  return getComputedStyle(document.documentElement).getPropertyValue("--stage").trim() || "#e3e9e6";
+}
+function applyTheme() { scene.background = new THREE.Color(themeColor()); }
+applyTheme();
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyTheme);
+new MutationObserver(applyTheme).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
+// Assembly frame (Z up, mm) -> glTF frame, as product.py wrote it.
+const S = KIN.glb_scale_per_mm;          // glTF units per mm
+const toGl = (v) => {                   // [x, y, z] Z-up mm -> THREE.Vector3
+  const m = KIN.zup_to_glb;             // 3x3, rows
+  return new THREE.Vector3(
+    S * (m[0][0] * v[0] + m[0][1] * v[1] + m[0][2] * v[2]),
+    S * (m[1][0] * v[0] + m[1][1] * v[1] + m[1][2] * v[2]),
+    S * (m[2][0] * v[0] + m[2][1] * v[1] + m[2][2] * v[2]));
+};
+const axisGl = toGl([0, 1, 0]).normalize();   // the pivot axis, +Y in the assembly
+const upGl = toGl([0, 0, 1]).normalize();
+
+let groups = {}, base = {}, bbox = new THREE.Box3();
+const R = KIN.R_mm;
+
+function resize() {
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h; camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(canvas);
+
+function setView(name) {
+  const c = bbox.getCenter(new THREE.Vector3());
+  const r = bbox.getSize(new THREE.Vector3()).length() * 0.5;
+  const dist = r / Math.sin(THREE.MathUtils.degToRad(camera.fov) / 2) * 1.05;
+  const dirs = { iso: [1.0, 1.3, 0.6], side: [0, 1, 0.06], end: [1, 0, 0.06] };   // the drive is on the +Y side
+  const d = toGl(dirs[name]).normalize();
+  camera.position.copy(c).addScaledVector(d, dist);
+  camera.near = dist / 50; camera.far = dist * 20; camera.updateProjectionMatrix();
+  controls.minDistance = r * 0.6; controls.maxDistance = dist * 4;
+  camera.up.copy(upGl);
+  controls.target.copy(c);
+  controls.update();
+  document.querySelectorAll("[data-view]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.view === name)));
+}
+
+function colorOf(node, prefer) {
+  let found = null;
+  node.traverse((o) => {
+    if (found || !o.isMesh) return;
+    const m = Array.isArray(o.material) ? o.material[0] : o.material;
+    if (!prefer || (m.name || "").toLowerCase().includes(prefer)) found = "#" + m.color.getHexString();
+  });
+  return found;
+}
+
+function buildLegend() {
+  const ol = $("legend");
+  for (const item of LEGEND) {
+    const g = groups[item.node];
+    const col = (g && (colorOf(g, item.material) || colorOf(g))) || "transparent";
+    const li = document.createElement("li");
+    li.innerHTML = `<i class="sw" style="background:${col}"></i><div><b></b><span></span></div>`;
+    li.querySelector("b").textContent = item.title;
+    li.querySelector("span").textContent = item.text;
+    ol.appendChild(li);
+  }
+}
+
+const bin = Uint8Array.from(atob(document.getElementById("glb").textContent.trim()), (c) => c.charCodeAt(0));
+new GLTFLoader().parse(bin.buffer, "", (gltf) => {
+  const root = gltf.scene;
+  scene.add(root);
+  root.traverse((o) => {
+    if (o.isMesh) {
+      const m = o.material;
+      if (m && m.isMeshStandardMaterial) { m.metalness = Math.min(m.metalness, 0.15); m.roughness = Math.max(m.roughness, 0.55); }
+    }
+  });
+  for (const name of ["frame", "drive", ...KIN.levels.map((l) => l.node)]) {
+    const g = root.getObjectByName(name);
+    if (!g) continue;
+    groups[name] = g;
+    base[name] = g.matrix.clone();
+    g.matrixAutoUpdate = false;
+  }
+  bbox.setFromObject(root);
+  $("loading").hidden = true;
+  buildLegend();
+  resize();
+  setView("iso");
+}, (err) => { $("loading").textContent = "The model didn't load: " + (err && err.message ? err.message : err); });
+
+// Motion: constant-speed stage, hard reversals (as BugSorter's firmware drives it).
+let playing = !matchMedia("(prefers-reduced-motion: reduce)").matches;
+let t = 0, last = performance.now();
+const state = { stroke: 2, speed: 2 };
+
+function tri(u) { u = u - Math.floor(u); return u < 0.5 ? 4 * u - 1 : 3 - 4 * u; }   // -1..1, linear
+function gapAt(theta) {   // WORKING_DIMENSIONS.md closed form: half-length 70, height 25
+  return KIN.pitch_mm - 2 * (70 * Math.sin(theta) + 12.5 * Math.cos(theta));
+}
+function updateReadouts() {
+  const half = state.stroke * 5;                     // mm
+  const th = Math.atan(half / R);
+  const deg = THREE.MathUtils.radToDeg(th);
+  $("strokeOut").textContent = state.stroke.toFixed(1) + " cm";
+  $("speedOut").textContent = state.speed.toFixed(1) + " cm/s";
+  $("rTilt").textContent = "±" + deg.toFixed(1) + "°";
+  $("rTilt").className = "big " + (gapAt(th) <= 0 ? "state-bad" : gapAt(th) < 3 ? "state-warn" : "");
+  $("rPeriod").textContent = (2 * state.stroke / state.speed).toFixed(1) + " s";
+  const gap = gapAt(th);
+  const el = $("rGap"), note = $("rGapNote");
+  if (gap <= 0) { el.textContent = "collide"; el.className = "big state-bad"; note.textContent = "neighbouring boxes touch at full tilt"; }
+  else { el.textContent = gap.toFixed(1) + " mm"; el.className = "big " + (gap < 3 ? "state-warn" : "state-ok"); note.textContent = gap < 3 ? "under the 3 mm design clearance" : "at full tilt, " + KIN.pitch_mm + " mm level spacing"; }
+  $("formula").textContent = `R = ${R.toFixed(1)} mm · ${state.stroke.toFixed(1)} cm stroke → ±${deg.toFixed(1)}°`;
+}
+
+const T = new THREE.Matrix4(), Ti = new THREE.Matrix4(), Rm = new THREE.Matrix4(), M = new THREE.Matrix4();
+function pose(d) {                                   // d: stage height, mm, from the middle
+  const a = Math.atan(d / R);
+  for (const lv of KIN.levels) {
+    const g = groups[lv.node]; if (!g) continue;
+    const p = toGl(lv.pivot_mm);
+    const phi = -Math.sign(lv.drive_x_mm) * a;       // the level's drive point rises with the rod
+    T.makeTranslation(p.x, p.y, p.z); Ti.makeTranslation(-p.x, -p.y, -p.z);
+    Rm.makeRotationAxis(axisGl, phi);
+    M.copy(T).multiply(Rm).multiply(Ti).multiply(base[lv.node]);
+    g.matrix.copy(M); g.matrixWorldNeedsUpdate = true;
+  }
+  const dr = groups.drive;
+  if (dr) {
+    const off = upGl.clone().multiplyScalar(d * S);
+    M.makeTranslation(off.x, off.y, off.z).multiply(base.drive);
+    dr.matrix.copy(M); dr.matrixWorldNeedsUpdate = true;
+  }
+  $("hud").innerHTML = `stage <b>${(d >= 0 ? "+" : "−") + Math.abs(d).toFixed(1)} mm</b> · tilt <b>${THREE.MathUtils.radToDeg(a).toFixed(1)}°</b>`;
+}
+
+function frame(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  if (playing) t += dt;
+  const period = 2 * state.stroke / state.speed;
+  pose(state.stroke * 5 * tri(t / period + 0.25));
+  controls.update();
+  renderer.render(scene, camera);
+  requestAnimationFrame(frame);
+}
+
+$("play").addEventListener("click", () => {
+  playing = !playing;
+  $("play").textContent = playing ? "Pause" : "Play";
+  $("play").setAttribute("aria-pressed", String(playing));
+});
+$("play").textContent = playing ? "Pause" : "Play";
+$("play").setAttribute("aria-pressed", String(playing));
+$("stroke").addEventListener("input", (e) => { state.stroke = +e.target.value; updateReadouts(); });
+$("speed").addEventListener("input", (e) => { state.speed = +e.target.value; updateReadouts(); });
+document.querySelectorAll("[data-view]").forEach((b) => b.addEventListener("click", () => setView(b.dataset.view)));
+$("frame").addEventListener("change", (e) => { if (groups.frame) groups.frame.visible = e.target.checked; });
+updateReadouts();
+requestAnimationFrame(frame);
+</script>

@@ -21,6 +21,8 @@ Status: first build, 2026-10-24. Nothing here is calibrated yet. Until the bench
 | `clump_study.py` | A clump across bond sets x spray on/off x seeds, in parallel, with a summary table |
 | `designs.py` | Pool sorter, plus the registry for every design spec |
 | `designs_holder.py` | BioKEA's holder tower with sieve inserts (glued mesh or printed), and the plinko layers |
+| `designs_gated.py` | The gated container tower (`cad/gated_container.py`): sloped floors, swappable gate strips, levels spaced with `pitch=` |
+| `designs_breaker.py` | The breaker layer on top of a seesaw tower (`cad/breaker_layer.py`), taking the same spec string as the CAD |
 | `grains.py` | Rice, quinoa, chickpeas, pasta (frozen for the optimizer), plus white rice as photographed, brown rice, black rice, wild rice, chia and couscous |
 | [GRAINS.md](GRAINS.md) | Every grain kind: size, spread, density, shape, colour, sources and assumptions; the photo identification; what to caliper |
 | `insects.py` | Generated preserved specimens: compact, elongate, long-legged |
@@ -34,15 +36,23 @@ Status: first build, 2026-10-24. Nothing here is calibrated yet. Until the bench
 | `instab.py` | Stability probe: short runs that stop at the first MuJoCo reset and record the worst overlap, tray-wide and on gates only |
 | `contact_rule.py` | Picks the timestep and contact time constant from a design's tightest gate clearance and the stroke |
 | `verify.py` | Second opinion on the optimizer's winners: fresh seeds, a heavy load, per-design contacts; writes `opt/VERIFY.md` |
+| `verify_seesaw.py` | The same second opinion under the rig's alternating seesaw; writes `opt/VERIFY_SEESAW.md` |
+| `optimize.py` | The design optimizer: proposes printable variants, scores each across friction sets and seeds, refines around the leaders, and writes `opt/` (leaderboards, winners, LOG.md) |
+| `opt_malaise.py` | The optimizer's clump study: breaker layers ranked on Malaise clumps, break-up first, then gentleness, then sort |
+| `rig.py` | BugSorter's frame, drawn around a run on the replay page. Display only, not in the physics. |
+| `stroke_from_video.py` | Measures a tray's stroke from video by template tracking, for `BENCH.md` step 1 |
+| `render_site/` | Builds the Sieve Render Lab: every recorded run in one viewer with a Run menu (`build_site.py`, run list in `runs_def.py`) |
+| `common.py` | Types shared by the sim modules |
 | [BENCH.md](BENCH.md) | What to measure on the bench, and which template each number goes in |
 
 ## Run
 
-From `sim\`, with the repo venv (`..\.venv\Scripts\python.exe`):
+From `sim\`, in the WSL venv (`~/venvs/sieve`; see the main README's *Running the code*). For example, the sorting stack on the alternating seesaw with the buzz:
 
 ```
-python sorter.py --design pool:w5p0,t1p4 --mix rice=30,quinoa=30,chickpea=8,pasta=8 --stroke sine:amp_mm=3,freq_hz=10 --duration 10 --out out/runs/pool_demo
-python viewer.py out/runs/pool_demo --open
+python sorter.py --design inserts:5mm_across,2mm_across,pitch=55,holder=seesaw --mix pasta=10,rice=12,quinoa=15 \
+    --stroke seesaw:deg=10,period_s=2,vib_mm=0.3,vib_hz=40 --duration 12 --dt 0.000125 --timeconst 0.00025 --out out/runs/stack
+python viewer.py out/runs/stack --open
 ```
 
 Outputs go in `sim\out\`, which is not committed.

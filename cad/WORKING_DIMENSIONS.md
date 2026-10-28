@@ -2,6 +2,8 @@
 
 Adopted 2026-10-24 as the team's working numbers. All values are in mm.
 
+> **Not measured.** The holder box is rebuilt from a drawing that was itself reconstructed from four photos (`frame_holder.py`), and `WALL` and `LEDGE_T` are guesses. Measure one real BugSorter box with calipers before printing anything that has to fit it ([../docs/EVIDENCE.md](../docs/EVIDENCE.md), step 1).
+
 - **Source of truth:** `frame_holder.py` and `sieve_insert.py`. This page mirrors them; if you change a number, change it in the script, rebuild, then update this page.
 - **Inserts follow the holder:** if a measured part disagrees, fix the holder first. The inserts take their outside size from the holder pocket.
 
@@ -32,7 +34,7 @@ Each box tips about its own pivot across its middle (at the body's centre, mid-h
 | ±20° | 89.5 | 74.4 |
 | ±25° | 103.6 | 84.9 |
 
-The pitch is about how far a specimen drops from one screen to the next, so the smallest pitch that clears is the gentlest. Use **55 mm at ±10°** and **65 mm at ±15°** with the seesaw holder (5 mm clear in the sim's `rocking.py`). Preview: `out/seesaw_tower.png` is still the 11:06 one (frame_holder boxes at ±25°, 105 mm). The ±10° re-render with the seesaw parts was stopped when the laptop ran low on memory.
+The pitch is about how far a specimen drops from one screen to the next, so the smallest pitch that clears is the gentlest. Use **55 mm at ±10°** and **65 mm at ±15°** with the seesaw holder (5 mm clear in the sim's `rocking.py`). Preview: `out/seesaw_tower.png`, seesaw holders at ±10° and 55 mm. The full machine at that spacing, with its drive, is in [PRODUCT.md](PRODUCT.md).
 
 ## Seesaw holder and catch pan (`seesaw_holder.py`)
 

@@ -1,0 +1,18 @@
+{
+  "valid_solid": true,
+  "single_solid": true,
+  "watertight_mesh": true,
+  "bbox_mm": [
+    10.0,
+    134.0,
+    8.0
+  ],
+  "fits_bed": true,
+  "volume_cm3": 10.53,
+  "print": "on its side, cross-pin holes vertical",
+  "count": 1,
+  "drives": [
+    "level1",
+    "level3"
+  ]
+}

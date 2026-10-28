@@ -1,5 +1,7 @@
 # Pitch: 5-minute demo script
 
+> **Historical record:** the demo script as given at the hackathon, Oct 25, 2026. The current status is in the [README](../README.md) and [EVIDENCE.md](EVIDENCE.md).
+
 Physical AI for Science Hack, BioKEA track. Live demos 15:30–16:30, then demos and pitching 16:30–17:30. **Numbers are from the MuJoCo sim and uncalibrated. Say so once, clearly.** *Numbers refreshed at 13:45 from the merged results (README "Results").*
 
 ## 0:00 The problem (30 s)

@@ -3,6 +3,9 @@ its middle (docs/SYSTEM.md section 3), with neighbours tipping opposite ways.
 
     seesaw_holder      the holder box with no +X mounting tab and a pivot lug on each long wall
     seesaw_catch_pan   the bottom level: a solid floor, CATCH_DEPTH deeper than a box, and an inward lip
+    seesaw_holder_drive_a     seesaw_holder plus a drive lug toward +X (levels 0 and 2 of cad/product.py)
+    seesaw_holder_drive_b     seesaw_holder plus a drive lug toward -X (level 1)
+    seesaw_catch_pan_drive_b  seesaw_catch_pan plus a drive lug toward -X (level 3, the bottom)
 
 Changes from frame_holder.py (same 140 x 104 x 25 body, same pocket, ledge and open bottom, so every
 insert, plinko layer, gated container and the breaker layer drops in unchanged):
@@ -22,11 +25,25 @@ inward lip, LIP_T thick with a 45 deg underside (prints without supports), leavi
 open bottom of the box above: everything falling from above still lands in the pan, and grains that
 bounce at the ends hit the lip instead of leaving (the 11:20 renders lost grains over the ends).
 
+The drive variants (cad/product.py, cad/PRODUCT.md) let one linear stage rock the whole stack. A yoke on
+the stage carries two vertical push rods on the +Y side: rod A at x = +DRIVE_R drives levels 0 and 2, rod B
+at x = -DRIVE_R drives levels 1 and 3. So each box gets a third lug, a drive lug, on its +Y long wall:
+- the pivot lug's D shape (LUG_W wide, LUG_T out, from the bed up), centred on its slot;
+- a blind horizontal slot along the box's X, DRIVE_SLOT_W wide, LUG_T deep (the lug's whole thickness,
+  nothing into the wall), at the pivot height;
+- a DRIVE_PIN_D cross-pin on the rod rides in the slot.
+The rod stays vertical at x = DRIVE_R, so a stage move u tips the box by atan(u / DRIVE_R) and the pin
+slides outward along the slot by DRIVE_R (1 / cos(theta) - 1): 0.9 mm at 10 deg. DRIVE_R puts the firmware's
+default 20 mm stroke at +/-10 deg exactly. The slot runs from DRIVE_SLACK inside the pin's rest position to
+DRIVE_SLACK past its position at DRIVE_MAX_DEG, so the slot never stops the rock (the levels touch first).
+The lug stays inside the box's outline in X and Z, so it doesn't change the pitch.
+
 Prints with the flat bottom on the bed, no supports.
 
-Run from this folder:  <venv python> seesaw_holder.py [seesaw_holder seesaw_catch_pan]
+Run from this folder:  <venv python> seesaw_holder.py [seesaw_holder seesaw_catch_pan seesaw_holder_drive_a ...]
 """
 import json
+import math
 import sys
 import cadquery as cq
 from cadkit import export_all
@@ -39,6 +56,11 @@ LUG_W, LUG_T = 16.0, 6.0          # lug width along X, how far it stands out fro
 CATCH_DEPTH = 20.0                # the catch pan reaches this much further down than a box
 LIP_T = 2.0                       # the pan's inward lip: flat top thickness, then a 45 deg underside
 FLOOR_T = 3.0                     # the pan's solid floor
+DRIVE_R = 10.0 / math.tan(math.radians(10.0))   # 56.71: pivot to the drive pin at rest; a 20 mm stroke tips +/-10 deg
+DRIVE_PIN_D = 3.0                 # the push rod's cross-pin: a 3 mm steel dowel
+DRIVE_SLOT_W = 3.3                # slot width: the pin plus 0.3
+DRIVE_MAX_DEG = 20.0              # the slot is long enough for this tilt (a 41 mm stroke)
+DRIVE_SLACK = 0.5                 # slot length past the pin's travel at each end
 
 
 def cyl_y(r, y0, length, z):
@@ -100,7 +122,45 @@ def catch_pan():
                   "note": "rim and pivot sit as on a box (pivot 12.5 under the rim), so it hangs at the same pitch"}
 
 
-PARTS = {"seesaw_holder": holder, "seesaw_catch_pan": catch_pan}
+def drive_slot_span():
+    """How far from the pivot the pin centre can sit along the slot: (inner end, outer end)."""
+    return DRIVE_R - DRIVE_SLACK, DRIVE_R / math.cos(math.radians(DRIVE_MAX_DEG)) + DRIVE_SLACK
+
+
+def with_drive_lug(part, side, slot_z):
+    """Add a drive lug on the +Y long wall toward +X (side 1) or -X (side -1), its slot centred slot_z up."""
+    s0, s1 = drive_slot_span()
+    xc, y_wall, y_face = side * (s0 + s1) / 2, box.W / 2, box.W / 2 + LUG_T
+    plate = cq.Workplane("XY").box(LUG_W, LUG_T, slot_z, centered=(True, False, False)).translate((xc, y_wall, 0))
+    part = part.union(plate).union(cyl_y(LUG_W / 2, y_wall, LUG_T, slot_z).translate((xc, 0, 0)))
+    slot = (cq.Workplane("XZ", origin=(0, y_face + 0.01, 0)).center(xc, slot_z)     # XZ extrudes toward -Y
+            .slot2D(s1 - s0 + DRIVE_SLOT_W, DRIVE_SLOT_W).extrude(LUG_T + 0.01))
+    return part.cut(slot)
+
+
+def drive_info(side, slot_z):
+    s0, s1 = drive_slot_span()
+    return {"drive_lug": {"wall": "+Y", "pin_x_at_rest_mm": round(side * DRIVE_R, 2),
+                          "slot_x_mm": sorted([round(side * s0, 2), round(side * s1, 2)]), "slot_z_mm": slot_z,
+                          "slot_w_mm": DRIVE_SLOT_W, "slot_depth_mm": LUG_T, "pin_d_mm": DRIVE_PIN_D,
+                          "slot_covers_tilt_deg": DRIVE_MAX_DEG,
+                          "tilt_law": "theta = atan(u / DRIVE_R), u = rod travel from the level pose"}}
+
+
+def holder_drive(side):
+    part, info = holder()
+    return with_drive_lug(part, side, PIVOT_Z), {**info, **drive_info(side, PIVOT_Z)}
+
+
+def catch_pan_drive(side):
+    part, info = catch_pan()
+    z = CATCH_DEPTH + PIVOT_Z
+    return with_drive_lug(part, side, z), {**info, **drive_info(side, z)}
+
+
+PARTS = {"seesaw_holder": holder, "seesaw_catch_pan": catch_pan,
+         "seesaw_holder_drive_a": lambda: holder_drive(1), "seesaw_holder_drive_b": lambda: holder_drive(-1),
+         "seesaw_catch_pan_drive_b": lambda: catch_pan_drive(-1)}
 
 
 if __name__ == "__main__":

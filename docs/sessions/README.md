@@ -1,5 +1,7 @@
 # Parallel sessions
 
+> **Historical record.** These are the work-stream briefs from the hackathon (Oct 24–25, 2026), kept to show how the work was split. Times in them are PT on Oct 25. For the current design read [../SYSTEM.md](../SYSTEM.md), [../EVIDENCE.md](../EVIDENCE.md) and the [README](../../README.md).
+
 > **Next steps for every session: [PLAN.md](PLAN.md)** (11:45 → 14:30 submission).
 >
 > **Every session: read [../SYSTEM.md](../SYSTEM.md) first.** It's the one shared description of the system (clump input, stacked trays, mounted at the +X tab, rocking motion, sim scope, who owns what).

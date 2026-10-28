@@ -44,7 +44,7 @@
 | **Simulated only, uncalibrated** | The breaker frees clumps, the seesaw with the buzz sorts, and the drive gives ±10° |
 | **Not yet known** | Whether the parts fit a real BugSorter box: its dimensions come from a drawing. Then the break-up and damage on real clumps, and sorting counts. |
 
-The sim's biggest gap is liquid. Samples sit in ethanol, and the sim is dry. Details, and the bench plan: [docs/EVIDENCE.md](docs/EVIDENCE.md).
+The sim now runs the insects wet, under ethanol ([sim/LIQUID.md](sim/LIQUID.md)), but it has no flow in the liquid. When EntoSieve is rebuilt in the sim, the holes cut by body length as in the paper, but only 28–81% of each class gets through, against 96–100% for real ([sim/ENTOSIEVE.md](sim/ENTOSIEVE.md)). Details, and the bench plan: [docs/EVIDENCE.md](docs/EVIDENCE.md).
 
 ## Results from the simulation
 

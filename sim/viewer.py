@@ -15,6 +15,8 @@ A seesaw run (docs/SYSTEM.md section 3: each level rocks about its own pivot, ne
 in the lab frame and records level_q (frames x levels x 4, w x y z), each level's orientation in the lab,
 with scene["levels"][k] = {"pivot": [x, y, z] mm, "geoms": [indices into scene["tray"]["geoms"]]}. Those
 geoms are drawn turned by level_q about their level's pivot; the others, and the particles, as recorded.
+A boxes run (boxes.py: each level tilts and vibrates on its own) also records level_p (frames x levels x 3, mm),
+each level body's origin in the lab: a level's rest-frame point x is drawn at level_p + R(level_q) x.
 
 The trajectory is quantized (positions int16 at 0.01 mm, so +/-327 mm; quaternions int16 at
 1/32767; wetness uint8), delta-coded along time, byte-shuffled, zlib-compressed and base64'd.
@@ -93,6 +95,8 @@ def quantize(traj: dict, step: int) -> tuple[dict, int]:
         out["tray_q"] = np.nan_to_num(traj["tray_q"][fr]).astype("<f4")
     if "level_q" in traj:          # seesaw: each level's orientation, frames x levels x 4, about scene levels[k].pivot
         out["level_q"] = np.nan_to_num(traj["level_q"][fr]).astype("<f4")
+    if "level_p" in traj:          # boxes: each level body's origin in the lab, frames x levels x 3 (mm)
+        out["level_p"] = np.nan_to_num(traj["level_p"][fr]).astype("<f4")
     if "zone_counts" in traj:
         out["zone_counts"] = np.clip(traj["zone_counts"][fr], 0, 65535).astype("<u2")
     if "wet" in traj:

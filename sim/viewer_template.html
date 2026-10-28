@@ -408,10 +408,10 @@ for (const g of groups.values()) {
 
 // ---------- trajectory ----------
 const loading = $('loading');
-let T, TRAY, TRAYQ, LEVELQ, POS, QUAT, ZC, WET;
+let T, TRAY, TRAYQ, LEVELQ, LEVELP, POS, QUAT, ZC, WET;
 try {
-  [T, TRAY, TRAYQ, LEVELQ, POS, QUAT, ZC, WET] = await Promise.all(
-    ['t', 'tray_d', 'tray_q', 'level_q', 'pos', 'quat', 'zone_counts', 'wet'].map(decode));
+  [T, TRAY, TRAYQ, LEVELQ, LEVELP, POS, QUAT, ZC, WET] = await Promise.all(
+    ['t', 'tray_d', 'tray_q', 'level_q', 'level_p', 'pos', 'quat', 'zone_counts', 'wet'].map(decode));
 } catch (err) {
   loading.textContent = 'Could not decode the recording: ' + err + '. This page needs a current Chrome, Edge or Firefox.';
   throw err;
@@ -519,7 +519,13 @@ function apply() {
       qa.set(LEVELQ[o0 + 1], LEVELQ[o0 + 2], LEVELQ[o0 + 3], LEVELQ[o0]);
       qb.set(LEVELQ[o1 + 1], LEVELQ[o1 + 2], LEVELQ[o1 + 3], LEVELQ[o1]);
       grp.quaternion.slerpQuaternions(qa, qb, a).normalize();
-      grp.position.copy(levelPivots[k]).sub(levelPivots[k].clone().applyQuaternion(grp.quaternion));
+      if (LEVELP) {                    // boxes runs: each level body's origin in the lab (it translates too)
+        const p0 = 3 * (i0 * nl + k), p1 = 3 * (i1 * nl + k);
+        grp.position.set(LEVELP[p0] + (LEVELP[p1] - LEVELP[p0]) * a, LEVELP[p0 + 1] + (LEVELP[p1 + 1] - LEVELP[p0 + 1]) * a,
+          LEVELP[p0 + 2] + (LEVELP[p1 + 2] - LEVELP[p0 + 2]) * a);
+      } else {                         // seesaw runs: each level only turns about its pivot
+        grp.position.copy(levelPivots[k]).sub(levelPivots[k].clone().applyQuaternion(grp.quaternion));
+      }
     });
   }
   if ($('lock').checked) {             // carry the camera along with the tray

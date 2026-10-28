@@ -17,6 +17,8 @@ Status: first build, 2026-10-24. Nothing here is calibrated yet. Until the bench
 |---|---|
 | `sorter.py` | Core: builds the scene, shakes it, records it, and counts where everything ends up |
 | `rocking.py` | The seesaw: each box of a tower on its own hinge across its middle, neighbours in opposite phase, driven in the lab frame; also checks that neighbouring boxes never touch ([SEESAW.md](SEESAW.md)) |
+| `boxes.py` | Each box moves on its own (`--stroke boxes:`): per level a tilt about Y and a vibration in any direction, with free phases, prescribed kinematically in the lab frame (no actuator dynamics); clearance over every phase combination and the pitch it needs ([BOXES.md](BOXES.md)) |
+| `screens.py` | Round-hole (`r<hole>b<bar>`, modelled as octagons) and slot (`s<width>x<length>b<bar>`) screens for any level of an `inserts:` tower |
 | `clumps.py` | The real input: a clump of specimens (or grain surrogates) with leaves, twigs and dirt, packed into a ball and held by breakable bonds that weaken when wet; break-up, damage and leaf-blinding metrics ([CLUMPS.md](CLUMPS.md)) |
 | `clump_study.py` | A clump across bond sets x spray on/off x seeds, in parallel, with a summary table |
 | `designs.py` | Pool sorter, plus the registry for every design spec |
@@ -37,7 +39,7 @@ Status: first build, 2026-10-24. Nothing here is calibrated yet. Until the bench
 | `contact_rule.py` | Picks the timestep and contact time constant from a design's tightest gate clearance and the stroke |
 | `verify.py` | Second opinion on the optimizer's winners: fresh seeds, a heavy load, per-design contacts; writes `opt/VERIFY.md` |
 | `verify_seesaw.py` | The same second opinion under the rig's alternating seesaw; writes `opt/VERIFY_SEESAW.md` |
-| `optimize.py` | The design optimizer: proposes printable variants, scores each across friction sets and seeds, refines around the leaders, and writes `opt/` (leaderboards, winners, LOG.md) |
+| `optimize.py` | The design optimizer: proposes printable variants, scores each across friction sets and seeds, refines around the leaders, and writes `opt/` (leaderboards, winners, LOG.md). The `sift` study searches separate trays with each box moving on its own (BOXES.md) |
 | `opt_malaise.py` | The optimizer's clump study: breaker layers ranked on Malaise clumps, break-up first, then gentleness, then sort |
 | `rig.py` | BugSorter's frame, drawn around a run on the replay page. Display only, not in the physics. |
 | `stroke_from_video.py` | Measures a tray's stroke from video by template tracking, for `BENCH.md` step 1 |
@@ -53,6 +55,17 @@ From `sim\`, in the WSL venv (`~/venvs/sieve`; see the main README's *Running th
 python sorter.py --design inserts:5mm_across,2mm_across,pitch=55,holder=seesaw --mix pasta=10,rice=12,quinoa=15 \
     --stroke seesaw:deg=10,period_s=2,vib_mm=0.3,vib_hz=40 --duration 12 --dt 0.000125 --timeconst 0.00025 --out out/runs/stack
 python viewer.py out/runs/stack --open
+```
+
+Each box on its own (`boxes.py`, [BOXES.md](BOXES.md)): one value per key for every level, or a slash list top to bottom with the catch pan last. Here the 3 mm round-hole tray tilts ±8° every 2 s and buzzes 0.3 mm at 40 Hz straight up, the 1.2 × 12 mm slot tray tilts ±5° every 1.5 s, a third of a cycle behind, and buzzes 0.4 mm at 60 Hz thrown 60° up, and the catch pan stays still. The motion is kinematic: each box follows its path exactly, with no actuator dynamics. The run prints the closest the boxes can come to each other at any phases.
+
+```
+python sorter.py --design inserts:r2p85b1p15_across,s1p05x11p85b0p95_across,pitch=70,holder=seesaw \
+    --mix insect_malaise_lt2=24,insect_malaise_2to6=24,insect_malaise_gt6=12 \
+    --stroke boxes:deg=8/5/0,period_s=2/1.5/2,phase=0/0.33/0,vib_mm=0.3/0.4/0,vib_hz=40/60/40,vib_angle_deg=90/60/90 \
+    --duration 12 --dt 0.000125 --timeconst 0.00025 --out out/runs/boxes
+python viewer.py out/runs/boxes --open
+python boxes.py inserts:r2p85b1p15_across,s1p05x11p85b0p95_across,pitch=70,holder=seesaw --stroke deg=8/5/0,vib_mm=0.3/0.4/0 --clear 3
 ```
 
 Outputs go in `sim\out\`, which is not committed.

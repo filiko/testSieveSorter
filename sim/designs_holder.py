@@ -6,6 +6,8 @@
                             h<hole>b<bar>[_across]  a custom printed screen, sizes as modelled with p for the
                                           point: h2p15b1p15_across = 2.15 mm holes, 1.15 mm bars, ribs across
                                           (see insert_spec); any number of boxes, coarse to fine (sim/LAYERS.md)
+                            r<hole>b<bar>[_across]  round holes (modelled as octagons), and
+                            s<width>x<length>b<bar>[_across]  slots along X: screens.py, any level
                             mesh5, mesh2    today's inserts: woven mesh glued over the same frame (MESHES)
                           e.g. inserts:mesh5,mesh2 (current) vs inserts:5mm,2mm (future); mixing works.
                           pitch=<mm> spaces the boxes (bottom to bottom) instead of rim on rim, as on the
@@ -43,6 +45,7 @@ import re
 import sys
 from pathlib import Path
 
+import screens
 from common import Design, ellipse_fits
 
 CAD_DIR = Path(__file__).resolve().parent.parent / "cad"
@@ -306,6 +309,9 @@ def insert_spec(arg):
 
 def insert(arg, z_seat, drain_area):
     """Geoms of one insert seated on a ledge top at z_seat, and its layer record."""
+    sc = screens.parse(arg.removeprefix("sieve_insert_"))
+    if sc:                                       # round holes and slots: screens.py
+        return screens.insert(arg.removeprefix("sieve_insert_"), sc, z_seat, drain_area)
     si = cad()[1]
     short, kind, name = insert_spec(arg)
     win_area = sum(wl * ww for _, _, wl, ww in (si.across_windows() if kind == "across" else si.windows()))
@@ -335,10 +341,11 @@ def insert(arg, z_seat, drain_area):
 
 def ideal_zone(dims, layers, last):
     """First layer whose opening the particle can't pass (rules in the module docstring), else `last`.
-    layers: ((zone, rule, opening_mm), ...) top to bottom; rule "square", "slot" or "solid"."""
+    layers: ((zone, rule, opening_mm), ...) top to bottom; rule "square", "slot", "round" (screens.py) or "solid"."""
     w, t = dims["width"], dims["thickness"]
     for zone, rule, s in layers:
-        if rule == "solid" or t > s or (rule == "square" and not ellipse_fits(w, t, s, s)):
+        if rule == "solid" or t > s or (rule == "square" and not ellipse_fits(w, t, s, s)) \
+                or (rule == "round" and not screens.fits_round(w, t, s)):
             return zone
     return last
 

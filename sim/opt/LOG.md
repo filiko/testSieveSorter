@@ -967,3 +967,68 @@ This overrides my 10:10 reading ("x matches attached at the mid points"). So rou
 - the insect clump, once `clumps.pack` handles insects;
 - printer-undersize stress on the seesaw winners;
 - a bench check of whether the rig can add the 40 Hz buzz.
+## sift_pilot round 0 (2026-10-27 19:46, auto)
+
+**Tried:** sift: 8 (baseline, lhs); coupled: 1 (current). 42 runs, 1 min wall.
+
+**Leader so far:** S-2997a7b5 (sift, round 0) L1 square 3 (bar 1) / L2 square 1.6 (bar 1); boxes 55 mm apart, stroke each box on its own (constant speed tilts): L1 0.295 mm at 40 Hz, 90 deg up (1.9 g); L2 0.295 mm at 40 Hz, 90 deg up (1.9 g); catch still: robust 0.087 (mean 0.104 +/- 0.018); > 6 mm 19% pure / 100% recovered, 2-6 mm 40% pure / 39% recovered, < 2 mm 99% pure / 67% recovered; PEN 2/3 (clr 0.28, pen 0.370).
+
+**Screen results this round (2 s, progress score), best per family:**
+
+- sift: best S-2997a7b5 screen robust 0.628; median 0.534; failures in 1 of 8 candidates
+- coupled: best C-1cfae593 screen robust 0.551; median 0.551; failures in 0 of 1 candidates
+
+**Why the losers failed** (particles per run, over this round's screened candidates in the bottom half of each family; the most common modes):
+
+- sift: 2-6 mm: held upstream -> on_h2p15b2p05_across (22.3 in 1 cands); 2-6 mm: held upstream -> on_h2p05b1p55_across (21.0 in 1 cands); < 2 mm: held upstream -> on_r0p65b1p15_across (16.5 in 1 cands); 2-6 mm: held upstream -> on_h2p55b1p75_across (14.3 in 1 cands); 2-6 mm: held upstream -> on_s2p35x11p85b1p35_across (11.5 in 1 cands); < 2 mm: held upstream -> on_h1p05b1p35_across (8.7 in 1 cands)
+  - sift failed runs: 1, e.g. BADQACC at t = 0.0014 s, DOF 76
+- coupled: 2-6 mm: held upstream -> on_h2p85b1p15_across (9.7 in 1 cands); < 2 mm: held upstream -> on_h1p45b1p15_across (4.3 in 1 cands); < 2 mm: between -> in the floor of on_h1p45b1p15_across (3.0 in 1 cands); 2-6 mm: between -> in the floor of on_h2p85b1p15_across (2.7 in 1 cands); 2-6 mm: between -> in the floor of on_h1p45b1p15_across (1.7 in 1 cands); < 2 mm: between -> z -110 mm (0.7 in 1 cands)
+
+**Leaders' remaining losses** (full runs, top 3):
+
+- S-2997a7b5: 2-6 mm: held upstream -> on_h2p85b1p15_across 9.3; < 2 mm: held upstream -> on_h1p45b1p15_across 5.3; 2-6 mm: between -> in the floor of on_h2p85b1p15_across 3.3; 2-6 mm: between -> in the floor of on_h1p45b1p15_across 1.7; < 2 mm: between -> in the floor of on_h1p45b1p15_across 1.3
+- S-88c31ccf: < 2 mm: held upstream -> on_r0p95b1p55_across 14.7; 2-6 mm: held upstream -> on_s3p65x11p85b0p95_across 5.0; < 2 mm: held upstream -> on_s3p65x11p85b0p95_across 1.3; > 6 mm: leaked downstream -> on_r0p95b1p55_across 1.3; < 2 mm: lost -> z -37781 mm 0.3
+- S-71d846e7: 2-6 mm: held upstream -> on_h2p85b1p15_across 9.0; < 2 mm: held upstream -> on_h1p45b1p15_across 4.7; < 2 mm: between -> z 65 mm 1.0; 2-6 mm: between -> z 61 mm 1.0; 2-6 mm: between -> z 116 mm 1.0
+
+**Parameters at a bound among each family's elite** (the range may be too narrow):
+
+- sift: shape1 square 0.53/round 0.14/slot 0.32, shape2 square 0.53/round 0.32/slot 0.14, pitch low (55.00), tshape constant_speed 0.62/sine 0.38, tilt1 none 0.62/tilt 0.38, tilt2 none 0.38/tilt 0.62, vib_angle2 high (83.33)
+
+**Next hypothesis (auto):** 0.3 particles per run leak through a gate they should not pass: tighten that gate or cap the gap height (window gate); 7.3 particles per run jam between bins: see where in the losses list; the leader's near-size results are flagged (overlap vs clearance): check it at a smaller dt or stiffer contacts before trusting it
+
+## Each box on its own, and the sift study: a dry PILOT (notes, 2026-10-27 19:55)
+
+**PILOT, not a result.** The user: "the boxes are individually shaking it doesnt matter that theyre synced what matters is the sifting". Branch `per-box`; details in `sim/BOXES.md`.
+
+**New:**
+- `boxes.py`, `--stroke boxes:`: each level its own tilt and vibration, slash lists per level, kinematic in the lab frame (no actuator dynamics). The seesaw path is untouched: a seesaw run is bitwise identical to `main`'s.
+- `screens.py`: round holes (`r<hole>b<bar>`, modelled as octagons) and slots along X (`s<width>x<length>b<bar>`) for any level.
+- Study `sift` and family `sift`:
+  - the stratified Malaise mix, scores weighted to the real shares;
+  - per screen a square, round or slot opening and its bar, and the pitch;
+  - per box a tilt (on or off, 2–12°, 0.5–6 s) and a vibration (0–10 g at 15–120 Hz, at most 1 mm, 0–90° up);
+  - each seed draws every box's phases;
+  - friction sets x liquid sets (dry only for now) x seeds;
+  - draws whose boxes could come within 3 mm at any phases are rejected.
+- Study `sift_pilot`: the same, with a 2 s screen and a 4 s full run on 1 seed.
+
+**Pilot** (`run --study sift_pilot --rounds 1 --workers 8`): 6 Latin-hypercube candidates, 2 references and the coupled seesaw. 42 runs, 2 min. The machinery works end to end: constraints, phases, box and seesaw children, weighted scoring, leaderboard, winners, log.
+
+| candidate (4 s, 3 runs) | robust | > 6 mm pur / rec | 2-6 mm pur / rec | < 2 mm pur / rec |
+|---|---|---|---|---|
+| S-2997a7b5: square 3.0 / 1.6, no tilt, each box its own 1.9 g buzz | 0.087 | 19% / 100% | 40% / 39% | 99% / 67% |
+| S-88c31ccf: slot 3.8 / round 1.1 | 0.081 | 18% / 86% | 33% / 79% | 100% / 22% |
+| C-1cfae593: the same square trays on the coupled seesaw | 0.069 | 20% / 100% | 49% / 39% | 99% / 67% |
+| S-71d846e7: the same trays, each box ±10° + 1.9 g, phases free | 0.064 | 19% / 100% | 50% / 51% | 99% / 68% |
+
+**What I learned:**
+- Tray 1 keeps every > 6 mm specimen, but also 15-28 of the 72 specimens of 2-6 mm. Weighted to the real mix, the > 6 mm bin is then only 15-20% pure, so the first cut sets the score. The full study should work on tray 1.
+- At 4 s, independent and coupled boxes score the same, within noise. 4 s is too short for a verdict; the study's screen is 6 s and its full run 12 s.
+- 1 of 42 runs blew up: a 1.45 mm long-legged specimen spinning at 94,000 rad/s on 0.65 mm round holes. A test run before the pilot had a 0.3 mm specimen spinning up in the still catch pan. Both are the insect model's small specimens against dt, not the box drive. Expect a few percent of runs scored -1 until the liquid's drag or a smaller dt stops it.
+- Searching vib_mm and vib_hz independently put 60% of draws over 10 g; the family now searches vib_g and vib_hz and derives vib_mm (72% of draws pass all constraints).
+- **Cost:** 5.1-10.8 s of wall per simulated second on 8 workers, mean 7.2. Round-hole trays cost about 1.8x square. A sift round 0 is 2.1 CPU-hours dry (16 min on 8 workers), later rounds 0.7; with 4 liquid sets, 8.4 and 2.9 (before the liquid's own cost).
+- **My mistake:** I edited `optimize.py` while the pilot ran, and 7 of its full runs failed on import. I deleted them from the cache and reran; the numbers above are from the clean rerun.
+
+**Next (after the liquid branch merges):** put the liquid's uncertain parameters in `STUDIES["sift"]["liquid_sets"]` and run `optimize.py run --study sift --rounds 5 --workers 8`.
+
+

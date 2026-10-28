@@ -11,6 +11,9 @@ Written by `sim/optimize.py` (the design-optimizer session, branch `design-opt`)
 | [leaderboard_seesaw.md](leaderboard_seesaw.md), `winners_seesaw.json` | The demo set on **the rig's motion**: each tray rocks on its own hinge across its middle, neighbours alternate (`rocking.py`), ±5–15°, with a 40 Hz buzz from round 1. Plinko rocks as one box | bambu, physics (VERIFY_SEESAW.md) |
 | [leaderboard_malaise.md](leaderboard_malaise.md), `winners_malaise.json` | **EXPLORATORY:** breaker layers (`designs_breaker.py`) on the seesaw tower, ranked on a clump (`clumps.py`) for break-up, then gentleness, then sort, by `opt_malaise.py`. It uses the grain-surrogate clump until insect clumps pack | bambu (`cad/breaker_layer.py` takes the winner's `cad.spec` as is), main (PITCH.md) |
 
+| `leaderboard_sift.md`, `winners_sift.json` | **EXPLORATORY, not run yet:** the real Malaise mix (stratified, weighted to real shares) on separate trays, each box moving on its own (`boxes.py`): square, round or slot screens, pitch, and each box's tilt and vibration. Waits for the liquid branch ([BOXES.md](../BOXES.md)) | — |
+| `leaderboard_sift_pilot.md` | The dry pilot of the sift study: a short round that proves the machinery. **Not a result** | — |
+
 Raw runs, the search state and the `view.html` replays are under `sim/out/opt/` (gitignored).
 
 ## Reading a winner

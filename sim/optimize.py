@@ -19,6 +19,10 @@ Run from sim\\ (on this laptop: the WSL venv ~/venvs/sieve, see docs/sessions/RE
 Studies (classes are what the sorter should do, not what each design's openings happen to do):
     demo      pasta + chickpea / rice / quinoa: the surrogate grains we can bench today
     insects   BugPicker's body-length classes > 6 / 2-6 / < 2 mm, generated specimens (EXPLORATORY: none measured)
+    sift      the real Malaise mix (insects.MALAISE_MIX_STRATIFIED, scores weighted to MALAISE_SHARES) in the same
+              classes, on separate trays that each move on their own (boxes.py, sim/BOXES.md); family sift only.
+              Robustness: friction sets x liquid sets (dry until the liquid branch merges) x seeds, and each seed
+              draws its own phases for every box (EXPLORATORY)
 
 Families (each maps one to one onto CAD parameters, so a winner can be printed as is):
     gated     cad/gated_container.py: floor slope, L1 strip (width gap with its own height, or tunnel), L2 tunnel,
@@ -28,6 +32,9 @@ Families (each maps one to one onto CAD parameters, so a winner can be printed a
     gated_rib gated + a ratchet floor (PROPOSAL geometry, not in the CAD): tested and rejected, see opt/LOG.md;
               not run unless named in --families. The mid-slot tower (designs_gated.py gx=, flip=0) was rejected too.
     every family also searches the stroke within BioKEA's firmware: constant speed <= 50 mm/s, amplitude 5-15 mm
+    sift      separate trays (inserts:...,holder=seesaw, ribs across): per level a square / round / slot screen, its
+              opening and bar, the pitch, and each box's own motion (tilt on/off, amplitude, period; vibration mm,
+              Hz, direction) within one small actuator per box; the catch pan stays still
 
 Sizes. The search runs on CAD (nominal) openings on 0.1 mm steps; the sim builds the as-printed (effective)
 opening, nominal - UNDERSIZE_MM, as the sieve-gate-design skill prescribes. UNDERSIZE_MM is ASSUMED until
@@ -66,6 +73,7 @@ from pathlib import Path
 
 import numpy as np
 
+import insects
 import sweep
 
 HERE = Path(__file__).resolve().parent
@@ -123,6 +131,32 @@ STUDIES["smoke"] = dict(STUDIES["demo"], title="smoke test (not a result)")
 STUDIES["seesaw"] = dict(STUDIES["demo"], seesaw=True,
                          title="Demo set on the rig's seesaw: each tray rocks about its middle (the ends tip), "
                                "neighbours alternate, +/-5-15 deg (rocking.py)")
+# The user (2026-10-27): "the boxes are individually shaking it doesnt matter that theyre synced what matters is the
+# sifting". Separate trays, each box on its own actuator (boxes.py: a tilt and a vibration per level, kinematic, lab
+# frame); the real Malaise mix, stratified so the rare > 6 mm class has 12 specimens, scores weighted back to the real
+# class shares. Insects need the stiff contacts (LAYERS.md). liquid_sets: the slot for the liquid branch's uncertain
+# parameters (bath level, entrain); each entry is (label, RunConfig.liquid or None), and every candidate runs on every
+# friction set x liquid set x seed. None (dry) is a no-op, also before RunConfig has a liquid field. Override with
+# run --liquid-sets '<json list of [label, dict or null]>'; the keys of the dict are sim/liquid.py's.
+STUDIES["sift"] = {
+    "title": "EXPLORATORY: the real Malaise mix on separate trays, each box moving on its own (boxes.py)",
+    "mix": dict(insects.MALAISE_MIX_STRATIFIED),
+    "classes": STUDIES["insects"]["classes"], "shares": dict(insects.MALAISE_SHARES), "exploratory": True,
+    "boxes": True, "families": ("sift",), "dt": 1.25e-4, "timeconst": 2.5e-4,
+    "screen_s": 6.0, "full_s": 12.0, "screen_seeds": 1, "full_seeds": 2,
+    "liquid_sets": [("dry", None)],
+    "wall_per_sim_s": 7.2,       # the dry pilot's mean on 8 workers (5.1-10.8; round holes cost the most); for `plan`
+    "notes": ["**Separate trays, each moving on its own** (`boxes.py`, `sim/BOXES.md`): each box has its own tilt and "
+              "vibration, prescribed kinematically (no actuator dynamics), and each seed draws its own phase for "
+              "every box, since independent actuators don't hold a phase. The catch pan stays still.",
+              "**Weighted to the real mix.** The sample is stratified (24 / 24 / 12 specimens under 2 mm, 2-6 mm and "
+              "over 6 mm); purity, jammed and lost are weighted to the real shares (71.0% / 26.6% / 2.4%, "
+              "`insects.MALAISE_SHARES`). Recovery is per class, so the weights don't change it. Count matrices "
+              "are raw counts."],
+}
+# A short dry pilot of the same study: proves the machinery end to end. Not a result.
+STUDIES["sift_pilot"] = dict(STUDIES["sift"], title="PILOT (dry, short, not a result): the sift study's machinery",
+                             screen_s=2.0, full_s=4.0, screen_seeds=1, full_seeds=1)
 
 # ---------------------------------------------------------------- families
 
@@ -345,6 +379,124 @@ def inserts_cad(p):
             "note": "(hole, bar, screen thickness); one insert per holder box, coarse on top"}
 
 
+# sift --------------------------------------------------------------------------------------------
+# Separate trays, each box moving on its own (boxes.py): two screens over the catch pan, one per class boundary.
+# Screens are on the ribs-across frame in the tabless seesaw holder (holder=seesaw), each square (h..), round (r..,
+# screens.py: octagons) or a slot along X (s..). The catch pan stays still. Motion per moving box: a tilt about Y
+# (on or off, amplitude, period; one shared profile shape) and a vibration (amplitude, frequency, direction in XZ).
+SIFT_LEVELS = (1, 2)
+SLOT_LEN = 12.0                  # ASSUMED: slot length along X, nominal (LAYERS.md's wild-rice note); not searched
+CLEAR_MIN = 3.0                  # ASSUMED: least gap between neighbouring boxes over every phase combination, mm
+VIB_G_MAX = 10.0                 # ASSUMED: the most peak acceleration one small actuator gives a box, g
+VIB_MM_MAX = 1.0                 # the brief's actuator stroke: vibration amplitude up to 1 mm
+# The vibration is searched as frequency and peak acceleration (vib_g), and its amplitude follows:
+# vib_mm = vib_g * g / (2 pi vib_hz)^2. Searching vib_mm and vib_hz independently put 60% of draws over VIB_G_MAX.
+RAMP_IN_S = 0.2                  # every box eases in over this long after the settle (boxes.py ramp_in_s)
+PHASE_SEED = 7919                # independent boxes: seed s draws every box's phases from rng(PHASE_SEED + s)
+
+
+def sift_name(p, k):
+    sh, a, bar = p[f"shape{k}"], tok(eff(p[f"a{k}"])), tok(p[f"bar{k}"] + UNDERSIZE_MM)
+    if sh == "square":
+        return f"h{a}b{bar}_across"
+    if sh == "round":
+        return f"r{a}b{bar}_across"
+    return f"s{a}x{tok(eff(SLOT_LEN))}b{bar}_across"
+
+
+def sift_spec(p):
+    return "inserts:" + ",".join(sift_name(p, k) for k in SIFT_LEVELS) + f",pitch={p['pitch']:g},holder=seesaw"
+
+
+def vib_mm(p, k):
+    """Level k's vibration amplitude, mm, from its peak acceleration and frequency (0.001 mm steps)."""
+    return round(p[f"vib_g{k}"] * 9810.0 / (2 * math.pi * p[f"vib_hz{k}"]) ** 2, 3)
+
+
+def sift_motion(p):
+    """Per level, top to bottom with the catch pan last: (deg, period_s, vib_mm, vib_hz, vib_angle_deg)."""
+    rows = [(p[f"deg{k}"] if p.get(f"tilt{k}", "tilt") == "tilt" else 0.0, p[f"period{k}"], vib_mm(p, k),
+             p[f"vib_hz{k}"], p[f"vib_angle{k}"]) for k in SIFT_LEVELS]
+    return rows + [(0.0, 2.0, 0.0, 40.0, 90.0)]                       # the catch pan stays still
+
+
+def sift_stroke(p):
+    cols = list(zip(*sift_motion(p)))
+    keys = ("deg", "period_s", "vib_mm", "vib_hz", "vib_angle_deg")
+    return {"profile": "boxes", **{k: "/".join(f"{v:g}" for v in col) for k, col in zip(keys, cols)},
+            "shape": p.get("tshape", "constant_speed"), "ramp_in_s": RAMP_IN_S}
+
+
+@functools.lru_cache(maxsize=None)
+def box_clearance(spec, stroke_json):
+    """boxes.py's clearance (mm, a lower bound over every phase combination) for a design and a boxes stroke."""
+    import boxes
+    import designs
+    return boxes.design_clearance(designs.build(spec), json.loads(stroke_json))["min_mm"]
+
+
+def sift_ok(p):
+    if p["a1"] <= p["a2"] + 0.3:
+        return "level 1's opening must be well above level 2's"
+    for k in SIFT_LEVELS:
+        if p[f"bar{k}"] < MIN_LINES:
+            return f"level {k} bars under two print lines"
+        if vib_mm(p, k) > VIB_MM_MAX:
+            return f"level {k}'s {p[f'vib_g{k}']:g} g at {p[f'vib_hz{k}']:g} Hz needs {vib_mm(p, k):g} mm, over the " \
+                   f"{VIB_MM_MAX:g} mm stroke"
+    gap = box_clearance(sift_spec(p), json.dumps(sift_stroke(p), sort_keys=True))
+    if gap is None or gap < CLEAR_MIN:
+        return f"neighbouring boxes come within {gap} mm at some phases (under {CLEAR_MIN:g}); raise the pitch"
+    return None
+
+
+def sift_show(p):
+    def scr(k):
+        sh, a, bar = p[f"shape{k}"], p[f"a{k}"], p[f"bar{k}"]
+        what = {"square": f"square {a:g}", "round": f"round {a:g}", "slot": f"slot {a:g} x {SLOT_LEN:g}"}[sh]
+        return f"{what} (bar {bar:g})"
+    return f"L1 {scr(1)} / L2 {scr(2)}; boxes {p['pitch']:g} mm apart"
+
+
+def sift_cad(p):
+    rows = sift_motion(p)
+    return {"files": ["cad/sieve_insert.py (ribs-across frame)", "cad/seesaw_holder.py (tabless holder, deep catch pan)"],
+            "inserts": [{"level": k, "shape": p[f"shape{k}"], "opening_mm": p[f"a{k}"], "bar_mm": p[f"bar{k}"],
+                         **({"slot_length_mm": SLOT_LEN} if p[f"shape{k}"] == "slot" else {}),
+                         "screen_t_mm": 1.6 if p[f"a{k}"] >= 3 else 1.4} for k in SIFT_LEVELS],
+            "pitch_mm": p["pitch"],
+            "motion_per_box": [{"level": lv, "tilt_deg": r[0], "tilt_period_s": r[1],
+                                "tilt_shape": p.get("tshape", "constant_speed"), "vib_mm": r[2], "vib_hz": r[3],
+                                "vib_angle_deg_from_x": r[4], "vib_peak_g": round(r[2] * (2 * math.pi * r[3]) ** 2 / 9810, 2)}
+                               for lv, r in zip(("L1", "L2", "catch"), rows)],
+            "note": "nominal sizes on 0.1 mm steps; the sim builds nominal - 0.15 (holes) and + 0.15 (bars). Round-hole "
+                    "and slot inserts are a PROPOSAL: sieve_insert.py has square holes only (the sim models round holes "
+                    "as octagons, screens.py). The motion is each box's own actuator, prescribed kinematically in the "
+                    "sim; their phases are free."}
+
+
+def boxes_show(st):
+    """A boxes stroke in words, per level."""
+    def col(k, default):
+        v = st.get(k, default)
+        vals = [float(x) for x in (v if isinstance(v, (list, tuple)) else str(v).split("/"))]
+        return vals * n if len(vals) == 1 else vals
+    n = max(len(str(st.get(k, "0")).split("/")) for k in ("deg", "vib_mm"))
+    deg, per, vm, vh, va = (col(k, dflt) for k, dflt in (("deg", 0), ("period_s", 2), ("vib_mm", 0), ("vib_hz", 40),
+                                                           ("vib_angle_deg", 90)))
+    names = [f"L{k + 1}" for k in range(n - 1)] + ["catch"]
+    parts = []
+    for i, nm in enumerate(names):
+        bits = []
+        if deg[i]:
+            bits.append(f"tilt +/-{deg[i]:g} deg / {per[i]:g} s")
+        if vm[i]:
+            bits.append(f"{vm[i]:g} mm at {vh[i]:g} Hz, {va[i]:g} deg up ({vm[i] * (2 * math.pi * vh[i]) ** 2 / 9810:.1f} g)")
+        parts.append(f"{nm} " + (" + ".join(bits) if bits else "still"))
+    shape = "sine" if st.get("shape") == "sine" else "constant speed"
+    return f"each box on its own ({shape} tilts): " + "; ".join(parts)
+
+
 FAMILIES = {
     "gated": {
         "params": [P("slope", 0.5, 4.0, 0.1), P("k1", 0, 0, 0, ("w", "t")), P("s1", 2.3, 5.4, XY_STEP),
@@ -377,6 +529,18 @@ FAMILIES = {
         "params": [P("a1", 2.6, 6.0, XY_STEP), P("bar1", 0.8, 2.0, XY_STEP), P("a2", 1.2, 2.6, XY_STEP),
                    P("bar2", 0.8, 1.6, XY_STEP), *STROKE_PARAMS],
         "spec": inserts_spec, "inject": inserts_inject, "ok": inserts_ok, "cad": inserts_cad, "show": inserts_show,
+    },
+    "sift": {
+        "params": [P("shape1", 0, 0, 0, ("square", "round", "slot")), P("a1", 1.8, 4.5, XY_STEP),
+                   P("bar1", 0.8, 2.0, XY_STEP), P("shape2", 0, 0, 0, ("square", "round", "slot")),
+                   P("a2", 0.7, 1.9, XY_STEP), P("bar2", 0.8, 1.6, XY_STEP), P("pitch", 55.0, 110.0, 5.0),
+                   P("tshape", 0, 0, 0, ("constant_speed", "sine")),
+                   *[q for k in SIFT_LEVELS for q in (
+                       P(f"tilt{k}", 0, 0, 0, ("none", "tilt")), P(f"deg{k}", 2.0, 12.0, 0.5),
+                       P(f"period{k}", 0.5, 6.0, 0.1), P(f"vib_g{k}", 0.0, VIB_G_MAX, 0.1),
+                       P(f"vib_hz{k}", 15.0, 120.0, 1.0), P(f"vib_angle{k}", 0.0, 90.0, 5.0))]],
+        "spec": sift_spec, "inject": lambda p: {}, "ok": sift_ok, "cad": sift_cad, "show": sift_show,
+        "stroke": sift_stroke,
     },
 }
 
@@ -447,6 +611,28 @@ BASELINES["insects"] = [
     ("inserts", "printed inserts as in the repo: 5 mm / 2 mm square holes, firmware cap stroke",
      {"a1": 5.0, "bar1": 1.2, "a2": 2.0, "bar2": 1.0, "amp": 10.0, "speed": 50.0}),
 ]
+# sift: the multi-layer session's insect-cut trays (LAYERS.md: 2.85 / 1.45 mm as modelled, so 3.0 / 1.6 nominal, ribs
+# across, 55 mm apart), as separate boxes, and the same trays on the old coupled seesaw.
+_SIFT_TRAYS = {"shape1": "square", "a1": 3.0, "bar1": 1.0, "shape2": "square", "a2": 1.6, "bar2": 1.0, "pitch": 55.0}
+_SIFT_ROCK = {"tshape": "constant_speed", "tilt1": "tilt", "deg1": 10.0, "period1": 2.0,
+              "tilt2": "tilt", "deg2": 10.0, "period2": 2.0}
+_SIFT_BUZZ = {"vib_g1": 1.9, "vib_hz1": 40.0, "vib_angle1": 90.0, "vib_g2": 1.9, "vib_hz2": 40.0, "vib_angle2": 90.0}
+BASELINES["sift"] = [
+    ("sift", "LAYERS.md's insect-cut trays (square 3.0 / 1.6, ribs across, 55 mm apart), each box rocking +/-10 deg "
+             "at 2 s with its own 40 Hz, 1.9 g buzz (0.3 mm) straight up, phases free; catch pan still",
+     {**_SIFT_TRAYS, **_SIFT_ROCK, **_SIFT_BUZZ}),
+    ("sift", "the same trays and buzz, no tilt", {**_SIFT_TRAYS, **_SIFT_ROCK, "tilt1": "none", "tilt2": "none",
+                                                 **_SIFT_BUZZ}),
+    ("sift", "the same trays with round holes (3.0 / 1.6), rocking and buzzing",
+     {**_SIFT_TRAYS, "shape1": "round", "shape2": "round", **_SIFT_ROCK, **_SIFT_BUZZ}),
+]
+BASELINES["sift_pilot"] = BASELINES["sift"][:2]
+COUPLED = {"family": "coupled", "label": "COUPLED, the old seesaw: the same insect-cut trays 55 mm apart on rocking.py's "
+                                         "seesaw (+/-10 deg, 2 s, neighbours locked in opposite phase, catch pan "
+                                         "rocking) with one shared 0.3 mm buzz at 40 Hz",
+           "spec": "inserts:h2p85b1p15_across,h1p45b1p15_across,pitch=55,holder=seesaw", "inject": {},
+           "stroke": {"profile": "seesaw", "deg": 10.0, "period_s": 2.0, "shape": "constant_speed", "vib_mm": 0.3,
+                      "vib_hz": 40.0}, "params": {}}
 # Today's bench setup: glued woven mesh (not a family: it isn't printable). Reported for reference.
 CURRENT = {"family": "current", "label": "TODAY on the bench: glued mesh inserts mesh5 / mesh2, firmware cap stroke",
            "spec": "inserts:mesh5,mesh2", "inject": {}, "stroke": FIRMWARE, "params": {}}
@@ -464,7 +650,9 @@ ROUNDN = {"gated": 12, "gated_rib": 16, "gated_mid": 10, "plinko": 8, "inserts":
 EXPLORE = {"gated": 8, "gated_rib": 6, "gated_mid": 6, "plinko": 8, "inserts": 3}      # extra Latin hypercube when a
 #                                                                     family gains parameters (e.g. the stroke angle)
 # Insect runs cost about 3x a grain run per step (legs: many contacts), so the insect study searches fewer candidates.
+EXPLORE["sift"] = 4
 BUDGET = {"seesaw": ({"plinko": 12, "inserts": 8}, {"plinko": 8, "inserts": 5}),
+          "sift": ({"sift": 16}, {"sift": 10}), "sift_pilot": ({"sift": 6}, {"sift": 4}),
           "insects": ({"gated": 10, "gated_rib": 8, "gated_mid": 8, "plinko": 8, "inserts": 3},
                       {"gated": 6, "gated_rib": 6, "gated_mid": 6, "plinko": 6, "inserts": 2})}
 
@@ -497,6 +685,8 @@ def stroke_of(p):
 
 
 def stroke_show(st):
+    if st.get("profile") == "boxes":
+        return boxes_show(st)
     if st.get("profile") == "seesaw":
         shape = "sine" if st.get("shape") == "sine" else "constant speed"
         buzz = f" + {st['vib_mm']:g} mm buzz at {st['vib_hz']:g} Hz" if st.get("vib_mm") else ""
@@ -517,8 +707,8 @@ def make_cand(family, params, origin, rnd, label=None, study="demo"):
     if FORCE_DRIVE:
         params = {**params, "drive": FORCE_DRIVE}
     p = {q.name: q.quant(params[q.name]) for q in params_of(family, study) if q.name in params}
-    c = {"family": family, "params": p, "spec": f["spec"](p), "inject": f["inject"](p), "stroke": stroke_of(p),
-         "origin": origin, "round": rnd, "label": label}
+    c = {"family": family, "params": p, "spec": f["spec"](p), "inject": f["inject"](p),
+         "stroke": f.get("stroke", stroke_of)(p), "origin": origin, "round": rnd, "label": label}
     c["id"] = cand_id(c)
     return c
 
@@ -620,8 +810,45 @@ def ce_update(family, cands, summaries, rng, study="demo"):
 
 def base_cfg(study):
     import sorter
-    return sweep.make_cfg(dataclasses.asdict(sorter.RunConfig()), mix=STUDIES[study]["mix"], dt=DT,
-                          contact={"timeconst": TIMECONST})
+    st = STUDIES[study]
+    return sweep.make_cfg(dataclasses.asdict(sorter.RunConfig()), mix=st["mix"], dt=st.get("dt", DT),
+                          contact={"timeconst": st.get("timeconst", TIMECONST)})
+
+
+# RunConfig fields added after runs were cached: left out of the cache key while they are None, so a merge that adds
+# one (the liquid branch's RunConfig.liquid) keeps every earlier study's cache valid.
+KEY_OPTIONAL = ("liquid",)
+
+
+def job_key(cfg, inject):
+    kc = {k: v for k, v in cfg.items() if not (k in KEY_OPTIONAL and v is None)}
+    return hashlib.sha1(json.dumps([kc, inject], sort_keys=True, default=sweep.jsonable).encode()).hexdigest()[:20]
+
+
+def with_phases(stroke, seed):
+    """Independent boxes don't hold a phase: each seed draws every box's tilt and vibration phase (fixed by the seed,
+    so a run reproduces). A stroke that sets its own phases keeps them."""
+    if stroke.get("profile") != "boxes" or "phase" in stroke or "vib_phase" in stroke:
+        return stroke
+    n = len(str(stroke.get("deg", 0)).split("/"))
+    rng = np.random.default_rng(PHASE_SEED + seed)
+    ph, vph = rng.random(n), rng.random(n)
+    return {**stroke, "phase": "/".join(f"{v:.3f}" for v in ph), "vib_phase": "/".join(f"{v:.3f}" for v in vph)}
+
+
+def liquid_sets(study, base):
+    """[(label or None, extra cfg)]: the study's liquid sets, or one no-op entry. A wet set needs RunConfig.liquid
+    (the liquid branch); a dry one (None) is passed only if the field exists."""
+    sets = STUDIES[study].get("liquid_sets")
+    if not sets:
+        return [(None, {})]
+    out = []
+    for label, liq in sets:
+        if liq is not None and "liquid" not in base:
+            raise SystemExit(f"liquid set {label!r} needs sorter.RunConfig.liquid, which isn't there yet: merge the "
+                             "liquid branch first")
+        out.append((label, {"liquid": liq} if "liquid" in base else {}))
+    return out
 
 
 def at_undersize(c, us):
@@ -646,16 +873,17 @@ def jobs_for(c, study, fid, base, sets):
     stiff = {"dt": STIFF_DT, "contact": {"timeconst": STIFF_TIMECONST}} if fid == "stiff" else {}
     out = []
     for label, contact in sets:
-        for seed in {"screen": SCREEN_SEEDS, "full": FULL_SEEDS}.get(fid, SEEDS):
-            cfg = sweep.make_cfg(base, design=spec, stroke=stroke, contact=contact, duration_s=dur,
-                                 seed=seed)
-            if stiff:
-                cfg = sweep.make_cfg(cfg, **stiff)
-            job = {"cfg": cfg, "inject": inject,
-                   "tags": {"cand": c["id"], "fid": fid, "set": label, "seed": seed}}
-            job["key"] = hashlib.sha1(json.dumps([cfg, inject], sort_keys=True, default=sweep.jsonable)
-                                      .encode()).hexdigest()[:20]
-            out.append(job)
+        for llabel, extra in liquid_sets(study, base):
+            for seed in {"screen": SCREEN_SEEDS, "full": FULL_SEEDS}.get(fid, SEEDS):
+                cfg = sweep.make_cfg(base, design=spec, stroke=with_phases(stroke, seed), contact=contact,
+                                     duration_s=dur, seed=seed, **extra)
+                if stiff:
+                    cfg = sweep.make_cfg(cfg, **stiff)
+                job = {"cfg": cfg, "inject": inject,
+                       "tags": {"cand": c["id"], "fid": fid, "set": label if llabel is None else f"{label}, {llabel}",
+                                "seed": seed}}
+                job["key"] = job_key(cfg, inject)
+                out.append(job)
     return out
 
 
@@ -718,6 +946,10 @@ def run_job(job):
             rec["seesaw_clearance_mm"] = res["seesaw"]["clearance"]["min_mm"]
             if res["seesaw"]["clearance"]["touching"]:
                 raise Unstable(f"seesaw: neighbouring trays touch ({rec['seesaw_clearance_mm']} mm); raise pitch=")
+        if res.get("boxes"):                       # boxes.py: a lower bound over every phase combination
+            rec["boxes_clearance_mm"] = res["boxes"]["clearance"]["min_mm"]
+            if res["boxes"]["clearance"]["touching"]:
+                raise Unstable(f"boxes: neighbouring boxes can touch ({rec['boxes_clearance_mm']} mm); raise pitch=")
         if res.get("unstable_resets"):             # sorter.py's own reset detection (d.time going backwards)
             raise Unstable(f"MuJoCo reset the state at t = {res['unstable_resets'][:3]} s")
         m, d = seen["m"], seen["d"]
@@ -903,6 +1135,8 @@ def gates_of(info):
             out.append(("rect", layer["opening_mm"], layer["opening_mm"]))
         elif layer["rule"] == "slot":
             out.append(("slot", layer["opening_mm"], None))
+        elif layer["rule"] == "round":                  # screens.py
+            out.append(("round", layer["opening_mm"], None))
     return out
 
 
@@ -912,6 +1146,9 @@ def passes(W, T, gate, delta=0.0):
     rule, a, b = gate
     if rule == "slot":
         return T <= a + delta
+    if rule == "round":
+        import screens
+        return T <= a + delta and screens.fits_round(W, T, a + delta)
     return ellipse_fits(W, T, a + delta, b + delta)
 
 
@@ -936,6 +1173,18 @@ def clearance(rec):
     return round(float(best), 3) if best is not None else None
 
 
+def class_weighted(study, C):
+    """The count matrix with each class's row weighted so the classes take their real shares of the sample
+    (STUDIES[study]["shares"], by class name); C itself when the study has no shares. Weights sum to the run's count."""
+    shares = STUDIES[study].get("shares")
+    if not shares:
+        return C
+    names = [c["name"] for c in STUDIES[study]["classes"]]
+    rows, n = C.sum(axis=1), C.sum()
+    w = np.array([shares[nm] * n / rows[i] if rows[i] else 0.0 for i, nm in enumerate(names)])
+    return C * w[:, None]
+
+
 def run_score(rec, study):
     if rec.get("error") or rec.get("unstable"):
         return {"score": FAIL_SCORE, "progress": FAIL_SCORE,
@@ -949,16 +1198,21 @@ def run_score(rec, study):
         ci = class_of(study, p)
         if ci is not None:
             C[ci, cols.index(p["final_zone"])] += 1
-    n = int(C.sum())
+    Cw = class_weighted(study, C)        # C itself unless the study weights a stratified sample to real shares
+    n = int(C.sum()) if Cw is C else float(Cw.sum())
     rec_c, pur_c = [], []
     for i in range(nc):
         ni = C[i].sum()
         rec_c.append(C[i, tg[i]] / ni if ni else None)
-        tot = C[:, tg[i]].sum()
-        pur_c.append(C[i, tg[i]] / tot if tot else (0.0 if ni else None))
+        tot = Cw[:, tg[i]].sum()
+        pur_c.append(Cw[i, tg[i]] / tot if tot else (0.0 if ni else None))
     q = min(min(r, p) for r, p in zip(rec_c, pur_c) if r is not None)
-    between, lost = int(C[:, -2].sum()), int(C[:, -1].sum())
-    leaked = int(sum(C[i, j] for i in range(nc) for j in range(tg[i] + 1, len(zones))))
+    if Cw is C:
+        between, lost = int(C[:, -2].sum()), int(C[:, -1].sum())
+        leaked = int(sum(C[i, j] for i in range(nc) for j in range(tg[i] + 1, len(zones))))
+    else:
+        between, lost = float(Cw[:, -2].sum()), float(Cw[:, -1].sum())
+        leaked = float(sum(Cw[i, j] for i in range(nc) for j in range(tg[i] + 1, len(zones))))
     beyond = sum(1 for p in rec["particles"] if p["final_zone"] in zones
                  and zones.index(p["final_zone"]) > zones.index(p["ideal_zone"]))   # squeezed past its own geometry
     progress = (float(np.mean([r for r in rec_c if r is not None])) - 2.0 * leaked / n - W_JAM * between / n
@@ -1118,6 +1372,12 @@ def leaderboard_md(study, cands, summ, meta):
     if st["exploratory"]:
         lines += ["**EXPLORATORY.** No real specimen has been measured: the insects are generated from textbook "
                   "sizes (`sim/insects.py`), and the classes use body length, which no gate cuts directly.", ""]
+    for note in st.get("notes", []):
+        lines += [note, ""]
+    if st.get("liquid_sets"):
+        lines += ["Robustness sets: every friction set x every liquid set ("
+                  + ", ".join(f"{lab}: {liq if liq is not None else 'none'}" for lab, liq in st["liquid_sets"])
+                  + f") x {len(FULL_SEEDS)} seeds.", ""]
     lines += ["**The sim ranks designs; it does not predict real percentages.** It is uncalibrated until "
               "`calibrate.py` has bench counts, has no water, rigid particles, and about 80 particles per run. "
               "Sizes are simulated at the as-printed opening, nominal - "
@@ -1126,7 +1386,8 @@ def leaderboard_md(study, cands, summ, meta):
               f"{FULL_S:g} s run. Score per run = min over classes of min(purity, recovery), minus {W_JAM} x jammed "
               f"share, {W_LOST} x lost share and {W_T90} x t90/duration. Failed (unstable) runs score {FAIL_SCORE:g}. "
               "Only candidates promoted to the full run are ranked; screened-only ones are in the log. "
-              f"Solver: dt {DT * 1e3:g} ms, contact timeconst {TIMECONST * 1e3:g} ms (stiffer than sorter.py's "
+              f"Solver: dt {st.get('dt', DT) * 1e3:g} ms, contact timeconst {st.get('timeconst', TIMECONST) * 1e3:g} ms "
+              "(stiffer than sorter.py's "
               "default; see optimize.py). Friction sets: " + ", ".join(lab for lab, _ in sweep.param_sets()[0]) + ".", "",
               "| # | id | family | robust | mean +/- sd | worst mu set | " +
               " | ".join(f"{c} pur / rec" for c in cl) + " | jammed | lost | t90 s | flags | design (CAD, nominal mm) "
@@ -1140,7 +1401,7 @@ def leaderboard_md(study, cands, summ, meta):
               " | ".join(f"{c} pur / rec" for c in cl) + " | jammed | lost | t90 s | flags | design (CAD, nominal mm) "
               "| sim spec (as printed) | stroke |",
               "|" + "---|" * (13 + len(cl))]
-    for f in [*FAMILIES, "current", "demo_rig", "across"]:
+    for f in [*FAMILIES, "current", "demo_rig", "across", "coupled"]:
         fam = [c for c in ranking(cands, summ, exclude_refs=False) if c["family"] == f]
         if fam:
             lines.append(row(ranking(cands, summ, exclude_refs=False).index(fam[0]) + 1, fam[0],
@@ -1198,7 +1459,7 @@ def leaderboard_md(study, cands, summ, meta):
     for c in pool:
         if c["family"] in FAMILIES:
             by_drive.setdefault(drive_of(c), c)
-    if by_drive:
+    if by_drive and not st.get("boxes"):           # the drives below are the translation strokes and the rock
         lines += ["", "## Best per drive", "",
                   "BioKEA's stage can only run the firmware stroke (constant speed); the demo rig is a vibrating tool "
                   "(sine). Best full-run design for each, whether or not it is flagged:", "",
@@ -1458,6 +1719,8 @@ def write_outputs(study, cands, summ, meta):
                                                           default=sweep.jsonable), encoding="utf-8")
     state = {"study": study, "cands": cands, "ce": CE_STATE,
              "summaries": {k: v for k, v in summ.items()}}
+    if STUDIES[study].get("liquid_sets"):
+        state["liquid_sets"] = STUDIES[study]["liquid_sets"]
     (OUT / study / "state.json").write_text(json.dumps(state, default=sweep.jsonable), encoding="utf-8")
 
 
@@ -1480,6 +1743,10 @@ def load_state(study):
         return [], {}
     st = json.loads(f.read_text(encoding="utf-8"))
     CE_STATE.update(st.get("ce", {}))
+    have = [list(s) for s in STUDIES[study].get("liquid_sets") or []]
+    if "liquid_sets" in st and st["liquid_sets"] != have:
+        print(f"note: {study} last ran with liquid sets {st['liquid_sets']}, now {have}: summaries of candidates "
+              "without runs on every set are dropped until they are rerun", flush=True)
     labels = {r["id"]: r["label"] for r in refs(study, 0)}       # reference labels follow their current definitions
     for c in st["cands"]:
         if c["id"] in labels:
@@ -1498,6 +1765,10 @@ def evaluate(cands, study, fid, base, sets, workers, summ):
 
 def refs(study, rnd):
     out = [make_cand(f, p, "baseline", rnd, label, study) for f, label, p in BASELINES.get(study, [])]
+    if STUDIES[study].get("boxes"):                  # sift: the coupled seesaw is the one fixed reference
+        cur = dict(COUPLED, origin="current", round=rnd)
+        cur["id"] = cand_id(cur)
+        return out + [cur]
     for ref in [CURRENT] + ([DEMO_RIG] if study in ("demo", "smoke") else []):   # fixed, non-family references
         if STUDIES[study].get("seesaw"):
             ref = dict(ref, spec=f"{ref['spec']},pitch={SEESAW_DEFAULT['pitch']:g}", stroke=stroke_of(SEESAW_DEFAULT),
@@ -1603,8 +1874,8 @@ def replay(args):
     for cid in ids:
         c = by_id[cid]
         out = OUT / args.study / "replay" / cid
-        cfg = sweep.make_cfg(base_cfg(args.study), design=c["spec"], stroke=c["stroke"], contact=contact,
-                             duration_s=FULL_S, seed=0)
+        cfg = sweep.make_cfg(base_cfg(args.study), design=c["spec"], stroke=with_phases(c["stroke"], 0),
+                             contact=contact, duration_s=FULL_S, seed=0)
         cfg["record_fps"], cfg["out_dir"] = args.fps, str(out)
         apply_inject(c["inject"])
         import mujoco
@@ -1663,15 +1934,34 @@ def verify(args):
 
 
 def plan(args):
+    """Runs per round and, for a study that sets wall_per_sim_s (measured wall seconds per simulated second, settle
+    included, on one core), the CPU-hours."""
+    st = STUDIES[args.study]
     sets, source = sweep.param_sets()
+    fams = args.families.split(",")
     r0, rn = BUDGET.get(args.study, (ROUND0, ROUNDN))
-    n0 = sum(r0[f] for f in DEFAULT_FAMILIES) + len(BASELINES.get(args.study, [])) + 1
-    per = len(sets) * len(SEEDS)
-    print(f"param sets: {source}; {per} runs per candidate per fidelity")
-    print(f"round 0: {n0} candidates -> {n0 * per} screen runs ({SCREEN_S:g} s) + ~{math.ceil(PROMOTE * n0) + 4} "
-          f"promoted -> {(math.ceil(PROMOTE * n0) + 4) * per} full runs ({FULL_S:g} s)")
-    n1 = sum(rn[f] for f in DEFAULT_FAMILIES)
-    print(f"each later round: {n1} candidates -> {n1 * per} screen + ~{(math.ceil(PROMOTE * n1) + 3) * per} full runs")
+    n_sets = len(sets) * len(liquid_sets(args.study, {"liquid": None}))
+    ps, pf = n_sets * len(SCREEN_SEEDS), n_sets * len(FULL_SEEDS)
+    n_refs = len(refs(args.study, 0)) if st.get("boxes") else len(BASELINES.get(args.study, [])) + 1
+    print(f"param sets: {source}; liquid sets: {st.get('liquid_sets') or 'none'}; {ps} screen runs and {pf} full runs "
+          "per candidate")
+    for name, n, extra_refs in (("round 0", sum(r0[f] for f in fams), n_refs),
+                                ("each later round", sum(rn[f] for f in fams), 0)):
+        n_new = n + extra_refs
+        n_prom = sum(max(1, math.ceil(PROMOTE * (r0 if name == "round 0" else rn)[f])) for f in fams) + extra_refs
+        line = (f"{name}: {n_new} candidates -> {n_new * ps} screen runs ({SCREEN_S:g} s) + {n_prom} promoted -> "
+                f"{n_prom * pf} full runs ({FULL_S:g} s)")
+        if st.get("wall_per_sim_s"):
+            settle = sorter_settle_s()
+            cpu_h = st["wall_per_sim_s"] * (n_new * ps * (SCREEN_S + settle) + n_prom * pf * (FULL_S + settle)) / 3600
+            line += (f"; about {cpu_h:.1f} CPU-hours ({cpu_h / args.workers * 60:.0f} min on {args.workers} workers), "
+                     f"at {st['wall_per_sim_s']:g} s of wall per simulated s")
+        print(line)
+
+
+def sorter_settle_s():
+    import sorter
+    return sorter.RunConfig().settle_s
 
 
 def main():
@@ -1680,8 +1970,11 @@ def main():
     ap.add_argument("--study", default="demo", choices=list(STUDIES))
     ap.add_argument("--rounds", type=int, default=1)
     ap.add_argument("--workers", type=int, default=MAX_WORKERS)
-    ap.add_argument("--families", default=",".join(DEFAULT_FAMILIES),
-                    help=f"comma list from {list(FAMILIES)}; gated_rib was tested and rejected (see opt/LOG.md)")
+    ap.add_argument("--families", help=f"comma list from {list(FAMILIES)} (default: the study's own, else "
+                                       f"{','.join(DEFAULT_FAMILIES)}); gated_rib was tested and rejected (see opt/LOG.md)")
+    ap.add_argument("--liquid-sets", help="sift: robustness sets for the liquid, a JSON list of [label, RunConfig.liquid "
+                                          "or null], e.g. '[[\"dry\", null], [\"bath\", {...}]]'; pass the same on every "
+                                          "command of a study")
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--small", action="store_true", help="a quarter of the candidates (smoke test)")
     ap.add_argument("--top", type=int, default=3)
@@ -1697,10 +1990,15 @@ def main():
     args = ap.parse_args()
     args.workers = min(args.workers, MAX_WORKERS)
     global SCREEN_S, FULL_S, FORCE_DRIVE, SCREEN_SEEDS, FULL_SEEDS
-    SCREEN_S, FULL_S = args.screen_s or SCREEN_S, args.full_s or FULL_S
+    st = STUDIES[args.study]                     # a study may set its own lengths, seeds and families
+    SCREEN_S, FULL_S = args.screen_s or st.get("screen_s", SCREEN_S), args.full_s or st.get("full_s", FULL_S)
     FORCE_DRIVE = args.drive
-    SCREEN_SEEDS = SEEDS[:args.screen_seeds] if args.screen_seeds else SEEDS
-    FULL_SEEDS = SEEDS[:args.full_seeds] if args.full_seeds else SEEDS
+    screen_seeds, full_seeds = args.screen_seeds or st.get("screen_seeds"), args.full_seeds or st.get("full_seeds")
+    SCREEN_SEEDS = SEEDS[:screen_seeds] if screen_seeds else SEEDS
+    FULL_SEEDS = SEEDS[:full_seeds] if full_seeds else SEEDS
+    args.families = args.families or ",".join(st.get("families", DEFAULT_FAMILIES))
+    if args.liquid_sets:
+        st["liquid_sets"] = [tuple(s) for s in json.loads(args.liquid_sets)]
     {"run": run_study, "report": report, "replay": replay, "plan": plan, "stress": stress,
      "verify": verify}[args.cmd](args)
 

@@ -20,6 +20,9 @@ Stroke profiles:
     seesaw          deg, period_s, shape, ...: each level of an inserts: tower rocks on its own hinge about Y,
                     neighbours in opposite phase (rocking.py); vib_mm, vib_hz: a small fast buzz of the whole
                     tower on top, as a translation stroke (none by default)
+    boxes           deg, period_s, phase, vib_mm, vib_hz, vib_angle_deg, ...: each level of an inserts: tower moves
+                    on its own (a tilt about Y plus its own vibration), per-level values as slash lists, e.g.
+                    deg=8/6/0; kinematic, in the lab frame (boxes.py, BOXES.md)
 
 Run from sim\\:
     <venv python> sorter.py --design pool:w5p0,t1p4 --mix rice=30,quinoa=30,chickpea=8,pasta=8 \\
@@ -36,6 +39,7 @@ from pathlib import Path
 import mujoco
 import numpy as np
 
+import boxes
 import clumps
 import designs
 import rocking
@@ -260,7 +264,7 @@ def body_geoms(m, b):
 def run(cfg: RunConfig) -> dict:
     rng = np.random.default_rng(cfg.seed)
     design = designs.build(cfg.design)
-    rock = rocking.Seesaw.of(cfg, design)            # None unless the stroke is a seesaw
+    rock = rocking.Seesaw.of(cfg, design) or boxes.Boxes.of(cfg, design)   # None unless seesaw or boxes
     kinds = list(cfg.mix)
     particles = [make_particle(k, rng) for k in kinds for _ in range(cfg.mix[k])]
     cl = clumps.Clumps.of(cfg, rng)                  # None unless cfg.clump; its particles go after the loose ones
@@ -307,7 +311,7 @@ def run(cfg: RunConfig) -> dict:
 
     fps = cfg.record_fps if cfg.out_dir and cfg.record_fps > 0 else 10.0
     every = max(1, round(1.0 / (fps * cfg.dt)))
-    rec = {"t": [], "tray_d": [], "pos": [], "quat": [], "zone_counts": [], "wet": [], "level_q": []}
+    rec = {"t": [], "tray_d": [], "pos": [], "quat": [], "zone_counts": [], "wet": [], "level_q": [], "level_p": []}
     recording = bool(cfg.out_dir and cfg.record_fps > 0)
     max_pen = max_pen_pp = 0.0
     t0 = time.perf_counter()
@@ -355,6 +359,8 @@ def run(cfg: RunConfig) -> dict:
                     rec["wet"].append(np.asarray(sp.wet)[pbodies].astype(np.float32))
                 if rock:
                     rec["level_q"].append(rock.quats(d))
+                if hasattr(rock, "positions"):           # boxes.py: the levels translate too
+                    rec["level_p"].append(rock.positions(d))
     wall = time.perf_counter() - t0
 
     final = assign_zones(d.xpos[roots], design, bounds, rock.zone_frames(d) if rock else None)
@@ -376,7 +382,7 @@ def run(cfg: RunConfig) -> dict:
         "unstable_resets": resets,
     }
     if rock:
-        results["seesaw"] = rock.summary()
+        results[getattr(rock, "result_key", "seesaw")] = rock.summary()
     if cl:
         results["clumps"] = cl.metrics(plist, d)
     if cfg.out_dir:
@@ -413,6 +419,8 @@ def write_recording(out, cfg, design, m, results, rec, kinds, zone_names, partic
         arrays["wet"] = np.array(rec["wet"])
     if rec["level_q"]:                               # frames x levels x 4 (w x y z), each level in the lab
         arrays["level_q"] = np.array(rec["level_q"], dtype=np.float32)
+    if rec["level_p"]:                               # frames x levels x 3 (mm), each level body's origin in the lab
+        arrays["level_p"] = np.array(rec["level_p"], dtype=np.float32)
     np.savez_compressed(out / "traj.npz", **arrays)
     (out / "results.json").write_text(json.dumps(results, indent=1, default=float))
 
@@ -464,6 +472,10 @@ def main():
         c = r["seesaw"]["clearance"]
         print(f"  seesaw +/-{r['seesaw']['deg']:g} deg, {r['seesaw']['period_s']:g} s: neighbouring boxes come within "
               f"{c['min_mm']} mm" + ("  TOUCHING: raise pitch= (rocking.py)" if c["touching"] else ""))
+    if "boxes" in r:
+        c = r["boxes"]["clearance"]
+        print(f"  boxes, each on its own: neighbouring boxes stay {c['min_mm']} mm apart or more, whatever their "
+              "phases" + ("  TOUCHING: raise pitch= (boxes.py)" if c["touching"] else ""))
     if "clumps" in r:
         print(clumps.summary(r["clumps"]))
     if r["unstable_resets"]:
